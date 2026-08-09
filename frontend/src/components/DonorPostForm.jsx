@@ -134,6 +134,8 @@ const DonorPostForm = ({ socket, token, onSuccess }) => {
               >
                 <option value="VEG">Vegetarian</option>
                 <option value="NON-VEG">Non-Vegetarian</option>
+                <option value="RAW PRODUCE">Raw Produce</option>
+                <option value="BAKED GOODS">Baked Goods</option>
               </select>
             </div>
             <div>

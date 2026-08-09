@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { MapPin, Clock, Utensils, AlertCircle, Phone, Mail, CheckCircle, Package } from 'lucide-react';
+import { MapPin, Clock, Utensils, AlertCircle, Phone, Mail, CheckCircle, Package, Search } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -8,6 +8,8 @@ const LiveFeed = ({ socket, user, token }) => {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('Expiring Soonest');
   const [selectedListing, setSelectedListing] = useState(null);
   const [claimCode, setClaimCode] = useState(null);
 
@@ -60,32 +62,91 @@ const LiveFeed = ({ socket, user, token }) => {
     }
   };
 
-  const filteredListings = listings.filter(l => {
-    if (filter === 'ALL') return true;
-    return l.foodType === filter;
-  });
+  const sortedAndFilteredListings = React.useMemo(() => {
+    let result = [...listings];
+
+    // Filter by Category
+    if (filter !== 'ALL') {
+      result = result.filter(l => l.foodType === filter);
+    }
+
+    // Filter by Search
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(l => {
+        if (l.title && l.title.toLowerCase().includes(q)) return true;
+        if (l.items && l.items.some(item => item.itemName && item.itemName.toLowerCase().includes(q))) return true;
+        return false;
+      });
+    }
+
+    // Sort
+    if (sortBy === 'Expiring Soonest') {
+      result.sort((a, b) => {
+        const aExpiry = a.overallExpiry || a.expiryTime;
+        const bExpiry = b.overallExpiry || b.expiryTime;
+        return new Date(aExpiry) - new Date(bExpiry);
+      });
+    } else if (sortBy === 'Recently Added') {
+      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } else if (sortBy === 'Nearest Location') {
+      result.sort((a, b) => {
+        const hasLocA = a.location && a.location.coordinates && a.location.coordinates.length === 2;
+        const hasLocB = b.location && b.location.coordinates && b.location.coordinates.length === 2;
+        if (!hasLocA && !hasLocB) return 0;
+        if (!hasLocA) return 1;
+        if (!hasLocB) return -1;
+        const distA = Math.pow(a.location.coordinates[0] - 77.59, 2) + Math.pow(a.location.coordinates[1] - 12.97, 2);
+        const distB = Math.pow(b.location.coordinates[0] - 77.59, 2) + Math.pow(b.location.coordinates[1] - 12.97, 2);
+        return distA - distB;
+      });
+    }
+
+    return result;
+  }, [listings, filter, searchQuery, sortBy]);
 
   if (loading) return <div className="text-center p-8 text-slate-500">Loading live feed...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Live Surplus Feed</h2>
-        <div className="flex space-x-2">
-          {['ALL', 'VEG', 'NON-VEG'].map(f => (
-            <button 
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${filter === f ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300'}`}
-            >
-              {f}
-            </button>
-          ))}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <h2 className="text-2xl font-bold text-slate-800 dark:text-white shrink-0">Live Surplus Feed</h2>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          {/* Search */}
+          <div className="relative w-full sm:w-auto">
+             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+             <input type="text" placeholder="Search dishes..." 
+               value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+               className="pl-9 pr-4 py-2 w-full sm:w-64 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-green-500 outline-none shadow-sm transition-all text-sm" />
+          </div>
+          
+          {/* Category Pills */}
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-center">
+            {['ALL', 'VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'].map(f => (
+              <button 
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filter === f ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Dropdown */}
+          <select 
+            value={sortBy} onChange={e => setSortBy(e.target.value)}
+            className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-green-500 outline-none font-medium text-sm w-full sm:w-auto shadow-sm"
+          >
+            <option>Expiring Soonest</option>
+            <option>Recently Added</option>
+            <option>Nearest Location</option>
+          </select>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredListings.map((listing) => {
+        {sortedAndFilteredListings.map((listing) => {
            const title = listing.title || 'Untitled';
            const portions = listing.quantity || 0;
            const expiry = listing.overallExpiry || listing.expiryTime;
@@ -108,8 +169,12 @@ const LiveFeed = ({ socket, user, token }) => {
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1" title={title}>{title}</h3>
                 {listing.foodType === 'VEG' ? (
                    <span className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" title="Vegetarian"></span>
-                ) : (
+                ) : listing.foodType === 'NON-VEG' ? (
                    <span className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" title="Non-Vegetarian"></span>
+                ) : listing.foodType === 'RAW PRODUCE' ? (
+                   <span className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" title="Raw Produce"></span>
+                ) : (
+                   <span className="w-3 h-3 rounded-full bg-yellow-500 flex-shrink-0" title="Baked Goods"></span>
                 )}
               </div>
               <div className="space-y-3 mb-4 flex-1">
@@ -129,7 +194,7 @@ const LiveFeed = ({ socket, user, token }) => {
             </div>
           </div>
         )})}
-        {filteredListings.length === 0 && (
+        {sortedAndFilteredListings.length === 0 && (
           <div className="col-span-full text-center py-12 text-slate-500 dark:text-slate-400">
             No active surplus food available at the moment.
           </div>

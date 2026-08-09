@@ -4,7 +4,7 @@ const FoodSchema = new mongoose.Schema({
   donorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   title: { type: String, required: true },
   quantity: { type: Number, required: true },
-  foodType: { type: String, enum: ['VEG', 'NON-VEG'], required: true },
+  foodType: { type: String, enum: ['VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'], required: true },
   preparedTime: { type: Date, required: true },
   expiryTime: { type: Date, required: true },
   status: { type: String, enum: ['AVAILABLE', 'CLAIMED', 'COMPLETED'], default: 'AVAILABLE' },

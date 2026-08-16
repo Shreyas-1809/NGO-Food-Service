@@ -14,6 +14,7 @@ const DonationSchema = new mongoose.Schema({
   quantity: { type: Number, required: true },
   unit: { type: String, default: 'kg' },
   foodType: { type: String }, // Rice, Wheat, Dal, Pulses, Fruits, Vegetables, Packaged Food, Cooked Food, Other
+  excessDetails: { type: String },
   condition: { type: String, default: 'Fresh / New' },
   expiryDate: { type: Date },
   preparedDate: { type: Date },
@@ -25,12 +26,23 @@ const DonationSchema = new mongoose.Schema({
     lat: { type: Number, default: 18.5204 },
     lng: { type: Number, default: 73.8567 }
   },
+  volunteerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  volunteerName: { type: String },
+  volunteerPhone: { type: String },
+  volunteerCoords: {
+    lat: { type: Number, default: 18.5230 },
+    lng: { type: Number, default: 73.8500 }
+  },
+  ngoCoords: {
+    lat: { type: Number, default: 18.5308 },
+    lng: { type: Number, default: 73.8474 }
+  },
   availabilityDate: { type: String },
   availabilityTime: { type: String },
   urgency: { type: String, enum: ['HIGH', 'MEDIUM', 'NORMAL'], default: 'NORMAL' },
   status: { 
     type: String, 
-    enum: ['AVAILABLE', 'MATCHED', 'PICKUP_SCHEDULED', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'], 
+    enum: ['CREATED', 'AVAILABLE', 'MATCHED', 'VOLUNTEER_ASSIGNED', 'FOOD_PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'COMPLETED'], 
     default: 'AVAILABLE' 
   },
   matchedNgoId: { type: String },

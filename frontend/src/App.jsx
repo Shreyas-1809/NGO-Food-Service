@@ -5,6 +5,7 @@ import AuthPage from './components/AuthPage';
 import HomePage from './components/HomePage';
 import DonorDashboard from './components/DonorDashboard';
 import ReceiverDashboard from './components/ReceiverDashboard';
+import VolunteerDashboard from './components/VolunteerDashboard';
 import NGOProfilePage from './components/NGOProfilePage';
 import MapPage from './components/MapPage';
 import DonationTrackingPage from './components/DonationTrackingPage';
@@ -13,6 +14,7 @@ import ExplorePage from './components/ExplorePage';
 import AboutPage from './components/AboutPage';
 import NGORequirementsPage from './components/NGORequirementsPage';
 import AvailableDonationsForNGO from './components/AvailableDonationsForNGO';
+import FindNGOsPage from './components/FindNGOsPage';
 import AIAssistantWidget from './components/AIAssistantWidget';
 import NotificationsDrawer from './components/NotificationsDrawer';
 
@@ -63,6 +65,9 @@ function App() {
 
   const renderDashboard = () => {
     if (!user) return <Navigate to="/login" replace />;
+    if (user.accountType === 'VOLUNTEER' || user.role === 'VOLUNTEER') {
+      return <VolunteerDashboard user={user} />;
+    }
     if (user.accountType === 'ORGANISATION' || user.role === 'RECEIVER') {
       return <ReceiverDashboard user={user} />;
     }
@@ -71,7 +76,7 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen w-full flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300 relative overflow-x-hidden">
+      <div className="min-h-screen w-full flex flex-col bg-[#FBFBFA] dark:bg-[#121514] font-sans text-stone-900 dark:text-stone-50 transition-colors duration-200 relative overflow-x-hidden">
         
         {/* Navigation Bar */}
         <Navbar
@@ -89,6 +94,7 @@ function App() {
             <Route path="/explore" element={<ExplorePage />} />
             <Route path="/donate" element={<DonorDashboard user={user || { name: 'Ananya Sharma (Donor)', role: 'DONOR', accountType: 'DONOR' }} />} />
             <Route path="/request" element={<ReceiverDashboard user={user || { name: 'Helping Hands Foundation', role: 'RECEIVER', accountType: 'ORGANISATION' }} />} />
+            <Route path="/volunteer" element={<VolunteerDashboard user={user} />} />
             <Route path="/ngos" element={<ExplorePage />} />
             <Route path="/ngo/:id" element={<NGOProfilePage />} />
             <Route path="/ngo-requirements" element={<NGORequirementsPage />} />
@@ -97,6 +103,7 @@ function App() {
             <Route path="/impact" element={<ImpactDashboard />} />
             <Route path="/track/:id" element={<DonationTrackingPage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/find-ngos" element={<FindNGOsPage />} />
             <Route path="/dashboard" element={renderDashboard()} />
             <Route path="/login" element={<AuthPage setToken={setToken} setUser={handleSetUser} />} />
             <Route path="*" element={<Navigate to="/" replace />} />

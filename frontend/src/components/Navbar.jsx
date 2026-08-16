@@ -1,71 +1,102 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { HeartHandshake, MapPin, Bell, Sun, Moon, LogOut, ShieldCheck, UserCircle, Plus, Search, Sparkles } from 'lucide-react';
+import {
+  HeartHandshake,
+  MapPin,
+  Bell,
+  Sun,
+  Moon,
+  LogOut,
+  UserCircle,
+  Bike,
+  Building2,
+  Key,
+  AlertCircle,
+  Menu,
+  X
+} from 'lucide-react';
 import { getStoredNotifications } from '../services/donationService';
+import MapConfigModal from './MapConfigModal';
 
 const Navbar = ({ user, onLogout, isDarkMode, toggleTheme, onOpenNotifications }) => {
+  const [showMapConfig, setShowMapConfig] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const notifications = getStoredNotifications();
   const unreadCount = notifications.filter(n => !n.read).length;
-  const navigate = useNavigate();
   const location = useLocation();
 
-  const isDonor = user?.accountType === 'DONOR' || user?.role === 'DONOR' || !user;
+  const navLinks = [
+    { name: 'Home', path: '/' },
+    { name: 'Donate Surplus', path: '/donate' },
+    { name: 'NGO Shortages', path: '/ngo-requirements', alert: true },
+    { name: 'Receiver Hub', path: '/request' },
+    { name: 'Volunteer', path: '/volunteer', icon: Bike },
+    { name: 'Find NGOs', path: '/find-ngos', icon: Building2 },
+    { name: 'Live Map', path: '/map', icon: MapPin },
+    { name: 'Impact', path: '/impact' }
+  ];
 
   return (
-    <header className="w-full sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-[#FBFBFA]/95 dark:bg-[#141716]/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 transition-colors duration-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
         
         {/* LOGO */}
         <Link to="/" className="flex items-center space-x-3 group">
-          <div className="bg-emerald-600 dark:bg-emerald-500 text-white p-2.5 rounded-2xl shadow-lg shadow-emerald-600/30 group-hover:scale-105 transition-transform">
-            <HeartHandshake className="w-6 h-6" />
+          <div className="bg-[#1B4332] text-white p-2 rounded-xl shadow-xs transition-transform group-hover:scale-105">
+            <HeartHandshake className="w-5 h-5 text-emerald-300" />
           </div>
           <div>
-            <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
-              BRIDGE PLATFORM
+            <span className="text-base font-extrabold tracking-tight text-stone-900 dark:text-white block leading-tight">
+              FoodBridge
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 block -mt-1">
-              DONOR ↔ RECEIVER NGO
+            <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 block tracking-wider uppercase">
+              Surplus & NGO Logistics
             </span>
           </div>
         </Link>
 
-        {/* CENTER NAVIGATION LINKS */}
-        <nav className="hidden lg:flex items-center space-x-1 font-extrabold text-xs">
-          <Link to="/" className={`px-3.5 py-2 rounded-xl transition-all ${location.pathname === '/' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
-            HOME
-          </Link>
+        {/* DESKTOP NAVIGATION */}
+        <nav className="hidden lg:flex items-center space-x-1 font-semibold text-xs text-stone-600 dark:text-stone-300">
+          {navLinks.map((link) => {
+            const isActive = location.pathname === link.path;
+            const Icon = link.icon;
 
-          <Link to="/donate" className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1 ${location.pathname === '/donate' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
-            <span>DONATE SURPLUS</span>
-          </Link>
-
-          <Link to="/request" className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1 ${location.pathname === '/request' ? 'bg-teal-50 text-teal-600 dark:bg-teal-950 dark:text-teal-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
-            <span>NGO REQUESTS</span>
-          </Link>
-
-          <Link to="/map" className={`px-3.5 py-2 rounded-xl transition-all flex items-center space-x-1 ${location.pathname === '/map' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
-            <MapPin className="w-3.5 h-3.5 text-blue-600" />
-            <span>LIVE MAP</span>
-          </Link>
-
-          <Link to="/impact" className={`px-3.5 py-2 rounded-xl transition-all ${location.pathname === '/impact' ? 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-300' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
-            IMPACT
-          </Link>
-
-          <Link to="/about" className={`px-3.5 py-2 rounded-xl transition-all ${location.pathname === '/about' ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'}`}>
-            ABOUT
-          </Link>
+            return (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-1.5 ${
+                  isActive
+                    ? 'bg-stone-200/70 text-[#1B4332] dark:bg-stone-800 dark:text-emerald-400 font-bold'
+                    : 'hover:text-stone-900 hover:bg-stone-100 dark:hover:text-white dark:hover:bg-stone-800/50'
+                }`}
+              >
+                {Icon && <Icon className="w-3.5 h-3.5" />}
+                {link.alert && <span className="w-2 h-2 rounded-full bg-red-500 mr-0.5 animate-pulse" />}
+                <span>{link.name}</span>
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* RIGHT CONTROLS: THEME, NOTIFICATIONS, USER ROLE & AUTH */}
-        <div className="flex items-center space-x-3">
+        {/* RIGHT CONTROLS */}
+        <div className="flex items-center space-x-2">
           
-          {/* DARK MODE TOGGLE */}
+          {/* GOOGLE MAPS API KEY CONFIG MODAL BUTTON */}
+          <button
+            onClick={() => setShowMapConfig(true)}
+            className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-700 text-xs font-medium transition-colors"
+            title="Configure Google Maps API Key"
+          >
+            <Key className="w-3.5 h-3.5 text-stone-500" />
+            <span>Map Key</span>
+          </button>
+
+          {/* THEME TOGGLE */}
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-            title="Toggle Theme"
+            className="p-2 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors"
+            title="Toggle theme"
           >
             {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
@@ -73,34 +104,30 @@ const Navbar = ({ user, onLogout, isDarkMode, toggleTheme, onOpenNotifications }
           {/* NOTIFICATION BADGE */}
           <button
             onClick={onOpenNotifications}
-            className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors relative"
+            className="p-2 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors relative"
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+              <span className="absolute top-1 right-1 bg-[#C85A32] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
           </button>
 
-          {/* USER AUTH OR ROLE SHORTCUT */}
+          {/* USER PROFILE OR AUTH */}
           {user ? (
-            <div className="flex items-center space-x-2 pl-2 border-l border-slate-200 dark:border-slate-700">
+            <div className="flex items-center space-x-1.5 pl-2 border-l border-stone-200 dark:border-stone-800">
               <Link
                 to="/dashboard"
-                className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs font-bold text-slate-900 dark:text-white"
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-stone-200/80 dark:hover:bg-stone-700 transition-colors text-xs font-semibold text-stone-900 dark:text-white"
               >
-                <UserCircle className="w-5 h-5 text-emerald-600" />
-                <div className="hidden sm:flex flex-col text-left">
-                  <span className="truncate max-w-[110px] font-extrabold">{user.name}</span>
-                  <span className="text-[10px] text-emerald-600 font-bold uppercase">{user.role || 'USER'}</span>
-                </div>
+                <UserCircle className="w-4 h-4 text-[#1B4332] dark:text-emerald-400" />
+                <span className="truncate max-w-[110px] hidden sm:inline">{user.name}</span>
               </Link>
-
               <button
                 onClick={onLogout}
-                className="p-2 rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors"
+                className="p-1.5 text-stone-400 hover:text-red-600 transition-colors"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -109,15 +136,59 @@ const Navbar = ({ user, onLogout, isDarkMode, toggleTheme, onOpenNotifications }
           ) : (
             <Link
               to="/login"
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md shadow-emerald-600/30 transition-all text-xs flex items-center space-x-1"
+              className="px-3.5 py-2 bg-[#1B4332] hover:bg-[#143326] text-white font-semibold text-xs rounded-lg shadow-xs transition-colors"
             >
-              <span>SIGN IN / REGISTER</span>
+              Sign In
             </Link>
           )}
+
+          {/* MOBILE MENU TOGGLE */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 lg:hidden text-stone-600 dark:text-stone-300"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
 
         </div>
 
       </div>
+
+      {/* MOBILE NAVIGATION DRAWER */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden px-4 pt-2 pb-4 space-y-1 bg-[#FBFBFA] dark:bg-[#141716] border-b border-stone-200 dark:border-stone-800 text-xs font-semibold">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-3 py-2.5 rounded-lg ${
+                location.pathname === link.path
+                  ? 'bg-stone-200/80 dark:bg-stone-800 text-[#1B4332] dark:text-emerald-400 font-bold'
+                  : 'text-stone-600 dark:text-stone-300'
+              }`}
+            >
+              {link.name}
+            </Link>
+          ))}
+          <button
+            onClick={() => { setShowMapConfig(true); setMobileMenuOpen(false); }}
+            className="w-full text-left px-3 py-2.5 text-stone-600 dark:text-stone-300 flex items-center space-x-2"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>Configure Google Maps API Key</span>
+          </button>
+        </div>
+      )}
+
+      {/* Google Maps API Config Modal */}
+      {showMapConfig && (
+        <MapConfigModal
+          onClose={() => setShowMapConfig(false)}
+          onSaved={() => setShowMapConfig(false)}
+        />
+      )}
+
     </header>
   );
 };

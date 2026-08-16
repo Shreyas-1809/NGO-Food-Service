@@ -36,15 +36,18 @@ const MapPage = () => {
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
       
       {/* Header & Location Search */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
+      <div className="bg-white dark:bg-[#161918] p-6 sm:p-8 rounded-2xl border border-stone-200 dark:border-stone-800 shadow-xs space-y-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            DONOR ↔ NGO LIVE MAP EXPLORER
+          <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest block mb-1">
+            Real-Time Logistics Map
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-white">
+            Surplus & NGO Logistics Explorer
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-0.5">
             Locate nearby verified receivers, view pickup routes, and initiate smart matching in real-time.
           </p>
         </div>
@@ -56,42 +59,40 @@ const MapPage = () => {
       </div>
 
       {/* MAIN RESPONSIVE MAP CONTAINER */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[650px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto lg:h-[620px]">
         
         {/* LEFT / MOBILE BOTTOM: FILTERS & NGO LIST */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-800 rounded-3xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col space-y-6 overflow-y-auto max-h-[650px]">
+        <div className="lg:col-span-4 bg-white dark:bg-[#161918] rounded-2xl p-6 border border-stone-200 dark:border-stone-800 shadow-xs flex flex-col space-y-5 overflow-y-auto max-h-[620px]">
           
           {/* Filters Bar */}
-          <div className="space-y-4 pb-4 border-b border-slate-100 dark:border-slate-700">
-            <div className="flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <span className="flex items-center"><Filter className="w-4 h-4 mr-1 text-emerald-600" /> Filter Locations</span>
-              <span>{filteredNgos.length} NGOs Found</span>
+          <div className="space-y-3 pb-3 border-b border-stone-200 dark:border-stone-800">
+            <div className="flex justify-between items-center text-xs font-semibold text-stone-500 uppercase tracking-wider">
+              <span className="flex items-center"><Filter className="w-3.5 h-3.5 mr-1 text-[#1B4332]" /> Filter Hubs</span>
+              <span>{filteredNgos.length} Centers</span>
             </div>
 
             {/* Category Filter */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Resource Category</label>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Category</label>
               <select
-                className="w-full p-2.5 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none"
+                className="w-full p-2 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs rounded-lg border border-stone-200 dark:border-stone-700 outline-none"
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 <option value="ALL">All Categories</option>
-                <option value="Food">Food</option>
-                <option value="Clothes">Clothes</option>
-                <option value="Books">Books</option>
+                <option value="Food">Food Surplus</option>
+                <option value="Clothes">Clothes & Blankets</option>
+                <option value="Books">Educational Materials</option>
                 <option value="Medical">Medical Supplies</option>
-                <option value="Electronics">Electronics</option>
-                <option value="Educational">Educational Materials</option>
               </select>
             </div>
 
             {/* Distance & Urgency */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Max Distance</label>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Max Distance</label>
                 <select
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none"
+                  className="w-full p-2 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs rounded-lg border border-stone-200 dark:border-stone-700 outline-none"
                   value={maxDistance}
                   onChange={(e) => setMaxDistance(Number(e.target.value))}
                 >
@@ -103,29 +104,28 @@ const MapPage = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Urgency</label>
+                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">Urgency</label>
                 <select
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none"
+                  className="w-full p-2 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white text-xs rounded-lg border border-stone-200 dark:border-stone-700 outline-none"
                   value={selectedUrgency}
                   onChange={(e) => setSelectedUrgency(e.target.value)}
                 >
                   <option value="ALL">All Urgency</option>
                   <option value="HIGH">High Priority</option>
                   <option value="MEDIUM">Medium Priority</option>
-                  <option value="NORMAL">Normal</option>
                 </select>
               </div>
             </div>
 
             {/* Verified Only Checkbox */}
-            <label className="flex items-center space-x-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300 pt-1">
+            <label className="flex items-center space-x-2 cursor-pointer text-xs font-semibold text-stone-700 dark:text-stone-300 pt-1">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                className="w-4 h-4 rounded text-emerald-800 focus:ring-emerald-800"
                 checked={verifiedOnly}
                 onChange={(e) => setVerifiedOnly(e.target.checked)}
               />
-              <span>Verified Only</span>
+              <span>Verified Centers Only</span>
             </label>
           </div>
 
@@ -135,46 +135,46 @@ const MapPage = () => {
               <div
                 key={ngo.id}
                 onClick={() => setSelectedNgo(ngo)}
-                className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                className={`p-3.5 rounded-xl border transition-all cursor-pointer space-y-2 text-xs ${
                   selectedNgo?.id === ngo.id
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 shadow-md'
-                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700 hover:border-slate-300'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 shadow-xs'
+                    : 'bg-[#FBFBFA] dark:bg-stone-900/40 border-stone-200 dark:border-stone-800 hover:border-stone-300'
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-sm">
+                  <h3 className="font-bold text-stone-900 dark:text-white">
                     {ngo.name}
                   </h3>
                   {ngo.verified && (
-                    <span className="text-[10px] font-bold text-emerald-600 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-md border border-emerald-200">
+                    <span className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-300 bg-white dark:bg-stone-800 px-1.5 py-0.5 rounded border border-emerald-200">
                       ✓ Verified
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center font-medium">
-                  <MapPin className="w-3.5 h-3.5 mr-1 text-emerald-600" /> {ngo.area}, {ngo.city} • <strong>{ngo.distanceKm} km away</strong>
+                <p className="text-stone-500 flex items-center">
+                  <MapPin className="w-3.5 h-3.5 mr-1 text-stone-400" /> {ngo.area}, {ngo.city} • <strong>{ngo.distanceKm} km</strong>
                 </p>
 
-                <div className="flex justify-between items-center pt-2">
+                <div className="flex justify-between items-center pt-1 border-t border-stone-200/60 dark:border-stone-800">
                   <button
                     onClick={(e) => { e.stopPropagation(); setSelectedNgo(ngo); }}
-                    className="text-xs font-bold text-emerald-600 hover:underline flex items-center"
+                    className="font-semibold text-emerald-800 dark:text-emerald-400 hover:underline"
                   >
-                    VIEW ON MAP <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                    View on Map →
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); navigate('/donate'); }}
-                    className="px-3 py-1.5 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700"
+                    className="px-2.5 py-1 bg-[#1B4332] hover:bg-[#143326] text-white rounded-md font-semibold text-[11px]"
                   >
-                    MATCH & DONATE
+                    Donate
                   </button>
                 </div>
               </div>
             ))}
 
             {filteredNgos.length === 0 && (
-              <div className="text-center py-12 text-slate-400 text-xs font-medium">
+              <div className="text-center py-8 text-stone-400 text-xs">
                 No NGOs match the selected filters.
               </div>
             )}

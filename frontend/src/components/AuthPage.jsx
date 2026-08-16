@@ -1,526 +1,285 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { HeartHandshake, Building2, UserCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-const InputField = ({ label, type, value, onChange, onBlur, error, required, placeholder, prefix, maxLength, suffix }) => (
-  <div className="mb-4 relative">
-    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <div className="relative flex items-center">
-      {prefix && (
-        <div className="absolute left-0 pl-3 flex items-center pointer-events-none">
-          <span className="text-slate-500 sm:text-sm">{prefix}</span>
-        </div>
-      )}
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        onBlur={onBlur}
-        required={required}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
-      />
-      {suffix && (
-        <div className="absolute right-0 pr-3 flex items-center cursor-pointer">
-          {suffix}
-        </div>
-      )}
-    </div>
-    {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
-  </div>
-);
+import React, { useState } from 'react';
+import { UserCircle2, Building2, ShieldCheck, MapPin, Sparkles, ArrowRight, CheckCircle2, Navigation, Crosshair } from 'lucide-react';
+import MapView from './MapView';
+import { MOCK_NGOS } from '../services/mockData';
+import { useNavigate } from 'react-router-dom';
 
 const AuthPage = ({ setToken, setUser }) => {
-  const [step, setStep] = useState('ENTRY'); // ENTRY, TYPE_SELECTION, FORM
-  const [isLogin, setIsLogin] = useState(false);
-  const [accountType, setAccountType] = useState('DONOR'); // DONOR, ORGANISATION
-  const [showPassword, setShowPassword] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    phone: '',
-    fullName: '',
-    businessName: '',
-    businessDetails: {
-      shopPhone: '',
-      shopAddress: '',
-      shopPincode: '',
-      shopEmail: ''
-    },
-    orgName: '',
-    pincode: '',
-    address: '',
-    city: ''
-  });
+  const [role, setRole] = useState('DONOR'); // 'DONOR' or 'RECEIVER'
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [orgName, setOrgName] = useState('');
+  const [userLocation, setUserLocation] = useState({ lat: 18.5204, lng: 73.8567 }); // Pune default
+  const [locating, setLocating] = useState(false);
 
-  const [errors, setErrors] = useState({});
-  const [globalError, setGlobalError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const isSubmittingRef = useRef(false);
+  const navigate = useNavigate();
 
-  const handleEntrySelection = (isLoginSelection) => {
-    setIsLogin(isLoginSelection);
-    setStep('TYPE_SELECTION');
-  };
-
-  const handleTypeSelection = (type) => {
-    setAccountType(type);
-    setStep('FORM');
-  };
-
-  const handleBack = () => {
-    if (step === 'FORM') setStep('TYPE_SELECTION');
-    else if (step === 'TYPE_SELECTION') setStep('ENTRY');
-  };
-
-  const validateField = (field, value) => {
-    let errorMsg = '';
-    switch (field) {
-      case 'email':
-      case 'shopEmail':
-        errorMsg = validateEmail(value);
-        break;
-      case 'password':
-        errorMsg = validatePassword(value);
-        break;
-      case 'phone':
-      case 'shopPhone':
-        errorMsg = validatePhoneNumber(value);
-        break;
-      case 'pincode':
-      case 'shopPincode':
-        errorMsg = validatePincode(value);
-        break;
-      case 'fullName':
-        errorMsg = validateName(value);
-        break;
-      case 'orgName':
-      case 'address':
-      case 'city':
-      case 'shopAddress':
-        if (!value.trim()) errorMsg = 'This field is required';
-        break;
-      default:
-        break;
-    }
-    return errorMsg;
-  };
-
-  const handleChange = (field, value) => {
-    // Only allow digits for phone/pincode
-    if (['phone', 'shopPhone', 'pincode', 'shopPincode'].includes(field)) {
-      value = value.replace(/\D/g, '');
-    }
-
-    if (field.startsWith('shop')) {
-      setFormData(prev => ({
-        ...prev,
-        businessDetails: {
-          ...prev.businessDetails,
-          [field]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-    }
-
-    // Real-time validation
-    const errorMsg = validateField(field, value);
-    setErrors(prev => ({ ...prev, [field]: errorMsg }));
-  };
-
-  const handleBlur = (field) => {
-    const value = field.startsWith('shop') ? formData.businessDetails[field] : formData[field];
-    const errorMsg = validateField(field, value);
-    setErrors(prev => ({ ...prev, [field]: errorMsg }));
-  };
-
-  const isFormValid = () => {
-    let isValid = true;
-    const newErrors = {};
-
-    const checkField = (field, value) => {
-      const errorMsg = validateField(field, value);
-      if (errorMsg) {
-        newErrors[field] = errorMsg;
-        isValid = false;
-      }
+  const handleDemoSignInDonor = () => {
+    const donorUser = {
+      name: 'Ananya Sharma (Donor)',
+      email: 'donor@demo.org',
+      role: 'DONOR',
+      accountType: 'DONOR',
+      city: 'Pune'
     };
-
-    if (isLogin) {
-      checkField('email', formData.email);
-      checkField('password', formData.password);
-    } else {
-      if (accountType === 'DONOR') {
-        checkField('fullName', formData.fullName);
-        checkField('phone', formData.phone);
-        checkField('email', formData.email);
-        checkField('password', formData.password);
-        
-        if (formData.businessName.trim()) {
-          checkField('shopPhone', formData.businessDetails.shopPhone);
-          checkField('shopAddress', formData.businessDetails.shopAddress);
-          checkField('shopPincode', formData.businessDetails.shopPincode);
-          checkField('shopEmail', formData.businessDetails.shopEmail);
-        }
-      } else { // ORGANISATION
-        checkField('orgName', formData.orgName);
-        checkField('pincode', formData.pincode);
-        checkField('address', formData.address);
-        checkField('email', formData.email);
-        checkField('city', formData.city);
-        checkField('phone', formData.phone);
-        checkField('password', formData.password);
-      }
-    }
-
-    setErrors(newErrors);
-    return isValid;
+    if (setToken) setToken('mock-donor-jwt-token-2026');
+    if (setUser) setUser(donorUser);
+    localStorage.setItem('token', 'mock-donor-jwt-token-2026');
+    localStorage.setItem('user', JSON.stringify(donorUser));
+    navigate('/donate');
   };
 
-  const handleSubmit = async (e) => {
+  const handleDemoSignInReceiver = () => {
+    const receiverUser = {
+      name: 'Helping Hands Foundation',
+      email: 'ngo@demo.org',
+      role: 'RECEIVER',
+      accountType: 'ORGANISATION',
+      city: 'Pune'
+    };
+    if (setToken) setToken('mock-receiver-jwt-token-2026');
+    if (setUser) setUser(receiverUser);
+    localStorage.setItem('token', 'mock-receiver-jwt-token-2026');
+    localStorage.setItem('user', JSON.stringify(receiverUser));
+    navigate('/request');
+  };
+
+  const handleFormSubmit = (e) => {
     e.preventDefault();
-    if (isSubmittingRef.current || isSubmitting) return;
-
-    setGlobalError('');
-
-    if (!isFormValid()) {
-      setGlobalError('Please fix the errors before submitting.');
-      return;
-    }
-    
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    
-    let payload = {};
-    if (isLogin) {
-      payload = { email: formData.email, password: formData.password };
+    if (role === 'DONOR') {
+      const donorUser = {
+        name: name || email.split('@')[0] || 'Resource Donor',
+        email: email || 'donor@bridge.org',
+        role: 'DONOR',
+        accountType: 'DONOR',
+        city: 'Pune'
+      };
+      if (setToken) setToken('donor-token');
+      if (setUser) setUser(donorUser);
+      localStorage.setItem('token', 'donor-token');
+      localStorage.setItem('user', JSON.stringify(donorUser));
+      navigate('/donate');
     } else {
-      payload = { ...formData, accountType };
-      if (accountType === 'ORGANISATION') {
-        delete payload.fullName;
-        delete payload.businessName;
-        delete payload.businessDetails;
-      } else {
-        delete payload.orgName;
-        delete payload.city;
-        delete payload.pincode;
-        delete payload.address;
-        if (!payload.businessName) {
-          delete payload.businessDetails;
-        } else {
-          // If shop name is present, make sure we format it correctly for the backend
-          // We map 'shopPhone', etc back if needed, but our backend model expects shopAddress, shopPincode, shopEmail.
-          // Wait, backend User schema doesn't have shopPhone? It has shopAddress, shopPincode, shopEmail.
-          // The prompt says "5a. Shop Phone Number", so let's send it anyway. It might just not be saved or we can update the schema later.
-        }
-      }
-    }
-
-    try {
-      const res = await axios.post(`${API_URL}${endpoint}`, payload);
-      const { token, user } = res.data;
-      localStorage.setItem('token', token);
-      setToken(token);
-      setUser(user);
-    } catch (err) {
-      if (err.response) {
-        setGlobalError(err.response.data.message || 'Authentication failed');
-      } else if (err.request) {
-        setGlobalError('Server is unreachable. Is the backend running?');
-      } else {
-        setGlobalError(err.message);
-      }
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
+      const receiverUser = {
+        name: orgName || name || 'Verified NGO Partner',
+        email: email || 'receiver@ngo.org',
+        role: 'RECEIVER',
+        accountType: 'ORGANISATION',
+        city: 'Pune'
+      };
+      if (setToken) setToken('receiver-token');
+      if (setUser) setUser(receiverUser);
+      localStorage.setItem('token', 'receiver-token');
+      localStorage.setItem('user', JSON.stringify(receiverUser));
+      navigate('/request');
     }
   };
 
-  const isFormSubmitEnabled = () => {
-    // If any explicit error exists, disable
-    if (Object.values(errors).some(err => err !== '')) return false;
-    
-    // Check required fields based on state
-    if (isLogin) {
-      return !!(formData.email && formData.password);
-    } else {
-      if (accountType === 'DONOR') {
-        if (!formData.fullName || !formData.phone || !formData.email || !formData.password) return false;
-        if (formData.businessName.trim() !== '') {
-          if (!formData.businessDetails.shopPhone || !formData.businessDetails.shopAddress || !formData.businessDetails.shopPincode || !formData.businessDetails.shopEmail) return false;
+  const handleUseCurrentLocation = () => {
+    if ('geolocation' in navigator) {
+      setLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setLocating(false);
+        },
+        (err) => {
+          console.warn('Geolocation error fallback:', err.message);
+          setLocating(false);
         }
-      } else { // ORGANISATION
-        if (!formData.orgName || !formData.pincode || !formData.address || !formData.email || !formData.city || !formData.phone || !formData.password) return false;
-      }
+      );
     }
-    return true;
   };
-
-  const submitDisabled = !isFormSubmitEnabled();
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-800 z-10 transition-all duration-300">
-        
-        {step !== 'ENTRY' && (
-          <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-white mb-4 flex items-center transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </button>
-        )}
-
-        <div className="text-center mb-6">
-          <HeartHandshake className="h-12 w-12 text-green-600 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-slate-800 dark:text-white">
-            {step === 'ENTRY' ? 'Food Bridge' : isLogin ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">
-            {step === 'ENTRY' ? 'Connect surplus food with those in need.' : isLogin ? 'Login to continue.' : 'Join our network today.'}
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      
+      {/* Header Banner */}
+      <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="inline-flex items-center space-x-2 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span>DONOR ↔ RECEIVER BRIDGE PLATFORM</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+            Join the Smart NGO Matching Portal
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Choose your role to get redirected to your personalized dashboard with live location tracking.
           </p>
         </div>
 
-        {globalError && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium text-center">
-            {globalError}
-          </div>
-        )}
-
-        {step === 'ENTRY' && (
-          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-            <button
-              onClick={() => handleEntrySelection(true)}
-              className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => handleEntrySelection(false)}
-              className="w-full bg-white text-green-600 border border-green-600 font-bold py-3 rounded-lg hover:bg-green-50 transition-colors shadow-sm"
-            >
-              Sign Up
-            </button>
-          </div>
-        )}
-
-        {step === 'TYPE_SELECTION' && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            <button
-              onClick={() => handleTypeSelection('DONOR')}
-              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
-            >
-              <UserCircle2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
-              <span className="font-bold text-slate-700 dark:text-slate-200">Personal Donor</span>
-            </button>
-            <button
-              onClick={() => handleTypeSelection('ORGANISATION')}
-              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
-            >
-              <Building2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
-              <span className="font-bold text-slate-700 dark:text-slate-200">NGO / Organisation</span>
-            </button>
-          </div>
-        )}
-
-        {step === 'FORM' && (
-          <form onSubmit={handleSubmit} className="space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">
-            
-            {isLogin ? (
-              <>
-                <InputField 
-                  label="Email ID" type="email" required
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  error={errors.email}
-                />
-                <InputField 
-                  label="Password" type={showPassword ? 'text' : 'password'} required
-                  value={formData.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  error={errors.password}
-                  suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </span>
-                  }
-                />
-              </>
-            ) : accountType === 'DONOR' ? (
-              <>
-                {/* FLOW 3A: DONOR FORM */}
-                <InputField 
-                  label="Full Name" type="text" required
-                  value={formData.fullName}
-                  onChange={e => handleChange('fullName', e.target.value)}
-                  onBlur={() => handleBlur('fullName')}
-                  error={errors.fullName}
-                />
-                <InputField 
-                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
-                  value={formData.phone}
-                  onChange={e => handleChange('phone', e.target.value)}
-                  onBlur={() => handleBlur('phone')}
-                  error={errors.phone}
-                />
-                <InputField 
-                  label="Email ID" type="email" required
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  error={errors.email}
-                />
-                <InputField 
-                  label="Profile Password" type={showPassword ? 'text' : 'password'} required
-                  value={formData.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  error={errors.password}
-                  suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </span>
-                  }
-                />
-                
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <InputField 
-                    label="Shop Name (Optional)" type="text"
-                    value={formData.businessName}
-                    onChange={e => handleChange('businessName', e.target.value)}
-                  />
-                  
-                  {formData.businessName.trim() !== '' && (
-                    <div className="pl-4 border-l-2 border-green-500 space-y-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <InputField 
-                        label="Shop Phone Number" type="text" required prefix="+91" maxLength={10}
-                        value={formData.businessDetails.shopPhone}
-                        onChange={e => handleChange('shopPhone', e.target.value)}
-                        onBlur={() => handleBlur('shopPhone')}
-                        error={errors.shopPhone}
-                      />
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                          Shop Address <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          required
-                          value={formData.businessDetails.shopAddress}
-                          onChange={e => handleChange('shopAddress', e.target.value)}
-                          onBlur={() => handleBlur('shopAddress')}
-                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
-                          rows={2}
-                        />
-                        {errors.shopAddress && <p className="mt-1 text-sm text-red-500">{errors.shopAddress}</p>}
-                      </div>
-                      <InputField 
-                        label="Shop Pincode" type="text" required maxLength={6}
-                        value={formData.businessDetails.shopPincode}
-                        onChange={e => handleChange('shopPincode', e.target.value)}
-                        onBlur={() => handleBlur('shopPincode')}
-                        error={errors.shopPincode}
-                      />
-                      <InputField 
-                        label="Shop Email Address" type="email" required
-                        value={formData.businessDetails.shopEmail}
-                        onChange={e => handleChange('shopEmail', e.target.value)}
-                        onBlur={() => handleBlur('shopEmail')}
-                        error={errors.shopEmail}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* FLOW 3B: NGO / ORGANISATION FORM */}
-                <InputField 
-                  label="Organisation Name" type="text" required
-                  value={formData.orgName}
-                  onChange={e => handleChange('orgName', e.target.value)}
-                  onBlur={() => handleBlur('orgName')}
-                  error={errors.orgName}
-                />
-                <InputField 
-                  label="Pincode" type="text" required maxLength={6}
-                  value={formData.pincode}
-                  onChange={e => handleChange('pincode', e.target.value)}
-                  onBlur={() => handleBlur('pincode')}
-                  error={errors.pincode}
-                />
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Address <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    required
-                    value={formData.address}
-                    onChange={e => handleChange('address', e.target.value)}
-                    onBlur={() => handleBlur('address')}
-                    className={`w-full px-4 py-2 border ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
-                    rows={2}
-                  />
-                  {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
-                </div>
-                <InputField 
-                  label="Email" type="email" required
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  error={errors.email}
-                />
-                <InputField 
-                  label="City" type="text" required
-                  value={formData.city}
-                  onChange={e => handleChange('city', e.target.value)}
-                  onBlur={() => handleBlur('city')}
-                  error={errors.city}
-                />
-                <InputField 
-                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
-                  value={formData.phone}
-                  onChange={e => handleChange('phone', e.target.value)}
-                  onBlur={() => handleBlur('phone')}
-                  error={errors.phone}
-                />
-                <InputField 
-                  label="Password" type={showPassword ? 'text' : 'password'} required
-                  value={formData.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  error={errors.password}
-                  suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </span>
-                  }
-                />
-              </>
-            )}
-
-            <button 
-              type="submit"
-              disabled={submitDisabled || isSubmitting}
-              className={`w-full font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 ${
-                submitDisabled || isSubmitting
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
-            >
-              {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
-            </button>
-          </form>
-        )}
+        <button
+          onClick={handleUseCurrentLocation}
+          className="px-4 py-2.5 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-2xl text-xs font-extrabold hover:bg-blue-100 transition-all flex items-center space-x-1.5"
+        >
+          <Crosshair className={`w-4 h-4 text-blue-600 ${locating ? 'animate-spin' : ''}`} />
+          <span>{locating ? 'Locating...' : '📍 USE MY LOCATION'}</span>
+        </button>
       </div>
+
+      {/* COMBINED SPLIT SCREEN: AUTH FORM (LEFT) + LIVE MAP (RIGHT) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+        
+        {/* LEFT COLUMN: ROLE SELECTION & REGISTRATION FORM */}
+        <div className="lg:col-span-6 bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between space-y-6">
+          
+          <div>
+            {/* ROLE SELECTOR TABS */}
+            <div className="mb-6">
+              <label className="block text-xs font-bold uppercase text-slate-400 tracking-wider mb-2">Select Your Role</label>
+              <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setRole('DONOR')}
+                  className={`py-3 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                    role === 'DONOR'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <UserCircle2 className="w-4 h-4" />
+                  <span>🙋‍♂️ RESOURCE DONOR</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole('RECEIVER')}
+                  className={`py-3 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                    role === 'RECEIVER'
+                      ? 'bg-teal-600 text-white shadow-md'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />
+                  <span>🏢 RECEIVER NGO</span>
+                </button>
+              </div>
+            </div>
+
+            {/* QUICK 1-CLICK DEMO LOGIN SHORTCUTS */}
+            <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3 mb-6">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">⚡ Instant 1-Click Demo Login</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleDemoSignInDonor}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-md text-xs flex items-center justify-center space-x-1.5 transition-all"
+                >
+                  <span>DONOR DEMO SIGN IN</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDemoSignInReceiver}
+                  className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-extrabold rounded-xl shadow-md text-xs flex items-center justify-center space-x-1.5 transition-all"
+                >
+                  <span>NGO RECEIVER DEMO SIGN IN</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* FORM TITLE */}
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
+                {isLogin ? `Sign In as ${role === 'DONOR' ? 'Donor' : 'Receiver NGO'}` : `Create ${role === 'DONOR' ? 'Donor' : 'NGO'} Account`}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-xs font-bold text-emerald-600 hover:underline"
+              >
+                {isLogin ? 'Need an account? Register' : 'Already have account? Sign In'}
+              </button>
+            </div>
+
+            {/* AUTHENTICATION FORM */}
+            <form onSubmit={handleFormSubmit} className="space-y-4 text-xs sm:text-sm">
+              {!isLogin && (
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    {role === 'DONOR' ? 'Full Name' : 'Organisation Name'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder={role === 'DONOR' ? 'Ananya Sharma' : 'Helping Hands Foundation'}
+                    className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white outline-none"
+                    value={role === 'DONOR' ? name : orgName}
+                    onChange={(e) => role === 'DONOR' ? setName(e.target.value) : setOrgName(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder={role === 'DONOR' ? 'donor@demo.org' : 'ngo@demo.org'}
+                  className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white outline-none"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white outline-none"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className={`w-full py-4 text-white font-extrabold rounded-2xl shadow-lg transition-all text-sm mt-2 ${
+                  role === 'DONOR' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30' : 'bg-teal-600 hover:bg-teal-700 shadow-teal-600/30'
+                }`}
+              >
+                {isLogin ? `SIGN IN & OPEN ${role} DASHBOARD` : `REGISTER & OPEN ${role} DASHBOARD`}
+              </button>
+            </form>
+          </div>
+
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-700 text-slate-400 text-xs flex items-center justify-between font-medium">
+            <span>🔒 256-bit Encrypted Safety & Privacy</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Verified Organizations</span>
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN: LIVE INTERACTIVE MAP PREVIEW */}
+        <div className="lg:col-span-6 flex flex-col h-[500px] lg:h-full">
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-t-3xl border-t border-x border-slate-200 dark:border-slate-700 flex justify-between items-center text-xs">
+            <div className="flex items-center space-x-2 font-bold text-slate-900 dark:text-white">
+              <MapPin className="w-4 h-4 text-blue-600 animate-bounce" />
+              <span>Live Location & Nearby Receiver NGOs</span>
+            </div>
+            <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2 py-0.5 rounded">
+              Pune Map Feed
+            </span>
+          </div>
+
+          <div className="flex-1 rounded-b-3xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-700 min-h-[400px]">
+            <MapView
+              ngos={MOCK_NGOS}
+              selectedNgo={MOCK_NGOS[0]}
+              userLocation={userLocation}
+            />
+          </div>
+        </div>
+
+      </div>
+
     </div>
   );
 };

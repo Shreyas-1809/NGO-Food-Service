@@ -1,32 +1,50 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Plus, Trash2, Clock } from 'lucide-react';
+import { Plus, Trash2, Clock, MapPin, UploadCloud, X, CheckCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const DonorPostForm = ({ socket, token, onSuccess }) => {
-  const [formData, setFormData] = useState({
-    title: '',
-    foodType: 'VEG',
-    quantity: '' // Total servings
+const DonorPostForm = ({ socket, user, token, onSuccess }) => {
+  const defaultAddress = user?.address || user?.businessDetails?.shopAddress || '';
+  
+  const [sharedFields, setSharedFields] = useState({
+    pickupAddress: defaultAddress,
+    startTime: new Date().toISOString().slice(0, 16),
+    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
 
-  const [useGlobalTiming, setUseGlobalTiming] = useState(true);
-  const [globalPrepared, setGlobalPrepared] = useState(new Date().toISOString().slice(0, 16));
-  const [globalExpiry, setGlobalExpiry] = useState(new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16));
+  const createEmptyItem = () => ({
+    id: crypto.randomUUID(),
+    photoUrl: '', // Mocked for now
+    itemName: '',
+    foodType: 'VEG',
+    category: 'Cooked Meal',
+    quantity: '',
+    unit: 'servings',
+    preparedTime: new Date().toISOString().slice(0, 16),
+    expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+  });
 
-  const [items, setItems] = useState([
-    {
-      itemName: '',
-      quantity: '',
-      unit: 'Portions',
-      preparedTime: new Date().toISOString().slice(0, 16),
-      expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
-    }
-  ]);
-
+  const [items, setItems] = useState([createEmptyItem()]);
   const [error, setError] = useState('');
+  const [successToast, setSuccessToast] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Auto-suggest expiry based on category
+  const handleCategoryChange = (index, value) => {
+    const newItems = [...items];
+    newItems[index].category = value;
+    
+    // Auto-suggest expiry
+    const now = new Date();
+    let hoursToAdd = 4; // Default for Cooked Meal
+    if (value === 'Raw Produce') hoursToAdd = 48; // 2 days
+    else if (value === 'Baked Goods') hoursToAdd = 24; // 1 day
+    else if (value === 'Packaged') hoursToAdd = 720; // 30 days
+    
+    newItems[index].expiryTime = new Date(now.getTime() + hoursToAdd * 60 * 60 * 1000).toISOString().slice(0, 16);
+    setItems(newItems);
+  };
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...items];
@@ -34,30 +52,43 @@ const DonorPostForm = ({ socket, token, onSuccess }) => {
     setItems(newItems);
   };
 
-  const addItem = () => {
-    setItems([...items, {
-      itemName: '',
-      quantity: '',
-      unit: 'Portions',
-      preparedTime: new Date().toISOString().slice(0, 16),
-      expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
-    }]);
+  const handlePhotoUpload = (index, e) => {
+    e.preventDefault();
+    // Option B: Mock UI for photo upload
+    // Set a dummy thumbnail immediately
+    const newItems = [...items];
+    newItems[index].photoUrl = 'uploaded_mock_image'; // This triggers the UI change
+    setItems(newItems);
   };
 
-  const removeItem = (index) => {
+  const addItem = () => setItems([...items, createEmptyItem()]);
+
+  const removeItem = (idToRemove) => {
     if (items.length === 1) return;
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
+    setItems(items.filter(item => item.id !== idToRemove));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    // Validate
+    // Validation
+    if (!sharedFields.pickupAddress.trim()) {
+      setError('Pickup address is required.');
+      return;
+    }
+    if (new Date(sharedFields.endTime) <= new Date(sharedFields.startTime)) {
+      setError('Pickup end time must be after start time.');
+      return;
+    }
+
     for (let i = 0; i < items.length; i++) {
       if (!items[i].itemName || !items[i].quantity) {
-        setError('Please fill out all item fields.');
+        setError(`Please fill out all required fields for item #${i + 1}.`);
+        return;
+      }
+      if (new Date(items[i].expiryTime) <= new Date(items[i].preparedTime)) {
+        setError(`Expiry time must be after prep time for ${items[i].itemName || 'item ' + (i+1)}.`);
         return;
       }
     }
@@ -67,32 +98,46 @@ const DonorPostForm = ({ socket, token, onSuccess }) => {
     const processedItems = items.map(item => ({
       itemName: item.itemName,
       quantity: Number(item.quantity),
+      foodType: item.foodType,
+      category: item.category,
       unit: item.unit,
-      preparedTime: new Date(useGlobalTiming ? globalPrepared : item.preparedTime).toISOString(),
-      expiryTime: new Date(useGlobalTiming ? globalExpiry : item.expiryTime).toISOString()
+      preparedTime: new Date(item.preparedTime).toISOString(),
+      expiryTime: new Date(item.expiryTime).toISOString(),
+      photoUrl: item.photoUrl // passed even if it's mock
     }));
 
     const minExpiry = new Date(Math.min(...processedItems.map(i => new Date(i.expiryTime).getTime())));
+    const isAnyNonVeg = processedItems.some(i => i.foodType === 'NON-VEG');
+    const totalQuantity = processedItems.reduce((acc, curr) => acc + curr.quantity, 0);
+    const mainTitle = processedItems.length > 1 ? "Assorted Surplus Batch" : processedItems[0].itemName;
 
     const newFood = {
-      title: formData.title,
-      quantity: Number(formData.quantity) || processedItems.reduce((acc, curr) => acc + (curr.unit === 'Portions' ? curr.quantity : 0), 0),
-      foodType: formData.foodType,
+      title: mainTitle,
+      quantity: totalQuantity,
+      foodType: isAnyNonVeg ? 'NON-VEG' : 'VEG',
       preparedTime: new Date(processedItems[0].preparedTime).toISOString(),
       expiryTime: minExpiry.toISOString(),
       items: processedItems,
       overallExpiry: minExpiry.toISOString(),
       location: { coordinates: [77.5946, 12.9716] }, // Mock coordinates
+      pickupAddress: sharedFields.pickupAddress,
+      pickupTimeSlot: {
+        start: new Date(sharedFields.startTime).toISOString(),
+        end: new Date(sharedFields.endTime).toISOString()
+      }
     };
     
     try {
       await axios.post(`${API_URL}/api/food`, newFood, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      setSuccessToast(true);
       setTimeout(() => {
         setIsSubmitting(false);
+        setSuccessToast(false);
         if (onSuccess) onSuccess();
-      }, 500);
+      }, 1500); // Wait 1.5s to show toast before closing
     } catch (err) {
       console.error(err);
       setIsSubmitting(false);
@@ -101,186 +146,224 @@ const DonorPostForm = ({ socket, token, onSuccess }) => {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
+    <div className="w-full bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto relative">
+      {/* Success Toast */}
+      {successToast && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-100 text-green-800 dark:bg-green-900/80 dark:text-green-300 px-6 py-3 rounded-full font-bold shadow-lg flex items-center z-50 animate-in slide-in-from-top-4">
+          <CheckCircle className="w-5 h-5 mr-2" />
+          Successfully posted to Live Feed!
+        </div>
+      )}
+
       <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Log Surplus Food</h2>
+      
       {error && (
         <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium text-center border border-red-200">
           {error}
         </div>
       )}
+
       <form onSubmit={handleSubmit} className="space-y-8">
         
-        {/* Listing Overview */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 pb-2">Listing Overview</h3>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Listing Title</label>
-            <input 
-              type="text" 
-              required 
-              placeholder="e.g., Buffet Leftovers, Pav Bhaji Dinner"
-              className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-              value={formData.title}
-              onChange={e => setFormData({...formData, title: e.target.value})}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Food Category</label>
-              <select 
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                value={formData.foodType}
-                onChange={e => setFormData({...formData, foodType: e.target.value})}
-              >
-                <option value="VEG">Vegetarian</option>
-                <option value="NON-VEG">Non-Vegetarian</option>
-                <option value="RAW PRODUCE">Raw Produce</option>
-                <option value="BAKED GOODS">Baked Goods</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Total Estimated Servings</label>
-              <input 
-                type="number" 
-                required 
-                min="1"
-                placeholder="e.g., 50"
-                className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                value={formData.quantity}
-                onChange={e => setFormData({...formData, quantity: e.target.value})}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Global Timings Toggle */}
+        {/* Shared Logistics Section */}
         <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-4">
-          <label className="flex items-center space-x-3 cursor-pointer">
-            <input 
-              type="checkbox"
-              className="w-5 h-5 text-green-600 border-slate-300 rounded focus:ring-green-500"
-              checked={useGlobalTiming}
-              onChange={e => setUseGlobalTiming(e.target.checked)}
-            />
-            <span className="font-bold text-slate-800 dark:text-slate-200">Apply same Timing & Shelf Life to all items</span>
-          </label>
-          
-          {useGlobalTiming && (
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-200 dark:border-slate-600">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Global Prepared Time</label>
-                <input 
-                  type="datetime-local" 
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                  value={globalPrepared}
-                  onChange={e => setGlobalPrepared(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Global Expiry Time</label>
-                <input 
-                  type="datetime-local" 
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                  value={globalExpiry}
-                  onChange={e => setGlobalExpiry(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Itemized Breakdown */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-2">
-            <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Item Breakdown</h3>
-            <button 
-              type="button" 
-              onClick={addItem}
-              className="text-xs font-bold text-green-600 dark:text-green-400 hover:text-green-700 flex items-center bg-green-50 dark:bg-green-900/30 px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
-            </button>
-          </div>
+          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center">
+            <MapPin className="w-4 h-4 mr-1.5" /> Pickup Details
+          </h3>
           
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pickup Address</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  value={sharedFields.pickupAddress}
+                  onChange={e => setSharedFields({...sharedFields, pickupAddress: e.target.value})}
+                  placeholder="Street address, city"
+                />
+                <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Available From</label>
+                <input 
+                  type="datetime-local" 
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  value={sharedFields.startTime}
+                  onChange={e => setSharedFields({...sharedFields, startTime: e.target.value})}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Available Until</label>
+                <input 
+                  type="datetime-local" 
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                  value={sharedFields.endTime}
+                  onChange={e => setSharedFields({...sharedFields, endTime: e.target.value})}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Item Blocks */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-2">
+            <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Items</h3>
+          </div>
+          
+          <div className="space-y-6">
             {items.map((item, index) => (
-              <div key={index} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group">
+              <div key={item.id} className="bg-white dark:bg-slate-800 p-5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm relative group">
                 {items.length > 1 && (
                   <button 
                     type="button"
-                    onClick={() => removeItem(index)}
+                    onClick={() => removeItem(item.id)}
                     className="absolute -top-3 -right-3 bg-red-100 text-red-600 hover:bg-red-200 p-1.5 rounded-full shadow-sm transition-colors opacity-0 group-hover:opacity-100"
+                    title="Remove Item"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 )}
                 
-                <div className="grid grid-cols-12 gap-4">
-                  <div className="col-span-12 sm:col-span-6">
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Item Name</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g., Pav, Rice"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                      value={item.itemName}
-                      onChange={e => handleItemChange(index, 'itemName', e.target.value)}
-                    />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3">
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Quantity</label>
-                    <input 
-                      type="number" 
-                      required
-                      min="0.1" step="any"
-                      placeholder="Amount"
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                      value={item.quantity}
-                      onChange={e => handleItemChange(index, 'quantity', e.target.value)}
-                    />
-                  </div>
-                  <div className="col-span-6 sm:col-span-3">
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Unit</label>
-                    <select 
-                      className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                      value={item.unit}
-                      onChange={e => handleItemChange(index, 'unit', e.target.value)}
+                <div className="flex flex-col md:flex-row gap-5">
+                  {/* Photo Upload Area */}
+                  <div className="w-full md:w-32 shrink-0">
+                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Photo</label>
+                    <div 
+                      className={`h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden ${item.photoUrl ? 'border-green-500' : 'border-slate-300 dark:border-slate-600 hover:border-green-500 bg-slate-50 dark:bg-slate-700/50'}`}
+                      onClick={(e) => handlePhotoUpload(index, e)}
                     >
-                      <option value="Portions">Portions</option>
-                      <option value="Kilograms">Kilograms</option>
-                      <option value="Dozen">Dozen</option>
-                      <option value="Liters">Liters</option>
-                    </select>
+                      {item.photoUrl ? (
+                        <>
+                          <div className="absolute inset-0 bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                            <span className="text-xs font-bold text-green-700 dark:text-green-400">Attached</span>
+                          </div>
+                          <button 
+                            type="button"
+                            className="absolute top-1 right-1 bg-white/80 dark:bg-slate-800/80 p-0.5 rounded-full text-slate-600 hover:text-red-500"
+                            onClick={(e) => { e.stopPropagation(); handleItemChange(index, 'photoUrl', ''); }}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud className="w-6 h-6 text-slate-400 mb-1" />
+                          <span className="text-[10px] text-slate-500 text-center px-1">Click to browse</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Form Fields */}
+                  <div className="flex-1 space-y-4">
+                    <div className="grid grid-cols-12 gap-4">
+                      <div className="col-span-12 sm:col-span-6">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Food Name / Title</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="e.g., Veg Fried Rice"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.itemName}
+                          onChange={e => handleItemChange(index, 'itemName', e.target.value)}
+                        />
+                      </div>
+                      <div className="col-span-6 sm:col-span-3">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Type</label>
+                        <select 
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.foodType}
+                          onChange={e => handleItemChange(index, 'foodType', e.target.value)}
+                        >
+                          <option value="VEG">Veg</option>
+                          <option value="NON-VEG">Non-Veg</option>
+                        </select>
+                      </div>
+                      <div className="col-span-6 sm:col-span-3">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
+                        <select 
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.category}
+                          onChange={e => handleCategoryChange(index, e.target.value)}
+                        >
+                          <option value="Cooked Meal">Cooked Meal</option>
+                          <option value="Raw Produce">Raw Produce</option>
+                          <option value="Baked Goods">Baked Goods</option>
+                          <option value="Packaged">Packaged</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-4">
+                      <div className="col-span-6 sm:col-span-4">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Quantity</label>
+                        <input 
+                          type="number" 
+                          required
+                          min="0.1" step="any"
+                          placeholder="Amount"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.quantity}
+                          onChange={e => handleItemChange(index, 'quantity', e.target.value)}
+                        />
+                      </div>
+                      <div className="col-span-6 sm:col-span-2">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Unit</label>
+                        <select 
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.unit}
+                          onChange={e => handleItemChange(index, 'unit', e.target.value)}
+                        >
+                          <option value="servings">servings</option>
+                          <option value="kg">kg</option>
+                          <option value="plates">plates</option>
+                          <option value="Liters">Liters</option>
+                          <option value="Dozen">Dozen</option>
+                        </select>
+                      </div>
+                      <div className="col-span-6 sm:col-span-3">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1"/> Prep Time</label>
+                        <input 
+                          type="datetime-local" 
+                          required
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.preparedTime}
+                          onChange={e => handleItemChange(index, 'preparedTime', e.target.value)}
+                        />
+                      </div>
+                      <div className="col-span-6 sm:col-span-3">
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1"/> Expiry (Auto-set)</label>
+                        <input 
+                          type="datetime-local" 
+                          required
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          value={item.expiryTime}
+                          onChange={e => handleItemChange(index, 'expiryTime', e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {!useGlobalTiming && (
-                  <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1"/> Prepared</label>
-                      <input 
-                        type="datetime-local" 
-                        required
-                        className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                        value={item.preparedTime}
-                        onChange={e => handleItemChange(index, 'preparedTime', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1"/> Expiry</label>
-                      <input 
-                        type="datetime-local" 
-                        required
-                        className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                        value={item.expiryTime}
-                        onChange={e => handleItemChange(index, 'expiryTime', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
               </div>
             ))}
           </div>
+          
+          <button 
+            type="button" 
+            onClick={addItem}
+            className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-green-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 py-3 rounded-xl font-bold flex items-center justify-center transition-colors"
+          >
+            <Plus className="w-5 h-5 mr-2" /> Add More Item
+          </button>
         </div>
 
         <button 

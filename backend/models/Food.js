@@ -10,12 +10,20 @@ const FoodSchema = new mongoose.Schema({
   status: { type: String, enum: ['AVAILABLE', 'CLAIMED', 'COMPLETED'], default: 'AVAILABLE' },
   claimantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verificationCode: { type: String },
+  pickupAddress: { type: String },
+  pickupTimeSlot: {
+    start: Date,
+    end: Date
+  },
   items: [{
     itemName: String,
     quantity: Number,
-    unit: { type: String, enum: ['Kilograms', 'Dozen', 'Portions', 'Liters'] },
+    foodType: { type: String, enum: ['VEG', 'NON-VEG'] },
+    category: { type: String, enum: ['Cooked Meal', 'Raw Produce', 'Baked Goods', 'Packaged'] },
+    unit: { type: String, enum: ['Kilograms', 'Dozen', 'Portions', 'Liters', 'servings', 'plates', 'kg'] },
     preparedTime: Date,
-    expiryTime: Date
+    expiryTime: Date,
+    photoUrl: String
   }],
   overallExpiry: Date,
   location: {

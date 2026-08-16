@@ -12,7 +12,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only donors can post food' });
     }
 
-    const { title, quantity, foodType, preparedTime, expiryTime, items, overallExpiry, location } = req.body;
+    const { title, quantity, foodType, preparedTime, expiryTime, items, overallExpiry, location, pickupAddress, pickupTimeSlot } = req.body;
 
     const newFood = new Food({
       donorId: req.user.id,
@@ -23,7 +23,9 @@ router.post('/', auth, async (req, res) => {
       expiryTime,
       items: items || [],
       overallExpiry: overallExpiry || expiryTime,
-      location: location || { coordinates: [0, 0] } // default if not provided
+      location: location || { coordinates: [0, 0] }, // default if not provided
+      pickupAddress,
+      pickupTimeSlot
     });
 
     const food = await newFood.save();

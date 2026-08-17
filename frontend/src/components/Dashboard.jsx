@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import LiveFeed from './LiveFeed';
 import DonorPostForm from './DonorPostForm';
 import MyPostingsDrawer from './MyPostingsDrawer';
@@ -6,11 +7,36 @@ import ActivePickupsDrawer from './ActivePickupsDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
 import { Plus, Package, Truck, Bell, Utensils, Scale } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const Dashboard = ({ socket, user, token }) => {
   const [showPostForm, setShowPostForm] = useState(false);
   const [activeDrawer, setActiveDrawer] = useState(null); // 'POSTINGS', 'PICKUPS', 'NOTIFICATIONS', null
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const closeDrawer = () => setActiveDrawer(null);
+  const fetchNotificationsCount = async () => {
+    try {
+      if (!user || !user.id) return;
+      const res = await axios.get(`${API_URL}/api/notifications/${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const unread = res.data.filter(n => !n.read).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotificationsCount();
+    const interval = setInterval(fetchNotificationsCount, 20000); // 20s polling
+    return () => clearInterval(interval);
+  }, [user, token]);
+
+  const closeDrawer = () => {
+    setActiveDrawer(null);
+    fetchNotificationsCount(); // refresh count when closing drawer
+  };
 
   return (
     <div className="flex flex-1 w-full relative overflow-hidden bg-slate-50 dark:bg-slate-900">
@@ -51,7 +77,7 @@ const Dashboard = ({ socket, user, token }) => {
       <div className={`w-96 shrink-0 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-2xl transition-all duration-300 ease-in-out z-40 ${activeDrawer ? 'translate-x-0 ml-0' : 'translate-x-full absolute right-20 top-0 bottom-0'}`} style={{ position: activeDrawer ? 'relative' : 'absolute' }}>
         {activeDrawer === 'POSTINGS' && <MyPostingsDrawer user={user} token={token} onClose={closeDrawer} />}
         {activeDrawer === 'PICKUPS' && <ActivePickupsDrawer user={user} token={token} onClose={closeDrawer} />}
-        {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} socket={socket} onClose={closeDrawer} />}
+        {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} token={token} socket={socket} onClose={closeDrawer} />}
       </div>
 
       {/* Right-Hand Icon Navigation Bar */}
@@ -92,7 +118,14 @@ const Dashboard = ({ socket, user, token }) => {
           className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative ${activeDrawer === 'NOTIFICATIONS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
           title="Notifications"
         >
-          <Bell className="w-6 h-6" />
+          <div className="relative">
+            <Bell className="w-6 h-6" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
           <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Notifications</span>
         </button>
       </aside>

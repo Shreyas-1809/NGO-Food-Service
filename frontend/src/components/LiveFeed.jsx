@@ -11,7 +11,9 @@ const LiveFeed = ({ socket, user, token }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Expiring Soonest');
   const [selectedListing, setSelectedListing] = useState(null);
-  const [claimCode, setClaimCode] = useState(null);
+  const [claimStatus, setClaimStatus] = useState('IDLE'); // 'IDLE', 'FORM', 'SUCCESS'
+  const [claimMessage, setClaimMessage] = useState('');
+  const [claimTime, setClaimTime] = useState('');
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -52,13 +54,16 @@ const LiveFeed = ({ socket, user, token }) => {
   const handleClaim = async (id) => {
     if (user?.accountType !== 'ORGANISATION') return alert('Only organisations can claim food');
     try {
-      const res = await axios.post(`${API_URL}/api/food/${id}/claim`, {}, { 
+      const res = await axios.post(`${API_URL}/api/food/${id}/claim`, {
+        message: claimMessage,
+        requestedPickupTime: claimTime
+      }, { 
         headers: { Authorization: `Bearer ${token}` }
       });
-      setClaimCode(res.data.verificationCode);
+      setClaimStatus('SUCCESS');
     } catch (err) {
       console.error(err);
-      alert('Failed to claim');
+      alert(err.response?.data?.message || 'Failed to claim');
     }
   };
 
@@ -154,7 +159,7 @@ const LiveFeed = ({ socket, user, token }) => {
            return (
           <div 
             key={listing._id} 
-            onClick={() => { setSelectedListing(listing); setClaimCode(null); }}
+            onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
             className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow relative flex flex-col cursor-pointer hover:border-green-300 dark:hover:border-green-600"
           >
             {listing.status === 'CLAIMED' && (
@@ -213,15 +218,43 @@ const LiveFeed = ({ socket, user, token }) => {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1">
-              {claimCode ? (
+              {claimStatus === 'SUCCESS' ? (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Claim Successful!</h4>
-                  <p className="text-slate-500 dark:text-slate-400 mb-6">Present this code to the donor upon pickup.</p>
-                  <div className="text-5xl font-mono font-bold text-slate-800 dark:text-white tracking-[0.25em] bg-slate-100 dark:bg-slate-900 py-6 rounded-xl border border-slate-200 dark:border-slate-700">
-                    {claimCode}
+                  <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Claim Request Sent!</h4>
+                  <p className="text-slate-500 dark:text-slate-400 mb-6">The donor will review your request. Check your notifications for updates.</p>
+                </div>
+              ) : claimStatus === 'FORM' ? (
+                <div className="space-y-4 animate-in fade-in">
+                  <h4 className="font-bold text-lg text-slate-800 dark:text-white mb-2">Request to Claim</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message for Donor (Optional)</label>
+                    <textarea 
+                      value={claimMessage}
+                      onChange={e => setClaimMessage(e.target.value)}
+                      placeholder="e.g. We will arrive in 30 mins with a van..."
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                      rows="3"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Estimated Pickup Time (Optional)</label>
+                    <input 
+                      type="time" 
+                      value={claimTime}
+                      onChange={e => setClaimTime(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg hover:bg-green-700 transition-colors">
+                      Submit Request
+                    </button>
+                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2 rounded-lg transition-colors">
+                      Cancel
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -294,14 +327,14 @@ const LiveFeed = ({ socket, user, token }) => {
             </div>
 
             {/* Action Bar */}
-            {!claimCode && (
+            {claimStatus === 'IDLE' && (
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                 {user?.accountType === 'ORGANISATION' && selectedListing.status === 'AVAILABLE' ? (
                   <button 
-                    onClick={() => handleClaim(selectedListing._id)}
+                    onClick={() => setClaimStatus('FORM')}
                     className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-sm text-lg"
                   >
-                    Claim Food Now
+                    Request Food
                   </button>
                 ) : selectedListing.status !== 'AVAILABLE' ? (
                   <button disabled className="w-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold py-3 px-4 rounded-lg cursor-not-allowed text-lg">

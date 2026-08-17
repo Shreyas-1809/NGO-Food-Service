@@ -5,10 +5,11 @@ import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import AuthPage from './components/AuthPage';
 import ActivityHistory from './components/ActivityHistory';
-import { io } from 'socket.io-client';
+// import { io } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const socket = io(API_URL);
+// Disable actual socket connection for now to stop 404 polling
+const socket = { on: () => {}, off: () => {} };
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));

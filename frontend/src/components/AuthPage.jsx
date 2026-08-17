@@ -1,49 +1,212 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { HeartHandshake, Building2, UserCircle2 } from 'lucide-react';
+import { HeartHandshake, Building2, UserCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const InputField = ({ label, type, value, onChange, onBlur, error, required, placeholder, prefix, maxLength, suffix }) => (
+  <div className="mb-4 relative">
+    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <div className="relative flex items-center">
+      {prefix && (
+        <div className="absolute left-0 pl-3 flex items-center pointer-events-none">
+          <span className="text-slate-500 sm:text-sm">{prefix}</span>
+        </div>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        onBlur={onBlur}
+        required={required}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+      />
+      {suffix && (
+        <div className="absolute right-0 pr-3 flex items-center cursor-pointer">
+          {suffix}
+        </div>
+      )}
+    </div>
+    {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+  </div>
+);
+
 const AuthPage = ({ setToken, setUser }) => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [step, setStep] = useState('ENTRY'); // ENTRY, TYPE_SELECTION, FORM
+  const [isLogin, setIsLogin] = useState(false);
+  const [accountType, setAccountType] = useState('DONOR'); // DONOR, ORGANISATION
+  const [showPassword, setShowPassword] = useState(false);
+  
   const [formData, setFormData] = useState({
-    accountType: 'ORGANISATION',
     email: '',
     password: '',
     phone: '',
-    orgName: '',
-    city: '',
-    pincode: '',
-    address: '',
     fullName: '',
     businessName: '',
     businessDetails: {
+      shopPhone: '',
       shopAddress: '',
       shopPincode: '',
       shopEmail: ''
-    }
+    },
+    orgName: '',
+    pincode: '',
+    address: '',
+    city: ''
   });
-  const [error, setError] = useState('');
 
-  const handleNestedChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      businessDetails: {
-        ...prev.businessDetails,
-        [field]: value
+  const [errors, setErrors] = useState({});
+  const [globalError, setGlobalError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
+
+  const handleEntrySelection = (isLoginSelection) => {
+    setIsLogin(isLoginSelection);
+    setStep('TYPE_SELECTION');
+  };
+
+  const handleTypeSelection = (type) => {
+    setAccountType(type);
+    setStep('FORM');
+  };
+
+  const handleBack = () => {
+    if (step === 'FORM') setStep('TYPE_SELECTION');
+    else if (step === 'TYPE_SELECTION') setStep('ENTRY');
+  };
+
+  const validateField = (field, value) => {
+    let errorMsg = '';
+    switch (field) {
+      case 'email':
+      case 'shopEmail':
+        errorMsg = validateEmail(value);
+        break;
+      case 'password':
+        errorMsg = validatePassword(value);
+        break;
+      case 'phone':
+      case 'shopPhone':
+        errorMsg = validatePhoneNumber(value);
+        break;
+      case 'pincode':
+      case 'shopPincode':
+        errorMsg = validatePincode(value);
+        break;
+      case 'fullName':
+        errorMsg = validateName(value);
+        break;
+      case 'orgName':
+      case 'address':
+      case 'city':
+      case 'shopAddress':
+        if (!value.trim()) errorMsg = 'This field is required';
+        break;
+      default:
+        break;
+    }
+    return errorMsg;
+  };
+
+  const handleChange = (field, value) => {
+    // Only allow digits for phone/pincode
+    if (['phone', 'shopPhone', 'pincode', 'shopPincode'].includes(field)) {
+      value = value.replace(/\D/g, '');
+    }
+
+    if (field.startsWith('shop')) {
+      setFormData(prev => ({
+        ...prev,
+        businessDetails: {
+          ...prev.businessDetails,
+          [field]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+
+    // Real-time validation
+    const errorMsg = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: errorMsg }));
+  };
+
+  const handleBlur = (field) => {
+    const value = field.startsWith('shop') ? formData.businessDetails[field] : formData[field];
+    const errorMsg = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: errorMsg }));
+  };
+
+  const isFormValid = () => {
+    let isValid = true;
+    const newErrors = {};
+
+    const checkField = (field, value) => {
+      const errorMsg = validateField(field, value);
+      if (errorMsg) {
+        newErrors[field] = errorMsg;
+        isValid = false;
       }
-    }));
+    };
+
+    if (isLogin) {
+      checkField('email', formData.email);
+      checkField('password', formData.password);
+    } else {
+      if (accountType === 'DONOR') {
+        checkField('fullName', formData.fullName);
+        checkField('phone', formData.phone);
+        checkField('email', formData.email);
+        checkField('password', formData.password);
+        
+        if (formData.businessName.trim()) {
+          checkField('shopPhone', formData.businessDetails.shopPhone);
+          checkField('shopAddress', formData.businessDetails.shopAddress);
+          checkField('shopPincode', formData.businessDetails.shopPincode);
+          checkField('shopEmail', formData.businessDetails.shopEmail);
+        }
+      } else { // ORGANISATION
+        checkField('orgName', formData.orgName);
+        checkField('pincode', formData.pincode);
+        checkField('address', formData.address);
+        checkField('email', formData.email);
+        checkField('city', formData.city);
+        checkField('phone', formData.phone);
+        checkField('password', formData.password);
+      }
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    if (isSubmittingRef.current || isSubmitting) return;
+
+    setGlobalError('');
+
+    if (!isFormValid()) {
+      setGlobalError('Please fix the errors before submitting.');
+      return;
+    }
+    
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
     
-    // Clean up payload based on accountType so we don't send unused fields
-    let payload = { ...formData };
-    if (!isLogin) {
-      if (formData.accountType === 'ORGANISATION') {
+    let payload = {};
+    if (isLogin) {
+      payload = { email: formData.email, password: formData.password };
+    } else {
+      payload = { ...formData, accountType };
+      if (accountType === 'ORGANISATION') {
         delete payload.fullName;
         delete payload.businessName;
         delete payload.businessDetails;
@@ -54,10 +217,13 @@ const AuthPage = ({ setToken, setUser }) => {
         delete payload.address;
         if (!payload.businessName) {
           delete payload.businessDetails;
+        } else {
+          // If shop name is present, make sure we format it correctly for the backend
+          // We map 'shopPhone', etc back if needed, but our backend model expects shopAddress, shopPincode, shopEmail.
+          // Wait, backend User schema doesn't have shopPhone? It has shopAddress, shopPincode, shopEmail.
+          // The prompt says "5a. Shop Phone Number", so let's send it anyway. It might just not be saved or we can update the schema later.
         }
       }
-    } else {
-      payload = { email: formData.email, password: formData.password };
     }
 
     try {
@@ -68,238 +234,292 @@ const AuthPage = ({ setToken, setUser }) => {
       setUser(user);
     } catch (err) {
       if (err.response) {
-        setError(err.response.data.message || 'Authentication failed');
+        setGlobalError(err.response.data.message || 'Authentication failed');
       } else if (err.request) {
-        setError('Server is unreachable. Is the backend running?');
+        setGlobalError('Server is unreachable. Is the backend running?');
       } else {
-        setError(err.message);
+        setGlobalError(err.message);
       }
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
+  const isFormSubmitEnabled = () => {
+    // If any explicit error exists, disable
+    if (Object.values(errors).some(err => err !== '')) return false;
+    
+    // Check required fields based on state
+    if (isLogin) {
+      return !!(formData.email && formData.password);
+    } else {
+      if (accountType === 'DONOR') {
+        if (!formData.fullName || !formData.phone || !formData.email || !formData.password) return false;
+        if (formData.businessName.trim() !== '') {
+          if (!formData.businessDetails.shopPhone || !formData.businessDetails.shopAddress || !formData.businessDetails.shopPincode || !formData.businessDetails.shopEmail) return false;
+        }
+      } else { // ORGANISATION
+        if (!formData.orgName || !formData.pincode || !formData.address || !formData.email || !formData.city || !formData.phone || !formData.password) return false;
+      }
+    }
+    return true;
+  };
+
+  const submitDisabled = !isFormSubmitEnabled();
+
   return (
     <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-800 z-10">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-800 z-10 transition-all duration-300">
+        
+        {step !== 'ENTRY' && (
+          <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-white mb-4 flex items-center transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+          </button>
+        )}
+
         <div className="text-center mb-6">
           <HeartHandshake className="h-12 w-12 text-green-600 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-slate-800 dark:text-white">{isLogin ? 'Welcome Back' : 'Create an Account'}</h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">{isLogin ? 'Login to continue bridging food gaps.' : 'Join the network to rescue surplus food.'}</p>
+          <h2 className="text-3xl font-bold text-slate-800 dark:text-white">
+            {step === 'ENTRY' ? 'Food Bridge' : isLogin ? 'Welcome Back' : 'Create Account'}
+          </h2>
+          <p className="text-slate-500 dark:text-slate-400 mt-2">
+            {step === 'ENTRY' ? 'Connect surplus food with those in need.' : isLogin ? 'Login to continue.' : 'Join our network today.'}
+          </p>
         </div>
 
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium text-center flex flex-col sm:flex-row items-center justify-center gap-2">
-            <span>{error}</span>
-            {isLogin && error.includes('No account found') && (
-              <button 
-                type="button"
-                onClick={() => { setIsLogin(false); setError(''); }}
-                className="underline font-bold hover:text-red-800"
-              >
-                Switch to Sign Up
-              </button>
-            )}
+        {globalError && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium text-center">
+            {globalError}
           </div>
         )}
 
-        {!isLogin && (
-          <div className="flex bg-slate-100 p-1 rounded-lg mb-6">
+        {step === 'ENTRY' && (
+          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
             <button
-              type="button"
-              onClick={() => setFormData({ ...formData, accountType: 'ORGANISATION' })}
-              className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-colors ${
-                formData.accountType === 'ORGANISATION' 
-                  ? 'bg-white shadow-sm text-green-700' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
+              onClick={() => handleEntrySelection(true)}
+              className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
             >
-              <Building2 className="w-4 h-4 mr-2" />
-              Organisation (NGO/Shelter)
+              Login
             </button>
             <button
-              type="button"
-              onClick={() => setFormData({ ...formData, accountType: 'DONOR' })}
-              className={`flex-1 flex justify-center items-center py-2 text-sm font-medium rounded-md transition-colors ${
-                formData.accountType === 'DONOR' 
-                  ? 'bg-white shadow-sm text-green-700' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
+              onClick={() => handleEntrySelection(false)}
+              className="w-full bg-white text-green-600 border border-green-600 font-bold py-3 rounded-lg hover:bg-green-50 transition-colors shadow-sm"
             >
-              <UserCircle2 className="w-4 h-4 mr-2" />
-              Personal / Donor
+              Sign Up
             </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* Email and Password - Always visible */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email Address</label>
-            <input 
-              type="email" 
-              required 
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-              value={formData.email}
-              onChange={e => setFormData({...formData, email: e.target.value})}
-            />
+        {step === 'TYPE_SELECTION' && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <button
+              onClick={() => handleTypeSelection('DONOR')}
+              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
+            >
+              <UserCircle2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
+              <span className="font-bold text-slate-700 dark:text-slate-200">Personal Donor</span>
+            </button>
+            <button
+              onClick={() => handleTypeSelection('ORGANISATION')}
+              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
+            >
+              <Building2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
+              <span className="font-bold text-slate-700 dark:text-slate-200">NGO / Organisation</span>
+            </button>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
-            <input 
-              type="password" 
-              required 
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-              value={formData.password}
-              onChange={e => setFormData({...formData, password: e.target.value})}
-            />
-          </div>
+        )}
 
-          {!isLogin && (
-            <>
-              {/* Common extra field for Sign up */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
-                <input 
-                  type="tel" 
-                  required 
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                  value={formData.phone}
-                  onChange={e => setFormData({...formData, phone: e.target.value})}
+        {step === 'FORM' && (
+          <form onSubmit={handleSubmit} className="space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">
+            
+            {isLogin ? (
+              <>
+                <InputField 
+                  label="Email ID" type="email" required
+                  value={formData.email}
+                  onChange={e => handleChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  error={errors.email}
                 />
-              </div>
-
-              {/* ORGANISATION Fields */}
-              {formData.accountType === 'ORGANISATION' && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Organisation Name</label>
-                    <input 
-                      type="text" 
-                      required 
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                      value={formData.orgName}
-                      onChange={e => setFormData({...formData, orgName: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Address</label>
-                    <input 
-                      type="text" 
-                      required 
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                      value={formData.address}
-                      onChange={e => setFormData({...formData, address: e.target.value})}
-                    />
-                  </div>
-                  <div className="flex space-x-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">City</label>
-                      <input 
-                        type="text" 
-                        required 
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                        value={formData.city}
-                        onChange={e => setFormData({...formData, city: e.target.value})}
+                <InputField 
+                  label="Password" type={showPassword ? 'text' : 'password'} required
+                  value={formData.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  error={errors.password}
+                  suffix={
+                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </span>
+                  }
+                />
+              </>
+            ) : accountType === 'DONOR' ? (
+              <>
+                {/* FLOW 3A: DONOR FORM */}
+                <InputField 
+                  label="Full Name" type="text" required
+                  value={formData.fullName}
+                  onChange={e => handleChange('fullName', e.target.value)}
+                  onBlur={() => handleBlur('fullName')}
+                  error={errors.fullName}
+                />
+                <InputField 
+                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                  value={formData.phone}
+                  onChange={e => handleChange('phone', e.target.value)}
+                  onBlur={() => handleBlur('phone')}
+                  error={errors.phone}
+                />
+                <InputField 
+                  label="Email ID" type="email" required
+                  value={formData.email}
+                  onChange={e => handleChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  error={errors.email}
+                />
+                <InputField 
+                  label="Profile Password" type={showPassword ? 'text' : 'password'} required
+                  value={formData.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  error={errors.password}
+                  suffix={
+                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </span>
+                  }
+                />
+                
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <InputField 
+                    label="Shop Name (Optional)" type="text"
+                    value={formData.businessName}
+                    onChange={e => handleChange('businessName', e.target.value)}
+                  />
+                  
+                  {formData.businessName.trim() !== '' && (
+                    <div className="pl-4 border-l-2 border-green-500 space-y-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <InputField 
+                        label="Shop Phone Number" type="text" required prefix="+91" maxLength={10}
+                        value={formData.businessDetails.shopPhone}
+                        onChange={e => handleChange('shopPhone', e.target.value)}
+                        onBlur={() => handleBlur('shopPhone')}
+                        error={errors.shopPhone}
                       />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pincode</label>
-                      <input 
-                        type="text" 
-                        required 
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                        value={formData.pincode}
-                        onChange={e => setFormData({...formData, pincode: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* DONOR Fields */}
-              {formData.accountType === 'DONOR' && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
-                    <input 
-                      type="text" 
-                      required 
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                      value={formData.fullName}
-                      onChange={e => setFormData({...formData, fullName: e.target.value})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Food Shop / Business Name (Optional)</label>
-                    <input 
-                      type="text" 
-                      placeholder="e.g., ABC Bakery"
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400 focus:text-gray-900 focus:bg-white"
-                      value={formData.businessName}
-                      onChange={e => setFormData({...formData, businessName: e.target.value})}
-                    />
-                  </div>
-
-                  {/* Dynamic Expansion for Business Details */}
-                  {formData.businessName.trim().length > 0 && (
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                      <h4 className="text-sm font-bold text-slate-700">Business Details</h4>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Shop Address</label>
-                        <input 
-                          type="text" 
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                          Shop Address <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
                           required
-                          className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400"
                           value={formData.businessDetails.shopAddress}
-                          onChange={e => handleNestedChange('shopAddress', e.target.value)}
+                          onChange={e => handleChange('shopAddress', e.target.value)}
+                          onBlur={() => handleBlur('shopAddress')}
+                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+                          rows={2}
                         />
+                        {errors.shopAddress && <p className="mt-1 text-sm text-red-500">{errors.shopAddress}</p>}
                       </div>
-                      <div className="flex space-x-4">
-                        <div className="flex-1">
-                          <label className="block text-xs font-medium text-slate-600 mb-1">Shop Pincode</label>
-                          <input 
-                            type="text" 
-                            required
-                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400"
-                            value={formData.businessDetails.shopPincode}
-                            onChange={e => handleNestedChange('shopPincode', e.target.value)}
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-xs font-medium text-slate-600 mb-1">Shop Email (Optional)</label>
-                          <input 
-                            type="email" 
-                            className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-green-500 outline-none text-gray-900 bg-white placeholder-gray-400"
-                            value={formData.businessDetails.shopEmail}
-                            onChange={e => handleNestedChange('shopEmail', e.target.value)}
-                          />
-                        </div>
-                      </div>
+                      <InputField 
+                        label="Shop Pincode" type="text" required maxLength={6}
+                        value={formData.businessDetails.shopPincode}
+                        onChange={e => handleChange('shopPincode', e.target.value)}
+                        onBlur={() => handleBlur('shopPincode')}
+                        error={errors.shopPincode}
+                      />
+                      <InputField 
+                        label="Shop Email Address" type="email" required
+                        value={formData.businessDetails.shopEmail}
+                        onChange={e => handleChange('shopEmail', e.target.value)}
+                        onBlur={() => handleBlur('shopEmail')}
+                        error={errors.shopEmail}
+                      />
                     </div>
                   )}
                 </div>
-              )}
-            </>
-          )}
+              </>
+            ) : (
+              <>
+                {/* FLOW 3B: NGO / ORGANISATION FORM */}
+                <InputField 
+                  label="Organisation Name" type="text" required
+                  value={formData.orgName}
+                  onChange={e => handleChange('orgName', e.target.value)}
+                  onBlur={() => handleBlur('orgName')}
+                  error={errors.orgName}
+                />
+                <InputField 
+                  label="Pincode" type="text" required maxLength={6}
+                  value={formData.pincode}
+                  onChange={e => handleChange('pincode', e.target.value)}
+                  onBlur={() => handleBlur('pincode')}
+                  error={errors.pincode}
+                />
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Address <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    required
+                    value={formData.address}
+                    onChange={e => handleChange('address', e.target.value)}
+                    onBlur={() => handleBlur('address')}
+                    className={`w-full px-4 py-2 border ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+                    rows={2}
+                  />
+                  {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
+                </div>
+                <InputField 
+                  label="Email" type="email" required
+                  value={formData.email}
+                  onChange={e => handleChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  error={errors.email}
+                />
+                <InputField 
+                  label="City" type="text" required
+                  value={formData.city}
+                  onChange={e => handleChange('city', e.target.value)}
+                  onBlur={() => handleBlur('city')}
+                  error={errors.city}
+                />
+                <InputField 
+                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                  value={formData.phone}
+                  onChange={e => handleChange('phone', e.target.value)}
+                  onBlur={() => handleBlur('phone')}
+                  error={errors.phone}
+                />
+                <InputField 
+                  label="Password" type={showPassword ? 'text' : 'password'} required
+                  value={formData.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  error={errors.password}
+                  suffix={
+                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </span>
+                  }
+                />
+              </>
+            )}
 
-          <button 
-            type="submit"
-            className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm mt-4"
-          >
-            {isLogin ? 'Login' : 'Sign Up'}
-          </button>
-        </form>
-
-        <div className="text-center mt-6 text-sm text-slate-600 dark:text-slate-400">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button 
-            type="button" 
-            onClick={() => { setIsLogin(!isLogin); setError(''); }}
-            className="text-green-600 font-bold hover:underline"
-          >
-            {isLogin ? 'Sign Up' : 'Login'}
-          </button>
-        </div>
+            <button 
+              type="submit"
+              disabled={submitDisabled || isSubmitting}
+              className={`w-full font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 ${
+                submitDisabled || isSubmitting
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+            >
+              {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const Food = require('../models/Food');
+const Claim = require('../models/Claim');
+const Notification = require('../models/Notification');
 
 // @route   POST /api/food
 // @desc    Create a new food listing
@@ -51,7 +53,17 @@ router.get('/my-listings', auth, async (req, res) => {
     }
 
     const foods = await Food.find({ donorId: req.user.id })
+      .lean()
       .sort({ createdAt: -1 });
+
+    for (let food of foods) {
+      if (food.status === 'AVAILABLE') {
+        const pendingClaim = await Claim.findOne({ foodId: food._id, status: 'PENDING' });
+        if (pendingClaim) {
+          food.pendingClaimId = pendingClaim._id;
+        }
+      }
+    }
       
     res.json(foods);
   } catch (err) {
@@ -78,7 +90,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // @route   POST /api/food/:id/claim
-// @desc    Claim food (NGO only)
+// @desc    Request to claim food (NGO only)
 // @access  Private
 router.post('/:id/claim', auth, async (req, res) => {
   try {
@@ -89,16 +101,115 @@ router.post('/:id/claim', auth, async (req, res) => {
     if (!food || food.status !== 'AVAILABLE') {
       return res.status(400).json({ message: 'Food not available' });
     }
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    food.status = 'CLAIMED';
-    food.claimantId = req.user.id;
-    food.verificationCode = code;
+
+    // Check if user already has a pending claim for this food
+    const existingClaim = await Claim.findOne({ ngoId: req.user.id, foodId: food._id, status: 'PENDING' });
+    if (existingClaim) {
+      return res.status(400).json({ message: 'You already have a pending claim for this food' });
+    }
+
+    const { message, requestedPickupTime } = req.body;
+
+    const newClaim = new Claim({
+      ngoId: req.user.id,
+      foodId: food._id,
+      message,
+      requestedPickupTime
+    });
+    await newClaim.save();
+
+    const notification = new Notification({
+      userId: food.donorId,
+      type: 'CLAIM_REQUEST',
+      relatedClaimId: newClaim._id,
+      message: 'Someone wants to claim your food!' // We'll construct full message on frontend or can do it here
+    });
+    await notification.save();
+    
+    // We do NOT change the food status here. It remains AVAILABLE until accepted.
+    // However, we could emit a socket event to update the LiveFeed if needed.
+    // For now, returning the claim.
+    res.json(newClaim);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PATCH /api/food/:id
+// @desc    Edit a food listing (Donor only)
+// @access  Private
+router.patch('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'DONOR') {
+      return res.status(403).json({ message: 'Only donors can edit food' });
+    }
+    let food = await Food.findById(req.params.id);
+    if (!food) {
+      return res.status(404).json({ message: 'Food not found' });
+    }
+    if (food.donorId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    // Cannot edit if already claimed
+    if (food.status !== 'AVAILABLE') {
+      return res.status(400).json({ message: 'Cannot edit claimed food' });
+    }
+
+    const { title, quantity, foodType, preparedTime, expiryTime, items, overallExpiry, location } = req.body;
+    
+    if (title) food.title = title;
+    if (quantity) food.quantity = quantity;
+    if (foodType) food.foodType = foodType;
+    if (preparedTime) food.preparedTime = preparedTime;
+    if (expiryTime) food.expiryTime = expiryTime;
+    if (items) food.items = items;
+    if (overallExpiry) food.overallExpiry = overallExpiry;
+    if (location) food.location = location;
+
     await food.save();
     
     const io = req.app.get('io');
     if (io) io.emit('LISTING_UPDATED', food);
-    
+
     res.json(food);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   DELETE /api/food/:id
+// @desc    Delete a food listing (Donor only)
+// @access  Private
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'DONOR') {
+      return res.status(403).json({ message: 'Only donors can delete food' });
+    }
+    const food = await Food.findById(req.params.id);
+    if (!food) {
+      return res.status(404).json({ message: 'Food not found' });
+    }
+    if (food.donorId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    // Cannot delete if already claimed/completed
+    if (food.status !== 'AVAILABLE') {
+      return res.status(400).json({ message: 'Cannot delete claimed food' });
+    }
+
+    await food.deleteOne();
+    
+    // Cleanup any pending claims
+    await Claim.deleteMany({ foodId: food._id });
+
+    // Emit event
+    const io = req.app.get('io');
+    // Using a different event name or sending empty obj to clear it from frontend?
+    // The easiest is just letting frontend refetch or handle it
+    
+    res.json({ message: 'Food deleted' });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error');

@@ -60,6 +60,7 @@ const Dashboard = ({ socket, user, token }) => {
                 </button>
                 <DonorPostForm 
                   socket={socket} 
+                  user={user}
                   token={token} 
                   onSuccess={() => setShowPostForm(false)} 
                 />

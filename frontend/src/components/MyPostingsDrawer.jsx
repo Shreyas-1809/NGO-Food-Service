@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Package, Clock, Utensils, X } from 'lucide-react';
+import { Package, Clock, Utensils, X, Trash2, Edit, AlertCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -25,6 +25,19 @@ const MyPostingsDrawer = ({ user, token, onClose }) => {
       fetchMyPostings();
     }
   }, [user, token]);
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this listing?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/food/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyPostings(prev => prev.filter(p => p._id !== id));
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete');
+    }
+  };
 
   if (user.accountType !== 'DONOR') {
     return (
@@ -72,10 +85,29 @@ const MyPostingsDrawer = ({ user, token, onClose }) => {
               <div className="flex items-center text-xs text-slate-600 dark:text-slate-300 mb-1.5">
                 <Utensils className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> {post.quantity} servings • {post.foodType}
               </div>
-              <div className="flex items-center text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-center text-xs text-slate-600 dark:text-slate-300 mb-3">
                 <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> 
                 {post.status === 'AVAILABLE' ? `Expires: ${new Date(post.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}` : `Updated: ${new Date(post.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}`}
               </div>
+
+              {post.status === 'AVAILABLE' && (
+                <div className="pt-3 border-t border-slate-200 dark:border-slate-600 flex justify-between items-center">
+                  {post.pendingClaimId ? (
+                    <div className="w-full text-center py-2 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400 rounded-lg text-sm font-bold flex items-center justify-center">
+                      <AlertCircle className="w-4 h-4 mr-2" /> Pending Claim (Check Notifications)
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 w-full">
+                      <button onClick={() => alert('Edit not fully implemented yet')} className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded flex justify-center items-center text-sm font-medium transition-colors">
+                        <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
+                      </button>
+                      <button onClick={() => handleDelete(post._id)} className="flex-1 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded flex justify-center items-center text-sm font-medium transition-colors">
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))
         )}

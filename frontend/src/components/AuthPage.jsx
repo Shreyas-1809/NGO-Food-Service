@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { HeartHandshake, Building2, UserCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { HeartHandshake, Building2, UserCircle2, Bike, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -41,7 +41,7 @@ const AuthPage = ({ setToken, setUser }) => {
   const [isLogin, setIsLogin] = useState(false);
   const [accountType, setAccountType] = useState('DONOR'); // DONOR, ORGANISATION
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -163,13 +163,18 @@ const AuthPage = ({ setToken, setUser }) => {
         checkField('phone', formData.phone);
         checkField('email', formData.email);
         checkField('password', formData.password);
-        
+
         if (formData.businessName.trim()) {
           checkField('shopPhone', formData.businessDetails.shopPhone);
           checkField('shopAddress', formData.businessDetails.shopAddress);
           checkField('shopPincode', formData.businessDetails.shopPincode);
           checkField('shopEmail', formData.businessDetails.shopEmail);
         }
+      } else if (accountType === 'VOLUNTEER') {
+        checkField('fullName', formData.fullName);
+        checkField('phone', formData.phone);
+        checkField('email', formData.email);
+        checkField('password', formData.password);
       } else { // ORGANISATION
         checkField('orgName', formData.orgName);
         checkField('pincode', formData.pincode);
@@ -195,19 +200,27 @@ const AuthPage = ({ setToken, setUser }) => {
       setGlobalError('Please fix the errors before submitting.');
       return;
     }
-    
+
     isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
-    
+
     let payload = {};
     if (isLogin) {
       payload = { email: formData.email, password: formData.password };
     } else {
-      payload = { ...formData, accountType };
+      const role = accountType === 'ORGANISATION' ? 'RECEIVER' : accountType;
+      payload = { ...formData, accountType, role };
       if (accountType === 'ORGANISATION') {
         delete payload.fullName;
+        delete payload.businessName;
+        delete payload.businessDetails;
+      } else if (accountType === 'VOLUNTEER') {
+        delete payload.orgName;
+        delete payload.city;
+        delete payload.pincode;
+        delete payload.address;
         delete payload.businessName;
         delete payload.businessDetails;
       } else {
@@ -217,11 +230,6 @@ const AuthPage = ({ setToken, setUser }) => {
         delete payload.address;
         if (!payload.businessName) {
           delete payload.businessDetails;
-        } else {
-          // If shop name is present, make sure we format it correctly for the backend
-          // We map 'shopPhone', etc back if needed, but our backend model expects shopAddress, shopPincode, shopEmail.
-          // Wait, backend User schema doesn't have shopPhone? It has shopAddress, shopPincode, shopEmail.
-          // The prompt says "5a. Shop Phone Number", so let's send it anyway. It might just not be saved or we can update the schema later.
         }
       }
     }
@@ -249,7 +257,7 @@ const AuthPage = ({ setToken, setUser }) => {
   const isFormSubmitEnabled = () => {
     // If any explicit error exists, disable
     if (Object.values(errors).some(err => err !== '')) return false;
-    
+
     // Check required fields based on state
     if (isLogin) {
       return !!(formData.email && formData.password);
@@ -259,6 +267,8 @@ const AuthPage = ({ setToken, setUser }) => {
         if (formData.businessName.trim() !== '') {
           if (!formData.businessDetails.shopPhone || !formData.businessDetails.shopAddress || !formData.businessDetails.shopPincode || !formData.businessDetails.shopEmail) return false;
         }
+      } else if (accountType === 'VOLUNTEER') {
+        if (!formData.fullName || !formData.phone || !formData.email || !formData.password) return false;
       } else { // ORGANISATION
         if (!formData.orgName || !formData.pincode || !formData.address || !formData.email || !formData.city || !formData.phone || !formData.password) return false;
       }
@@ -271,7 +281,7 @@ const AuthPage = ({ setToken, setUser }) => {
   return (
     <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-800 z-10 transition-all duration-300">
-        
+
         {step !== 'ENTRY' && (
           <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-white mb-4 flex items-center transition-colors">
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
@@ -327,22 +337,29 @@ const AuthPage = ({ setToken, setUser }) => {
               <Building2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
               <span className="font-bold text-slate-700 dark:text-slate-200">NGO / Organisation</span>
             </button>
+            <button
+              onClick={() => handleTypeSelection('VOLUNTEER')}
+              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
+            >
+              <Bike className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
+              <span className="font-bold text-slate-700 dark:text-slate-200">Volunteer Rider</span>
+            </button>
           </div>
         )}
 
         {step === 'FORM' && (
           <form onSubmit={handleSubmit} className="space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">
-            
+
             {isLogin ? (
               <>
-                <InputField 
+                <InputField
                   label="Email ID" type="email" required
                   value={formData.email}
                   onChange={e => handleChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
                   error={errors.email}
                 />
-                <InputField 
+                <InputField
                   label="Password" type={showPassword ? 'text' : 'password'} required
                   value={formData.password}
                   onChange={e => handleChange('password', e.target.value)}
@@ -358,6 +375,91 @@ const AuthPage = ({ setToken, setUser }) => {
             ) : accountType === 'DONOR' ? (
               <>
                 {/* FLOW 3A: DONOR FORM */}
+                <InputField
+                  label="Full Name" type="text" required
+                  value={formData.fullName}
+                  onChange={e => handleChange('fullName', e.target.value)}
+                  onBlur={() => handleBlur('fullName')}
+                  error={errors.fullName}
+                />
+                <InputField
+                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                  value={formData.phone}
+                  onChange={e => handleChange('phone', e.target.value)}
+                  onBlur={() => handleBlur('phone')}
+                  error={errors.phone}
+                />
+                <InputField
+                  label="Email ID" type="email" required
+                  value={formData.email}
+                  onChange={e => handleChange('email', e.target.value)}
+                  onBlur={() => handleBlur('email')}
+                  error={errors.email}
+                />
+                <InputField
+                  label="Profile Password" type={showPassword ? 'text' : 'password'} required
+                  value={formData.password}
+                  onChange={e => handleChange('password', e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  error={errors.password}
+                  suffix={
+                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </span>
+                  }
+                />
+
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                  <InputField
+                    label="Shop Name (Optional)" type="text"
+                    value={formData.businessName}
+                    onChange={e => handleChange('businessName', e.target.value)}
+                  />
+
+                  {formData.businessName.trim() !== '' && (
+                    <div className="pl-4 border-l-2 border-green-500 space-y-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <InputField
+                        label="Shop Phone Number" type="text" required prefix="+91" maxLength={10}
+                        value={formData.businessDetails.shopPhone}
+                        onChange={e => handleChange('shopPhone', e.target.value)}
+                        onBlur={() => handleBlur('shopPhone')}
+                        error={errors.shopPhone}
+                      />
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                          Shop Address <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          required
+                          value={formData.businessDetails.shopAddress}
+                          onChange={e => handleChange('shopAddress', e.target.value)}
+                          onBlur={() => handleBlur('shopAddress')}
+                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+                          rows={2}
+                        />
+                        {errors.shopAddress && <p className="mt-1 text-sm text-red-500">{errors.shopAddress}</p>}
+                      </div>
+                      <InputField
+                        label="Shop Pincode" type="text" required maxLength={6}
+                        value={formData.businessDetails.shopPincode}
+                        onChange={e => handleChange('shopPincode', e.target.value)}
+                        onBlur={() => handleBlur('shopPincode')}
+                        error={errors.shopPincode}
+                      />
+                      <InputField
+                        label="Shop Email Address" type="email" required
+                        value={formData.businessDetails.shopEmail}
+                        onChange={e => handleChange('shopEmail', e.target.value)}
+                        onBlur={() => handleBlur('shopEmail')}
+                        error={errors.shopEmail}
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : accountType === 'VOLUNTEER' ? (
+              <>
+                {/* FLOW 3C: VOLUNTEER RIDER FORM */}
                 <InputField 
                   label="Full Name" type="text" required
                   value={formData.fullName}
@@ -391,66 +493,18 @@ const AuthPage = ({ setToken, setUser }) => {
                     </span>
                   }
                 />
-                
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <InputField 
-                    label="Shop Name (Optional)" type="text"
-                    value={formData.businessName}
-                    onChange={e => handleChange('businessName', e.target.value)}
-                  />
-                  
-                  {formData.businessName.trim() !== '' && (
-                    <div className="pl-4 border-l-2 border-green-500 space-y-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <InputField 
-                        label="Shop Phone Number" type="text" required prefix="+91" maxLength={10}
-                        value={formData.businessDetails.shopPhone}
-                        onChange={e => handleChange('shopPhone', e.target.value)}
-                        onBlur={() => handleBlur('shopPhone')}
-                        error={errors.shopPhone}
-                      />
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                          Shop Address <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          required
-                          value={formData.businessDetails.shopAddress}
-                          onChange={e => handleChange('shopAddress', e.target.value)}
-                          onBlur={() => handleBlur('shopAddress')}
-                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
-                          rows={2}
-                        />
-                        {errors.shopAddress && <p className="mt-1 text-sm text-red-500">{errors.shopAddress}</p>}
-                      </div>
-                      <InputField 
-                        label="Shop Pincode" type="text" required maxLength={6}
-                        value={formData.businessDetails.shopPincode}
-                        onChange={e => handleChange('shopPincode', e.target.value)}
-                        onBlur={() => handleBlur('shopPincode')}
-                        error={errors.shopPincode}
-                      />
-                      <InputField 
-                        label="Shop Email Address" type="email" required
-                        value={formData.businessDetails.shopEmail}
-                        onChange={e => handleChange('shopEmail', e.target.value)}
-                        onBlur={() => handleBlur('shopEmail')}
-                        error={errors.shopEmail}
-                      />
-                    </div>
-                  )}
-                </div>
               </>
             ) : (
               <>
                 {/* FLOW 3B: NGO / ORGANISATION FORM */}
-                <InputField 
+                <InputField
                   label="Organisation Name" type="text" required
                   value={formData.orgName}
                   onChange={e => handleChange('orgName', e.target.value)}
                   onBlur={() => handleBlur('orgName')}
                   error={errors.orgName}
                 />
-                <InputField 
+                <InputField
                   label="Pincode" type="text" required maxLength={6}
                   value={formData.pincode}
                   onChange={e => handleChange('pincode', e.target.value)}
@@ -471,28 +525,28 @@ const AuthPage = ({ setToken, setUser }) => {
                   />
                   {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
                 </div>
-                <InputField 
+                <InputField
                   label="Email" type="email" required
                   value={formData.email}
                   onChange={e => handleChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
                   error={errors.email}
                 />
-                <InputField 
+                <InputField
                   label="City" type="text" required
                   value={formData.city}
                   onChange={e => handleChange('city', e.target.value)}
                   onBlur={() => handleBlur('city')}
                   error={errors.city}
                 />
-                <InputField 
+                <InputField
                   label="Phone Number" type="text" required prefix="+91" maxLength={10}
                   value={formData.phone}
                   onChange={e => handleChange('phone', e.target.value)}
                   onBlur={() => handleBlur('phone')}
                   error={errors.phone}
                 />
-                <InputField 
+                <InputField
                   label="Password" type={showPassword ? 'text' : 'password'} required
                   value={formData.password}
                   onChange={e => handleChange('password', e.target.value)}
@@ -507,14 +561,13 @@ const AuthPage = ({ setToken, setUser }) => {
               </>
             )}
 
-            <button 
+            <button
               type="submit"
               disabled={submitDisabled || isSubmitting}
-              className={`w-full font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 ${
-                submitDisabled || isSubmitting
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+              className={`w-full font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 ${submitDisabled || isSubmitting
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                   : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
+                }`}
             >
               {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
             </button>

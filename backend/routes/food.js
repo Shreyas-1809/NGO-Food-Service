@@ -10,7 +10,7 @@ const Notification = require('../models/Notification');
 // @access  Private (DONOR only)
 router.post('/', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'DONOR') {
+    if (req.user.role !== 'DONOR' && req.user.accountType !== 'DONOR') {
       return res.status(403).json({ message: 'Only donors can post food' });
     }
 
@@ -50,7 +50,7 @@ router.post('/', auth, async (req, res) => {
 // @access  Private (DONOR only)
 router.get('/my-listings', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'DONOR') {
+    if (req.user.role !== 'DONOR' && req.user.accountType !== 'DONOR') {
       return res.status(403).json({ message: 'Only donors can access their listings' });
     }
 
@@ -96,7 +96,7 @@ router.get('/', auth, async (req, res) => {
 // @access  Private
 router.post('/:id/claim', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'ORGANISATION') {
+    if (req.user.role !== 'RECEIVER' && req.user.accountType !== 'ORGANISATION') {
       return res.status(403).json({ message: 'Only organisations can claim food' });
     }
     const food = await Food.findById(req.params.id);
@@ -143,7 +143,7 @@ router.post('/:id/claim', auth, async (req, res) => {
 // @access  Private
 router.patch('/:id', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'DONOR') {
+    if (req.user.role !== 'DONOR' && req.user.accountType !== 'DONOR') {
       return res.status(403).json({ message: 'Only donors can edit food' });
     }
     let food = await Food.findById(req.params.id);
@@ -186,7 +186,7 @@ router.patch('/:id', auth, async (req, res) => {
 // @access  Private
 router.delete('/:id', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'DONOR') {
+    if (req.user.role !== 'DONOR' && req.user.accountType !== 'DONOR') {
       return res.status(403).json({ message: 'Only donors can delete food' });
     }
     const food = await Food.findById(req.params.id);
@@ -223,7 +223,7 @@ router.delete('/:id', auth, async (req, res) => {
 // @access  Private
 router.patch('/verify-pickup/:id', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'DONOR') {
+    if (req.user.role !== 'DONOR' && req.user.accountType !== 'DONOR') {
       return res.status(403).json({ message: 'Only donors can verify pickups' });
     }
     const food = await Food.findById(req.params.id);
@@ -256,7 +256,7 @@ router.patch('/verify-pickup/:id', auth, async (req, res) => {
 router.get('/active-pickups', auth, async (req, res) => {
   try {
     let query = { status: 'CLAIMED' };
-    if (req.user.accountType === 'DONOR') {
+    if (req.user.role === 'DONOR' || req.user.accountType === 'DONOR') {
       query.donorId = req.user.id;
     } else {
       query.claimantId = req.user.id;

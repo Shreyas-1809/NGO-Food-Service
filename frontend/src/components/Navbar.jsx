@@ -25,16 +25,46 @@ const Navbar = ({ user, onLogout, isDarkMode, toggleTheme, onOpenNotifications }
   const unreadCount = notifications.filter(n => !n.read).length;
   const location = useLocation();
 
-  const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Donate Surplus', path: '/donate' },
-    { name: 'NGO Shortages', path: '/ngo-requirements', alert: true },
-    { name: 'Receiver Hub', path: '/request' },
-    { name: 'Volunteer', path: '/volunteer', icon: Bike },
-    { name: 'Find NGOs', path: '/find-ngos', icon: Building2 },
-    { name: 'Live Map', path: '/map', icon: MapPin },
-    { name: 'Impact', path: '/impact' }
-  ];
+  const userRole = user?.role || (user?.accountType === 'ORGANISATION' ? 'RECEIVER' : user?.accountType);
+
+  let navLinks = [];
+  if (!user) {
+    navLinks = [
+      { name: 'Home', path: '/' },
+      { name: 'Find NGOs', path: '/find-ngos', icon: Building2 },
+      { name: 'Live Map', path: '/map', icon: MapPin },
+      { name: 'Impact', path: '/impact' },
+      { name: 'About', path: '/about' }
+    ];
+  } else if (userRole === 'VOLUNTEER') {
+    navLinks = [
+      { name: 'Home', path: '/' },
+      { name: 'Volunteer Rider', path: '/volunteer', icon: Bike },
+      { name: 'Live Map', path: '/map', icon: MapPin },
+      { name: 'Impact', path: '/impact' },
+      { name: 'About', path: '/about' }
+    ];
+  } else if (userRole === 'RECEIVER' || userRole === 'ORGANISATION') {
+    navLinks = [
+      { name: 'Home', path: '/' },
+      { name: 'Receiver Hub', path: '/receiver' },
+      { name: 'NGO Shortages', path: '/ngo-requirements', alert: true },
+      { name: 'Available Donations', path: '/available-donations' },
+      { name: 'Live Map', path: '/map', icon: MapPin },
+      { name: 'Impact', path: '/impact' },
+      { name: 'About', path: '/about' }
+    ];
+  } else {
+    // DONOR
+    navLinks = [
+      { name: 'Home', path: '/' },
+      { name: 'Donate Surplus', path: '/donor' },
+      { name: 'Find NGOs', path: '/find-ngos', icon: Building2 },
+      { name: 'Live Map', path: '/map', icon: MapPin },
+      { name: 'Impact', path: '/impact' },
+      { name: 'About', path: '/about' }
+    ];
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-[#FBFBFA]/95 dark:bg-[#141716]/95 backdrop-blur-md border-b border-stone-200 dark:border-stone-800 transition-colors duration-200">

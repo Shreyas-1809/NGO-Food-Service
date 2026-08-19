@@ -80,7 +80,7 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
                     <span className="font-medium text-slate-800 dark:text-slate-200">{isDonor ? 'Claimed By:' : 'Donor:'}</span> {counterpartName}
                   </div>
                   <div className="text-sm text-slate-600 dark:text-slate-300">
-                    <span className="font-medium text-slate-800 dark:text-slate-200">Address:</span> {counterpart?.address}, {counterpart?.city}
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{isDonor ? 'NGO Address:' : 'Pickup Address:'}</span> {(!isDonor && pickup.pickupAddress) ? pickup.pickupAddress : [counterpart?.address, counterpart?.city].filter(Boolean).join(', ') || 'Not provided'}
                   </div>
                 </div>
 

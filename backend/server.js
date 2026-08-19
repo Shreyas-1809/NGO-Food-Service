@@ -28,13 +28,11 @@ app.use((req, res, next) => {
 
 // Routes
 const authRoutes = require('./routes/auth');
-const listingRoutes = require('./routes/listings');
 const activityRoutes = require('./routes/activity');
 const foodRoutes = require('./routes/food');
 const notificationRoutes = require('./routes/notifications');
 const claimRoutes = require('./routes/claims');
 app.use('/api/auth', authRoutes);
-app.use('/api/listings', listingRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/notifications', notificationRoutes);

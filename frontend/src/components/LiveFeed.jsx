@@ -189,7 +189,7 @@ const LiveFeed = ({ socket, user, token }) => {
                 </div>
                 <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm">
                   <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="line-clamp-1">{listing.donorId?.orgName || listing.donorId?.businessName || 'Nearby Location'}</span>
+                  <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Nearby Location'}</span>
                 </div>
                 <div className="flex items-center text-orange-600 dark:text-orange-400 text-sm font-medium">
                   <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -294,7 +294,7 @@ const LiveFeed = ({ socket, user, token }) => {
                       </p>
                       <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
                         <MapPin className="w-4 h-4 mr-2 text-slate-400" />
-                        {selectedListing.donorId?.address}, {selectedListing.donorId?.city}
+                        {selectedListing.pickupAddress || [selectedListing.donorId?.address, selectedListing.donorId?.city].filter(Boolean).join(', ')}
                       </div>
                       <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
                         <Phone className="w-4 h-4 mr-2 text-slate-400" />

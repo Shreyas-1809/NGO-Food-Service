@@ -13,7 +13,7 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
     <div className="relative flex items-center">
       {prefix && (
         <div className="absolute left-0 pl-3 flex items-center pointer-events-none">
-          <span className="text-slate-500 sm:text-sm">{prefix}</span>
+          <span className="text-slate-500 dark:text-slate-400 sm:text-sm">{prefix}</span>
         </div>
       )}
       <input
@@ -24,7 +24,7 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
         required={required}
         placeholder={placeholder}
         maxLength={maxLength}
-        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
       />
       {suffix && (
         <div className="absolute right-0 pr-3 flex items-center cursor-pointer">
@@ -286,8 +286,8 @@ const AuthPage = ({ setToken, setUser }) => {
   const submitDisabled = !isFormSubmitEnabled();
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-800 z-10 transition-all duration-300">
+    <div className="min-h-screen w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden transition-colors">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-10 transition-all duration-300">
         
         {step !== 'ENTRY' && (
           <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-white mb-4 flex items-center transition-colors">
@@ -306,7 +306,7 @@ const AuthPage = ({ setToken, setUser }) => {
         </div>
 
         {globalError && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium text-center">
+          <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg mb-4 text-sm font-medium text-center border border-red-200 dark:border-red-800">
             {globalError}
           </div>
         )}
@@ -321,7 +321,7 @@ const AuthPage = ({ setToken, setUser }) => {
             </button>
             <button
               onClick={() => handleEntrySelection(false)}
-              className="w-full bg-white text-green-600 border border-green-600 font-bold py-3 rounded-lg hover:bg-green-50 transition-colors shadow-sm"
+              className="w-full bg-white dark:bg-slate-800 text-green-600 dark:text-green-400 border border-green-600 font-bold py-3 rounded-lg hover:bg-green-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
             >
               Sign Up
             </button>
@@ -434,7 +434,7 @@ const AuthPage = ({ setToken, setUser }) => {
                           value={formData.businessDetails.shopAddress}
                           onChange={e => handleChange('shopAddress', e.target.value)}
                           onBlur={() => handleBlur('shopAddress')}
-                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
                           rows={2}
                         />
                         {errors.shopAddress && <p className="mt-1 text-sm text-red-500">{errors.shopAddress}</p>}
@@ -483,7 +483,7 @@ const AuthPage = ({ setToken, setUser }) => {
                     value={formData.address}
                     onChange={e => handleChange('address', e.target.value)}
                     onBlur={() => handleBlur('address')}
-                    className={`w-full px-4 py-2 border ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-gray-900 bg-white placeholder-gray-400`}
+                    className={`w-full px-4 py-2 border ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
                     rows={2}
                   />
                   {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}

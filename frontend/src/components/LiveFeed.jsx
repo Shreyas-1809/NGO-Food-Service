@@ -1,10 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { MapPin, Clock, Utensils, AlertCircle, Phone, Mail, CheckCircle, Package, Search } from 'lucide-react';
+import { 
+  MapPin, 
+  Clock, 
+  Utensils, 
+  AlertCircle, 
+  Phone, 
+  Mail, 
+  CheckCircle, 
+  Package, 
+  Search,
+  Sparkles,
+  ArrowRight,
+  ChevronRight,
+  ExternalLink
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import WorkflowNav from './WorkflowNav';
+import { getStoredRequests } from '../services/donationService';
+import { calculateMatchScore } from '../services/matchingService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const LiveFeed = ({ socket, user, token }) => {
+  const navigate = useNavigate();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
@@ -67,7 +86,55 @@ const LiveFeed = ({ socket, user, token }) => {
     }
   };
 
-  const sortedAndFilteredListings = React.useMemo(() => {
+  const storedRequests = useMemo(() => getStoredRequests(), []);
+
+  // Compute matched shortage for a given listing
+  const getListingMatch = (listing) => {
+    if (!storedRequests || storedRequests.length === 0) return null;
+    const title = listing.title || '';
+    const firstItem = listing.items?.[0]?.itemName || '';
+    const itemName = `${title} ${firstItem}`.trim();
+    
+    let bestMatch = null;
+    let highestScore = 0;
+
+    storedRequests.forEach((req) => {
+      if (req.category === 'Food' || !req.category) {
+        const score = calculateMatchScore(
+          { category: 'Food', itemName, quantity: listing.quantity || 30 },
+          req,
+          3.0
+        );
+        if (score > highestScore) {
+          highestScore = score;
+          bestMatch = { ...req, score };
+        }
+      }
+    });
+
+    return bestMatch && highestScore >= 50 ? bestMatch : null;
+  };
+
+  const getAllListingMatches = (listing) => {
+    if (!storedRequests || storedRequests.length === 0) return [];
+    const title = listing.title || '';
+    const firstItem = listing.items?.[0]?.itemName || '';
+    const itemName = `${title} ${firstItem}`.trim();
+
+    return storedRequests
+      .filter(req => req.category === 'Food' || !req.category)
+      .map(req => {
+        const score = calculateMatchScore(
+          { category: 'Food', itemName, quantity: listing.quantity || 30 },
+          req,
+          3.0
+        );
+        return { ...req, score };
+      })
+      .sort((a, b) => b.score - a.score);
+  };
+
+  const sortedAndFilteredListings = useMemo(() => {
     let result = [...listings];
 
     // Filter by Category
@@ -110,28 +177,39 @@ const LiveFeed = ({ socket, user, token }) => {
     return result;
   }, [listings, filter, searchQuery, sortBy]);
 
-  if (loading) return <div className="text-center p-8 text-slate-500">Loading live feed...</div>;
+  if (loading) return <div className="text-center p-8 text-slate-500 dark:text-slate-400">Loading live feed...</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h2 className="text-2xl font-bold text-slate-800 dark:text-white shrink-0">Live Surplus Feed</h2>
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+      {/* Clean Header & Filters */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Live Surplus Food Feed</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Browse available food donations or match with real-time NGO shortage demands.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           {/* Search */}
-          <div className="relative w-full sm:w-auto">
+          <div className="relative w-full sm:w-60">
              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-             <input type="text" placeholder="Search dishes..." 
-               value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-               className="pl-9 pr-4 py-2 w-full sm:w-64 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-green-500 outline-none shadow-sm transition-all text-sm" />
+             <input 
+               type="text" 
+               placeholder="Search dishes or items..." 
+               value={searchQuery} 
+               onChange={e => setSearchQuery(e.target.value)}
+               className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs" 
+             />
           </div>
           
           {/* Category Pills */}
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-center">
+          <div className="flex flex-wrap gap-1.5 justify-start">
             {['ALL', 'VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'].map(f => (
               <button 
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${filter === f ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filter === f ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
               >
                 {f}
               </button>
@@ -140,8 +218,9 @@ const LiveFeed = ({ socket, user, token }) => {
 
           {/* Sort Dropdown */}
           <select 
-            value={sortBy} onChange={e => setSortBy(e.target.value)}
-            className="px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-800 dark:text-white focus:ring-2 focus:ring-green-500 outline-none font-medium text-sm w-full sm:w-auto shadow-sm"
+            value={sortBy} 
+            onChange={e => setSortBy(e.target.value)}
+            className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
           >
             <option>Expiring Soonest</option>
             <option>Recently Added</option>
@@ -150,135 +229,237 @@ const LiveFeed = ({ socket, user, token }) => {
         </div>
       </div>
 
+      {/* Grid of Surplus Listings */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {sortedAndFilteredListings.map((listing) => {
            const title = listing.title || 'Untitled';
            const portions = listing.quantity || 0;
            const expiry = listing.overallExpiry || listing.expiryTime;
+           const match = getListingMatch(listing);
            
            return (
           <div 
             key={listing._id} 
             onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
-            className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-shadow relative flex flex-col cursor-pointer hover:border-green-300 dark:hover:border-green-600"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
           >
             {listing.status === 'CLAIMED' && (
-              <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm z-10 flex items-center justify-center">
-                <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-lg font-bold flex items-center">
-                  <AlertCircle className="w-5 h-5 mr-2" /> CLAIMED
+              <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 flex items-center justify-center">
+                <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-xl font-bold flex items-center text-xs">
+                  <AlertCircle className="w-4 h-4 mr-1.5" /> CLAIMED
                 </div>
               </div>
             )}
-            <div className="p-5 flex flex-col flex-1">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1" title={title}>{title}</h3>
-                {listing.foodType === 'VEG' ? (
-                   <span className="w-3 h-3 rounded-full bg-green-500 flex-shrink-0" title="Vegetarian"></span>
-                ) : listing.foodType === 'NON-VEG' ? (
-                   <span className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0" title="Non-Vegetarian"></span>
-                ) : listing.foodType === 'RAW PRODUCE' ? (
-                   <span className="w-3 h-3 rounded-full bg-orange-500 flex-shrink-0" title="Raw Produce"></span>
-                ) : (
-                   <span className="w-3 h-3 rounded-full bg-yellow-500 flex-shrink-0" title="Baked Goods"></span>
-                )}
+            <div className="p-5 flex flex-col flex-1 justify-between">
+              <div>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={title}>{title}</h3>
+                  {listing.foodType === 'VEG' ? (
+                     <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title="Vegetarian"></span>
+                  ) : listing.foodType === 'NON-VEG' ? (
+                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title="Non-Vegetarian"></span>
+                  ) : listing.foodType === 'RAW PRODUCE' ? (
+                     <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title="Raw Produce"></span>
+                  ) : (
+                     <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title="Baked Goods"></span>
+                  )}
+                </div>
+
+                <div className="space-y-2.5 mb-3 text-xs">
+                  <div className="flex items-center text-slate-600 dark:text-slate-300">
+                    <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
+                    <strong>{portions} Portions</strong>
+                  </div>
+                  <div className="flex items-center text-slate-600 dark:text-slate-400">
+                    <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                    <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
+                  </div>
+                  <div className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
+                    <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
+                    {expiry ? `Expires: ${new Date(expiry).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Expiring soon'}
+                  </div>
+                </div>
               </div>
-              <div className="space-y-3 mb-4 flex-1">
-                <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm">
-                  <Utensils className="w-4 h-4 mr-2 flex-shrink-0" />
-                  {portions} Portions
+
+              {/* Surfaced Shortage Match Banner */}
+              {match ? (
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/map', { state: { selectedNgoId: match.ngoId, selectedNgoName: match.ngoName } });
+                  }}
+                  className="mt-3 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-[11px] flex items-center justify-between hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                  title="Click to view NGO location on Map"
+                >
+                  <div className="flex items-center text-emerald-800 dark:text-emerald-300 font-bold truncate mr-1.5">
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
+                    <span className="truncate">Matches Shortage at {match.ngoName}</span>
+                  </div>
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-600 text-white shrink-0 shadow-xs">
+                    {match.score}%
+                  </span>
                 </div>
-                <div className="flex items-center text-slate-600 dark:text-slate-400 text-sm">
-                  <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Nearby Location'}</span>
+              ) : (
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/requirements');
+                  }}
+                  className="mt-3 p-2.5 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between text-slate-500 hover:text-emerald-600 transition-colors"
+                >
+                  <span className="flex items-center">
+                    <AlertCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                    Check NGO Requirements
+                  </span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </div>
-                <div className="flex items-center text-orange-600 dark:text-orange-400 text-sm font-medium">
-                  <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
-                  {expiry ? `Expires: ${new Date(expiry).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Expiring soon'}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )})}
         {sortedAndFilteredListings.length === 0 && (
-          <div className="col-span-full text-center py-12 text-slate-500 dark:text-slate-400">
-            No active surplus food available at the moment.
+          <div className="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+            <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+            <p className="font-bold text-sm text-slate-700 dark:text-slate-200">No surplus food available right now</p>
+            <p className="text-xs mt-1">Check back soon or explore NGO shortages to donate directly.</p>
           </div>
         )}
       </div>
 
-      {/* Detailed Modal */}
+      {/* Detailed Surplus Modal with Matched NGO Shortages */}
       {selectedListing && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex justify-center items-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg relative animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 sticky top-0">
-              <h3 className="text-xl font-bold text-slate-800 dark:text-white line-clamp-1 pr-4">{selectedListing.title}</h3>
-              <button onClick={() => setSelectedListing(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
-                <span className="text-3xl leading-none">&times;</span>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[60] flex justify-center items-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg relative animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-700">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 sticky top-0">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">
+                  Surplus Food Details
+                </span>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1 pr-4">{selectedListing.title}</h3>
+              </div>
+              <button onClick={() => setSelectedListing(null)} className="text-slate-400 hover:text-slate-700 dark:hover:text-white text-2xl leading-none">
+                &times;
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {claimStatus === 'SUCCESS' ? (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8" />
                   </div>
                   <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Claim Request Sent!</h4>
-                  <p className="text-slate-500 dark:text-slate-400 mb-6">The donor will review your request. Check your notifications for updates.</p>
+                  <p className="text-slate-500 dark:text-slate-400 mb-6 text-xs">The donor will review your request. Check your notifications for updates.</p>
                 </div>
               ) : claimStatus === 'FORM' ? (
                 <div className="space-y-4 animate-in fade-in">
-                  <h4 className="font-bold text-lg text-slate-800 dark:text-white mb-2">Request to Claim</h4>
+                  <h4 className="font-bold text-base text-slate-800 dark:text-white mb-2">Request Food as Verified NGO</h4>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message for Donor (Optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Message for Donor (Optional)</label>
                     <textarea 
                       value={claimMessage}
                       onChange={e => setClaimMessage(e.target.value)}
-                      placeholder="e.g. We will arrive in 30 mins with a van..."
-                      className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                      placeholder="e.g. We will arrive in 30 mins with an insulated van..."
+                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs"
                       rows="3"
                     ></textarea>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Estimated Pickup Time (Optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Estimated Pickup Time (Optional)</label>
                     <input 
                       type="time" 
                       value={claimTime}
                       onChange={e => setClaimTime(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white"
+                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs"
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition-colors text-xs">
                       Submit Request
                     </button>
-                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2 rounded-lg transition-colors">
+                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs">
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-8">
+                <div className="space-y-6">
+                  {/* SURFACED SHORTAGE CONNECTION BOX */}
+                  {(() => {
+                    const matches = getAllListingMatches(selectedListing);
+                    if (matches.length === 0) return null;
+                    return (
+                      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-300 flex items-center">
+                            <Sparkles className="w-4 h-4 mr-1.5 text-emerald-600" />
+                            Connected NGO Shortages
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
+                            {matches.length} Matches Found
+                          </span>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {matches.slice(0, 2).map((m) => (
+                            <div key={m.id || m.ngoId} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-slate-700 flex justify-between items-center text-xs">
+                              <div>
+                                <div className="font-bold text-slate-900 dark:text-white">{m.ngoName}</div>
+                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                                  Needs: <strong className="text-emerald-600 dark:text-emerald-400">{m.quantity} {m.unit} {m.item}</strong>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-1.5">
+                                <button
+                                  onClick={() => {
+                                    setSelectedListing(null);
+                                    navigate('/map', { state: { selectedNgoId: m.ngoId, selectedNgoName: m.ngoName } });
+                                  }}
+                                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] flex items-center space-x-1 transition-colors"
+                                  title="View on Logistics Map"
+                                >
+                                  <MapPin className="w-3 h-3" />
+                                  <span>Map</span>
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedListing(null);
+                                    navigate('/requirements');
+                                  }}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] flex items-center space-x-1 transition-colors"
+                                  title="View Shortage Requirements"
+                                >
+                                  <AlertCircle className="w-3 h-3" />
+                                  <span>Shortage</span>
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Food Breakdown */}
                   <div>
-                    <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center">
-                      <Package className="w-4 h-4 mr-2" /> Item Breakdown
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                      <Package className="w-3.5 h-3.5 mr-1.5" /> Item Breakdown
                     </h4>
                     {selectedListing.items && selectedListing.items.length > 0 ? (
-                      <ul className="space-y-3">
+                      <ul className="space-y-2">
                         {selectedListing.items.map((item, idx) => (
-                          <li key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-600">
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{item.itemName}</span>
-                            <span className="text-sm font-bold bg-white dark:bg-slate-800 px-3 py-1 rounded shadow-sm text-slate-600 dark:text-slate-300">
+                          <li key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.itemName}</span>
+                            <span className="text-xs font-bold bg-white dark:bg-slate-800 px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-slate-300">
                               {item.quantity} {item.unit}
                             </span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <div className="bg-slate-50 dark:bg-slate-700/30 p-3 rounded-lg border border-slate-100 dark:border-slate-600">
-                        <span className="font-medium text-slate-800 dark:text-slate-200">Total Available</span>
-                        <span className="float-right text-sm font-bold bg-white dark:bg-slate-800 px-3 py-1 rounded shadow-sm text-slate-600 dark:text-slate-300">
+                      <div className="bg-slate-50 dark:bg-slate-700/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">Total Portions</span>
+                        <span className="float-right font-bold bg-white dark:bg-slate-800 px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-slate-300">
                           {selectedListing.quantity} Servings
                         </span>
                       </div>
@@ -287,35 +468,33 @@ const LiveFeed = ({ socket, user, token }) => {
 
                   {/* Donor Info */}
                   <div>
-                    <h4 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Donor Information</h4>
-                    <div className="bg-blue-50 dark:bg-slate-700/50 p-4 rounded-lg border border-blue-100 dark:border-slate-600 space-y-3">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Donor Information</h4>
+                    <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2 text-xs">
                       <p className="font-bold text-slate-800 dark:text-white">
                         {selectedListing.donorId?.orgName || selectedListing.donorId?.businessName || selectedListing.donorId?.fullName}
                       </p>
-                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
-                        <MapPin className="w-4 h-4 mr-2 text-slate-400" />
-                        {selectedListing.pickupAddress || [selectedListing.donorId?.address, selectedListing.donorId?.city].filter(Boolean).join(', ')}
+                      <div className="flex items-center text-slate-600 dark:text-slate-300">
+                        <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                        {selectedListing.pickupAddress || [selectedListing.donorId?.address, selectedListing.donorId?.city].filter(Boolean).join(', ') || 'Pune City'}
                       </div>
-                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
-                        <Phone className="w-4 h-4 mr-2 text-slate-400" />
-                        {selectedListing.donorId?.phone}
-                      </div>
-                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-300">
-                        <Mail className="w-4 h-4 mr-2 text-slate-400" />
-                        {selectedListing.donorId?.email}
-                      </div>
+                      {selectedListing.donorId?.phone && (
+                        <div className="flex items-center text-slate-600 dark:text-slate-300">
+                          <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                          {selectedListing.donorId?.phone}
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   {/* Timings */}
-                  <div className="flex justify-between items-center text-sm border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-slate-700 pt-3">
                     <div className="text-slate-500 dark:text-slate-400">
                       <span className="block font-medium">Prepared</span>
-                      <span className="text-slate-800 dark:text-slate-200">
-                        {new Date(selectedListing.preparedTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                      <span className="text-slate-800 dark:text-slate-200 font-semibold">
+                        {selectedListing.preparedTime ? new Date(selectedListing.preparedTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'Recently'}
                       </span>
                     </div>
-                    <div className="text-right text-orange-600 dark:text-orange-400">
+                    <div className="text-right text-amber-600 dark:text-amber-400">
                       <span className="block font-medium">Expires</span>
                       <span className="font-bold">
                         {new Date(selectedListing.overallExpiry || selectedListing.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
@@ -328,22 +507,45 @@ const LiveFeed = ({ socket, user, token }) => {
 
             {/* Action Bar */}
             {claimStatus === 'IDLE' && (
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-2">
+                <button
+                  onClick={() => {
+                    const match = getListingMatch(selectedListing);
+                    setSelectedListing(null);
+                    if (match) {
+                      navigate('/map', { state: { selectedNgoId: match.ngoId, selectedNgoName: match.ngoName } });
+                    } else {
+                      navigate('/map');
+                    }
+                  }}
+                  className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1"
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                  <span>View on Map</span>
+                </button>
+
                 {user?.accountType === 'ORGANISATION' && selectedListing.status === 'AVAILABLE' ? (
                   <button 
                     onClick={() => setClaimStatus('FORM')}
-                    className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition-colors shadow-sm text-lg"
+                    className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs"
                   >
                     Request Food
                   </button>
                 ) : selectedListing.status !== 'AVAILABLE' ? (
-                  <button disabled className="w-full bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold py-3 px-4 rounded-lg cursor-not-allowed text-lg">
+                  <button disabled className="flex-1 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold py-2.5 px-4 rounded-xl cursor-not-allowed text-xs">
                     {selectedListing.status}
                   </button>
                 ) : (
-                  <div className="text-center text-sm text-slate-500 dark:text-slate-400">
-                    Only registered NGOs can claim food.
-                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedListing(null);
+                      navigate('/requirements');
+                    }}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl transition-colors shadow-xs text-xs flex items-center justify-center space-x-1"
+                  >
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>See All Shortages</span>
+                  </button>
                 )}
               </div>
             )}

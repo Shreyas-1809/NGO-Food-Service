@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LiveFeed from './LiveFeed';
 import DonorPostForm from './DonorPostForm';
 import MyPostingsDrawer from './MyPostingsDrawer';
@@ -9,10 +10,29 @@ import { Plus, Package, Truck, Bell, Utensils, Scale } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const Dashboard = ({ socket, user, token }) => {
-  const [showPostForm, setShowPostForm] = useState(false);
+const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [showPostForm, setShowPostForm] = useState(autoOpenDonate || location.pathname === '/donate' || Boolean(location.state?.prefill));
+  const [prefillData, setPrefillData] = useState(location.state?.prefill || null);
   const [activeDrawer, setActiveDrawer] = useState(null); // 'POSTINGS', 'PICKUPS', 'NOTIFICATIONS', null
   const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (autoOpenDonate || location.pathname === '/donate' || location.state?.prefill) {
+      setShowPostForm(true);
+      if (location.state?.prefill) {
+        setPrefillData(location.state.prefill);
+      }
+    }
+  }, [autoOpenDonate, location.pathname, location.state]);
+
+  const handleClosePostForm = () => {
+    setShowPostForm(false);
+    if (location.pathname === '/donate') {
+      navigate('/', { replace: true });
+    }
+  };
 
   const fetchNotificationsCount = async () => {
     try {
@@ -49,20 +69,21 @@ const Dashboard = ({ socket, user, token }) => {
           <div className="pt-2"></div>
 
           {/* Post Food Modal Overlay */}
-          {showPostForm && user.accountType === 'DONOR' && (
-            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
+          {showPostForm && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
               <div className="w-full max-w-2xl relative animate-in zoom-in-95 duration-300">
                 <button 
-                  onClick={() => setShowPostForm(false)}
-                  className="absolute -top-12 right-0 text-white hover:text-slate-200 flex items-center font-bold"
+                  onClick={handleClosePostForm}
+                  className="absolute -top-10 right-0 text-white hover:text-slate-200 flex items-center font-bold text-sm"
                 >
-                  Close <span className="text-3xl ml-2 font-normal">&times;</span>
+                  Close <span className="text-2xl ml-1.5 font-normal">&times;</span>
                 </button>
                 <DonorPostForm 
                   socket={socket} 
                   user={user}
                   token={token} 
-                  onSuccess={() => setShowPostForm(false)} 
+                  prefill={prefillData}
+                  onSuccess={handleClosePostForm} 
                 />
               </div>
             </div>

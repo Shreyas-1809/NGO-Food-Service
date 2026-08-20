@@ -15,7 +15,6 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
 
   const createEmptyItem = () => ({
     id: crypto.randomUUID(),
-    photoUrl: '', // Mocked for now
     itemName: prefill?.foodType || prefill?.item || '',
     foodType: 'VEG',
     category: prefill?.category || 'Cooked Meal',
@@ -26,22 +25,47 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
   });
 
   const [items, setItems] = useState([createEmptyItem()]);
+  const [photos, setPhotos] = useState([]);
 
   useEffect(() => {
     if (prefill) {
-      setItems([{
-        id: crypto.randomUUID(),
-        photoUrl: '',
-        itemName: prefill.foodType || prefill.item || '',
-        foodType: 'VEG',
-        category: prefill.category || 'Cooked Meal',
-        quantity: prefill.quantity || '',
-        unit: prefill.unit || 'servings',
-        preparedTime: new Date().toISOString().slice(0, 16),
-        expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
-      }]);
+      if (prefill.isEdit) {
+        setSharedFields({
+          pickupAddress: prefill.pickupAddress || defaultAddress,
+          startTime: prefill.pickupTimeSlot?.start ? new Date(prefill.pickupTimeSlot.start).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+          endTime: prefill.pickupTimeSlot?.end ? new Date(prefill.pickupTimeSlot.end).toISOString().slice(0, 16) : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
+        });
+        
+        if (prefill.items && prefill.items.length > 0) {
+          setItems(prefill.items.map(item => ({
+            id: crypto.randomUUID(),
+            itemName: item.itemName || '',
+            foodType: item.foodType || 'VEG',
+            category: item.category || 'Cooked Meal',
+            quantity: item.quantity || '',
+            unit: item.unit || 'servings',
+            preparedTime: item.preparedTime ? new Date(item.preparedTime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
+            expiryTime: item.expiryTime ? new Date(item.expiryTime).toISOString().slice(0, 16) : new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+          })));
+        }
+
+        if (prefill.photos && prefill.photos.length > 0) {
+          setPhotos(prefill.photos);
+        }
+      } else {
+        setItems([{
+          id: crypto.randomUUID(),
+          itemName: prefill.foodType || prefill.item || '',
+          foodType: 'VEG',
+          category: prefill.category || 'Cooked Meal',
+          quantity: prefill.quantity || '',
+          unit: prefill.unit || 'servings',
+          preparedTime: new Date().toISOString().slice(0, 16),
+          expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+        }]);
+      }
     }
-  }, [prefill]);
+  }, [prefill, defaultAddress]);
 
   const [error, setError] = useState('');
   const [successToast, setSuccessToast] = useState(false);
@@ -69,13 +93,20 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     setItems(newItems);
   };
 
-  const handlePhotoUpload = (index, e) => {
-    e.preventDefault();
-    // Option B: Mock UI for photo upload
-    // Set a dummy thumbnail immediately
-    const newItems = [...items];
-    newItems[index].photoUrl = 'uploaded_mock_image'; // This triggers the UI change
-    setItems(newItems);
+  const handleMultiPhotoUpload = (e) => {
+    const files = Array.from(e.target.files);
+    
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotos(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removePhoto = (indexToRemove) => {
+    setPhotos(photos.filter((_, index) => index !== indexToRemove));
   };
 
   const addItem = () => setItems([...items, createEmptyItem()]);
@@ -119,8 +150,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       category: item.category,
       unit: item.unit,
       preparedTime: new Date(item.preparedTime).toISOString(),
-      expiryTime: new Date(item.expiryTime).toISOString(),
-      photoUrl: item.photoUrl // passed even if it's mock
+      expiryTime: new Date(item.expiryTime).toISOString()
     }));
 
     const minExpiry = new Date(Math.min(...processedItems.map(i => new Date(i.expiryTime).getTime())));
@@ -136,7 +166,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       expiryTime: minExpiry.toISOString(),
       items: processedItems,
       overallExpiry: minExpiry.toISOString(),
-      location: { coordinates: [77.5946, 12.9716] }, // Mock coordinates
+      photos: photos,
+      location: { type: 'Point', coordinates: [77.5946, 12.9716] }, // Mock coordinates
       pickupAddress: sharedFields.pickupAddress,
       pickupTimeSlot: {
         start: new Date(sharedFields.startTime).toISOString(),
@@ -145,9 +176,15 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     };
     
     try {
-      await axios.post(`${API_URL}/api/food`, newFood, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (prefill?.isEdit) {
+        await axios.patch(`${API_URL}/api/food/${prefill._id}`, newFood, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post(`${API_URL}/api/food`, newFood, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
       
       setSuccessToast(true);
       setTimeout(() => {
@@ -156,9 +193,20 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
         if (onSuccess) onSuccess();
       }, 1500); // Wait 1.5s to show toast before closing
     } catch (err) {
-      console.error(err);
+      console.error("Submit Error:", err);
       setIsSubmitting(false);
-      setError(err.response?.data?.message || 'Failed to post listing. Please try again.');
+      
+      if (err.response) {
+        if (err.response.status === 413) {
+          setError('The attached images are too large. Please upload smaller images or fewer of them.');
+        } else {
+          setError(err.response.data?.message || `Server Error (${err.response.status}). Please try again.`);
+        }
+      } else if (err.request) {
+        setError('Network error. Please check your connection and ensure the server is running.');
+      } else {
+        setError(err.message || 'An unexpected error occurred. Please try again.');
+      }
     }
   };
 
@@ -168,7 +216,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       {successToast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200 px-6 py-3 rounded-full font-bold shadow-xl flex items-center z-50 animate-in slide-in-from-top-4 text-xs sm:text-sm">
           <CheckCircle className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400" />
-          {prefill?.targetNgoName ? `Surplus logged & allocated for ${prefill.targetNgoName}!` : 'Successfully posted surplus to Live Feed!'}
+          {prefill?.isEdit ? 'Listing updated successfully!' : prefill?.targetNgoName ? `Surplus logged & allocated for ${prefill.targetNgoName}!` : 'Successfully posted surplus to Live Feed!'}
         </div>
       )}
 
@@ -206,10 +254,10 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
-            {prefill?.targetNgoName ? 'Direct Donation Flow' : 'Surplus Rescue Flow'}
+            {prefill?.isEdit ? 'Edit Surplus Mode' : prefill?.targetNgoName ? 'Direct Donation Flow' : 'Surplus Rescue Flow'}
           </span>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-            {prefill?.targetNgoName ? `Donate to ${prefill.targetNgoName}` : 'Log Surplus Food'}
+            {prefill?.isEdit ? 'Edit Surplus Food' : prefill?.targetNgoName ? `Donate to ${prefill.targetNgoName}` : 'Log Surplus Food'}
           </h2>
         </div>
       </div>
@@ -290,35 +338,6 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                 )}
                 
                 <div className="flex flex-col md:flex-row gap-5">
-                  {/* Photo Upload Area */}
-                  <div className="w-full md:w-32 shrink-0">
-                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Photo</label>
-                    <div 
-                      className={`h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden ${item.photoUrl ? 'border-green-500' : 'border-slate-300 dark:border-slate-600 hover:border-green-500 bg-slate-50 dark:bg-slate-700/50'}`}
-                      onClick={(e) => handlePhotoUpload(index, e)}
-                    >
-                      {item.photoUrl ? (
-                        <>
-                          <div className="absolute inset-0 bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
-                            <span className="text-xs font-bold text-green-700 dark:text-green-400">Attached</span>
-                          </div>
-                          <button 
-                            type="button"
-                            className="absolute top-1 right-1 bg-white/80 dark:bg-slate-800/80 p-0.5 rounded-full text-slate-600 hover:text-red-500"
-                            onClick={(e) => { e.stopPropagation(); handleItemChange(index, 'photoUrl', ''); }}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <UploadCloud className="w-6 h-6 text-slate-400 mb-1" />
-                          <span className="text-[10px] text-slate-500 text-center px-1">Click to browse</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Form Fields */}
                   <div className="flex-1 space-y-4">
                     <div className="grid grid-cols-12 gap-4">
@@ -423,12 +442,49 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
           </button>
         </div>
 
+        {/* Global Photo Upload Section */}
+        <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-4">
+          <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center">
+            <UploadCloud className="w-4 h-4 mr-1.5" /> Attach Photos
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2 mb-3">Upload clear photos of the food to help organizations verify quality and quantity.</p>
+          
+          <div className="flex flex-wrap gap-4 items-start">
+            {photos.map((photo, idx) => (
+              <div key={idx} className="w-24 h-24 shrink-0 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-600 relative group">
+                <img src={photo} alt={`Preview ${idx + 1}`} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    className="bg-white/80 p-1.5 rounded-full text-red-600 hover:text-red-800"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            
+            <label className="w-24 h-24 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-500 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
+              <UploadCloud className="w-6 h-6 text-slate-400 mb-1" />
+              <span className="text-[10px] text-slate-500">Add Image</span>
+              <input 
+                type="file" 
+                accept="image/*" 
+                multiple
+                className="hidden" 
+                onChange={handleMultiPhotoUpload}
+              />
+            </label>
+          </div>
+        </div>
+
         <button 
           type="submit"
           disabled={isSubmitting}
           className="w-full bg-green-600 text-white font-bold py-4 px-4 rounded-xl hover:bg-green-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-8 text-lg"
         >
-          {isSubmitting ? 'Posting...' : 'Post Surplus Food Listing'}
+          {isSubmitting ? 'Processing...' : prefill?.isEdit ? 'Save Changes' : 'Post Surplus Food Listing'}
         </button>
       </form>
     </div>

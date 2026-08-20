@@ -12,6 +12,7 @@ import NGOProfilePage from './components/NGOProfilePage';
 import NGORequirementsPage from './components/NGORequirementsPage';
 import MapPage from './components/MapPage';
 import DonationTrackingPage from './components/DonationTrackingPage';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // Disable actual socket connection for now to stop 404 polling
@@ -61,9 +62,7 @@ function App() {
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   useEffect(() => {
-    socket.on('connect', () => {
-      console.log('Connected to socket server');
-    });
+    // Socket setup
     return () => socket.off('connect');
   }, []);
 
@@ -108,8 +107,9 @@ function App() {
   }
 
   return (
-    <Router>
-      <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300">
+    <ErrorBoundary>
+      <Router>
+        <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300">
         <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
         
         <main className="flex-1 flex w-full relative">
@@ -153,6 +153,7 @@ function App() {
         </main>
       </div>
     </Router>
+    </ErrorBoundary>
   );
 }
 

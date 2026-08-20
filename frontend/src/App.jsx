@@ -22,13 +22,16 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem('token')));
   
-  // Theme state: defaults to light mode unless previously set to dark
+  // Theme state: defaults to saved preference or user's system preference (prefers-color-scheme)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme) {
       return savedTheme === 'dark';
     }
-    return false; // Default to light theme
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
   });
 
   useEffect(() => {
@@ -40,6 +43,20 @@ function App() {
       localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
+
+  // Listen to system preference changes when user hasn't explicitly set a preference in localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e) => {
+      const savedTheme = localStorage.getItem('theme');
+      if (!savedTheme) {
+        setIsDarkMode(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  }, []);
 
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 

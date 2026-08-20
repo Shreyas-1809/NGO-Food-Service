@@ -113,23 +113,29 @@ const AuthPage = ({ setToken, setUser }) => {
     return errorMsg;
   };
 
+  const formDataRef = useRef(formData);
+
   const handleChange = (field, value) => {
     // Only allow digits for phone/pincode
     if (['phone', 'shopPhone', 'pincode', 'shopPincode'].includes(field)) {
       value = value.replace(/\D/g, '');
     }
 
+    let newFormData;
     if (field.startsWith('shop')) {
-      setFormData(prev => ({
-        ...prev,
+      newFormData = {
+        ...formDataRef.current,
         businessDetails: {
-          ...prev.businessDetails,
+          ...formDataRef.current.businessDetails,
           [field]: value
         }
-      }));
+      };
     } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      newFormData = { ...formDataRef.current, [field]: value };
     }
+    
+    formDataRef.current = newFormData;
+    setFormData(newFormData);
 
     // Real-time validation
     const errorMsg = validateField(field, value);
@@ -137,7 +143,7 @@ const AuthPage = ({ setToken, setUser }) => {
   };
 
   const handleBlur = (field) => {
-    const value = field.startsWith('shop') ? formData.businessDetails[field] : formData[field];
+    const value = field.startsWith('shop') ? formDataRef.current.businessDetails[field] : formDataRef.current[field];
     const errorMsg = validateField(field, value);
     setErrors(prev => ({ ...prev, [field]: errorMsg }));
   };
@@ -246,23 +252,34 @@ const AuthPage = ({ setToken, setUser }) => {
     }
   };
 
-  const isFormSubmitEnabled = () => {
-    // If any explicit error exists, disable
-    if (Object.values(errors).some(err => err !== '')) return false;
-    
-    // Check required fields based on state
+  const getRelevantFields = () => {
     if (isLogin) {
-      return !!(formData.email && formData.password);
-    } else {
-      if (accountType === 'DONOR') {
-        if (!formData.fullName || !formData.phone || !formData.email || !formData.password) return false;
-        if (formData.businessName.trim() !== '') {
-          if (!formData.businessDetails.shopPhone || !formData.businessDetails.shopAddress || !formData.businessDetails.shopPincode || !formData.businessDetails.shopEmail) return false;
-        }
-      } else { // ORGANISATION
-        if (!formData.orgName || !formData.pincode || !formData.address || !formData.email || !formData.city || !formData.phone || !formData.password) return false;
-      }
+      return ['email', 'password'];
     }
+    if (accountType === 'DONOR') {
+      const base = ['fullName', 'phone', 'email', 'password'];
+      if (formData.businessName.trim() !== '') {
+        return [...base, 'shopPhone', 'shopAddress', 'shopPincode', 'shopEmail'];
+      }
+      return base;
+    }
+    return ['orgName', 'pincode', 'address', 'email', 'city', 'phone', 'password'];
+  };
+
+  const isFormSubmitEnabled = () => {
+    const relevantFields = getRelevantFields();
+    
+    // Check if any relevant field has an explicit error
+    const hasExplicitErrors = relevantFields.some(field => errors[field] && errors[field] !== '');
+    if (hasExplicitErrors) return false;
+    
+    // Check if any relevant field is empty
+    const hasMissingFields = relevantFields.some(field => {
+      const val = field.startsWith('shop') ? formData.businessDetails[field] : formData[field];
+      return !val || (typeof val === 'string' && val.trim() === '');
+    });
+    
+    if (hasMissingFields) return false;
     return true;
   };
 

@@ -5,18 +5,30 @@ import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import AuthPage from './components/AuthPage';
 import ActivityHistory from './components/ActivityHistory';
-// import { io } from 'socket.io-client';
+
+// Integrated Feature Pages (Accessible when logged in)
+import FindNGOsPage from './components/FindNGOsPage';
+import NGOProfilePage from './components/NGOProfilePage';
+import NGORequirementsPage from './components/NGORequirementsPage';
+import MapPage from './components/MapPage';
+import DonationTrackingPage from './components/DonationTrackingPage';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // Disable actual socket connection for now to stop 404 polling
-const socket = { on: () => {}, off: () => {} };
+const socket = { on: () => {}, off: () => {}, emit: () => {} };
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(localStorage.getItem('token')));
+  
+  // Theme state: defaults to light mode unless previously set to dark
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark';
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      return savedTheme === 'dark';
+    }
+    return false; // Default to light theme
   });
 
   useEffect(() => {
@@ -68,24 +80,53 @@ function App() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900">Loading session...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900">
+        <div className="flex flex-col items-center space-y-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+          <span className="text-sm font-medium">Loading session...</span>
+        </div>
+      </div>
+    );
   }
 
   return (
     <Router>
-      <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-900 font-sans text-slate-50 transition-colors duration-300">
+      <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300">
         <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+        
         <main className="flex-1 flex w-full relative">
           <Routes>
+            {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
             {!user ? (
               <>
                 <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} />} />
               </>
             ) : (
               <>
+                {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
                 <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
+                
+                {/* User Activity Log */}
                 <Route path="/activity" element={<ActivityHistory token={token} />} />
-                <Route path="*" element={<Navigate to="/" />} />
+                
+                {/* Verified NGOs Directory */}
+                <Route path="/ngos" element={<FindNGOsPage />} />
+                <Route path="/find-ngos" element={<FindNGOsPage />} />
+                <Route path="/ngo/:id" element={<NGOProfilePage />} />
+                
+                {/* NGO Shortages & Community Needs */}
+                <Route path="/requirements" element={<NGORequirementsPage />} />
+                <Route path="/ngo-requirements" element={<NGORequirementsPage />} />
+                
+                {/* Interactive Live Map */}
+                <Route path="/map" element={<MapPage />} />
+                
+                {/* Donation Dispatch Tracking */}
+                <Route path="/track/:id" element={<DonationTrackingPage />} />
+                
+                {/* Fallback to Dashboard */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </>
             )}
           </Routes>

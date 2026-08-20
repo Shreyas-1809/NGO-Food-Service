@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Trash2, Clock, MapPin, UploadCloud, X, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Clock, MapPin, UploadCloud, X, CheckCircle, Building2, Sparkles, HeartHandshake } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const DonorPostForm = ({ socket, user, token, onSuccess }) => {
+const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
   const defaultAddress = user?.address || user?.businessDetails?.shopAddress || '';
   
   const [sharedFields, setSharedFields] = useState({
@@ -16,16 +16,33 @@ const DonorPostForm = ({ socket, user, token, onSuccess }) => {
   const createEmptyItem = () => ({
     id: crypto.randomUUID(),
     photoUrl: '', // Mocked for now
-    itemName: '',
+    itemName: prefill?.foodType || prefill?.item || '',
     foodType: 'VEG',
-    category: 'Cooked Meal',
-    quantity: '',
-    unit: 'servings',
+    category: prefill?.category || 'Cooked Meal',
+    quantity: prefill?.quantity || '',
+    unit: prefill?.unit || 'servings',
     preparedTime: new Date().toISOString().slice(0, 16),
     expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
 
   const [items, setItems] = useState([createEmptyItem()]);
+
+  useEffect(() => {
+    if (prefill) {
+      setItems([{
+        id: crypto.randomUUID(),
+        photoUrl: '',
+        itemName: prefill.foodType || prefill.item || '',
+        foodType: 'VEG',
+        category: prefill.category || 'Cooked Meal',
+        quantity: prefill.quantity || '',
+        unit: prefill.unit || 'servings',
+        preparedTime: new Date().toISOString().slice(0, 16),
+        expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+      }]);
+    }
+  }, [prefill]);
+
   const [error, setError] = useState('');
   const [successToast, setSuccessToast] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,24 +163,64 @@ const DonorPostForm = ({ socket, user, token, onSuccess }) => {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-slate-800 p-8 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto relative">
+    <div className="w-full bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto relative">
       {/* Success Toast */}
       {successToast && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-100 text-green-800 dark:bg-green-900/80 dark:text-green-300 px-6 py-3 rounded-full font-bold shadow-lg flex items-center z-50 animate-in slide-in-from-top-4">
-          <CheckCircle className="w-5 h-5 mr-2" />
-          Successfully posted to Live Feed!
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200 px-6 py-3 rounded-full font-bold shadow-xl flex items-center z-50 animate-in slide-in-from-top-4 text-xs sm:text-sm">
+          <CheckCircle className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400" />
+          {prefill?.targetNgoName ? `Surplus logged & allocated for ${prefill.targetNgoName}!` : 'Successfully posted surplus to Live Feed!'}
         </div>
       )}
 
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-6">Log Surplus Food</h2>
+      {/* Direct NGO Receiver Target Banner */}
+      {prefill?.targetNgoName && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/70 p-4 sm:p-5 rounded-2xl border border-emerald-300 dark:border-emerald-700/80 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black shadow-sm shrink-0">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] font-extrabold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">
+                  Direct Receiver Connection
+                </span>
+                <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-600 text-white">
+                  Target NGO
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Donating Directly for {prefill.targetNgoName}
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Fulfilling shortage request: <strong className="text-emerald-700 dark:text-emerald-400">{prefill.quantity} {prefill.unit || 'units'} {prefill.foodType || prefill.item}</strong>
+              </p>
+            </div>
+          </div>
+          
+          <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-700 shrink-0 text-center">
+            ✓ Shortage Pre-Filled
+          </span>
+        </div>
+      )}
+
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            {prefill?.targetNgoName ? 'Direct Donation Flow' : 'Surplus Rescue Flow'}
+          </span>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+            {prefill?.targetNgoName ? `Donate to ${prefill.targetNgoName}` : 'Log Surplus Food'}
+          </h2>
+        </div>
+      </div>
       
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm font-medium text-center border border-red-200">
+        <div className="bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 p-3 rounded-xl mb-4 text-xs font-semibold text-center border border-red-200 dark:border-red-900">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-6">
         
         {/* Shared Logistics Section */}
         <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-4">

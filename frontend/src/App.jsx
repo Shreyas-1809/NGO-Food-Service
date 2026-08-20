@@ -139,6 +139,9 @@ function App() {
                 {/* Interactive Live Map */}
                 <Route path="/map" element={<MapPage />} />
                 
+                {/* Direct Donate Flow */}
+                <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
+                
                 {/* Donation Dispatch Tracking */}
                 <Route path="/track/:id" element={<DonationTrackingPage />} />
                 

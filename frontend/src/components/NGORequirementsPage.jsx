@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { getStoredRequests, getStoredNgos, subscribeToDonationUpdates } from '../services/donationService';
-import { MapPin, Users, Calendar, AlertCircle, ArrowRight, ShieldCheck, CheckCircle2, Building2, Utensils, HeartHandshake, Filter, Sparkles } from 'lucide-react';
+import { 
+  MapPin, 
+  Users, 
+  Calendar, 
+  AlertCircle, 
+  ArrowRight, 
+  Building2, 
+  Utensils, 
+  Package, 
+  Sparkles, 
+  HeartHandshake 
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import WorkflowNav from './WorkflowNav';
 
 const NGORequirementsPage = () => {
   const [requests, setRequests] = useState([]);
@@ -22,7 +34,26 @@ const NGORequirementsPage = () => {
 
   const handleDonateForRequirement = (req) => {
     // Navigate to donor form with pre-filled state
-    navigate('/donate', { state: { prefill: { foodType: req.item, quantity: req.quantity, unit: req.unit, targetNgoId: req.ngoId, targetNgoName: req.ngoName } } });
+    navigate('/donate', { 
+      state: { 
+        prefill: { 
+          foodType: req.item, 
+          quantity: req.quantity, 
+          unit: req.unit, 
+          targetNgoId: req.ngoId, 
+          targetNgoName: req.ngoName 
+        } 
+      } 
+    });
+  };
+
+  const handleViewOnMap = (req) => {
+    navigate('/map', { 
+      state: { 
+        selectedNgoId: req.ngoId, 
+        selectedNgoName: req.ngoName 
+      } 
+    });
   };
 
   const filteredRequests = requests.filter(req => {
@@ -32,39 +63,29 @@ const NGORequirementsPage = () => {
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
       
-      {/* Header Banner */}
-      <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <div className="inline-flex items-center space-x-2 bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-              <AlertCircle className="w-4 h-4 text-red-600 animate-pulse" />
-              <span>Real-Time NGO Supply Demands Feed</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-              REAL-TIME NGO SUPPLY SHORTAGES & REQUIREMENTS
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl mt-1">
-              Active verified non-profit organizations and distribution centers across Pune experiencing immediate food & essential supply shortages. Fulfill the exact required quantity directly.
-            </p>
+      {/* Clean Header with Filters */}
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
+            <AlertCircle className="w-4 h-4" />
+            <span>Active Supply Shortages</span>
           </div>
-
-          <button
-            onClick={() => navigate('/donate')}
-            className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2 text-xs"
-          >
-            <HeartHandshake className="w-4 h-4" />
-            <span>DONATE SURPLUS FOOD</span>
-          </button>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            NGO Demands & Immediate Needs
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
+            Verified shelters and distribution hubs with acute food & supply shortages. Fulfill directly to match their needed quantity.
+          </p>
         </div>
 
         {/* Filter Controls */}
-        <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100 dark:border-slate-700">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-400 uppercase">Category:</span>
+        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase">Category:</span>
             <select
-              className="p-2 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none font-bold"
+              className="p-2 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none font-semibold"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
@@ -76,10 +97,10 @@ const NGORequirementsPage = () => {
             </select>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-400 uppercase">Urgency:</span>
+          <div className="flex items-center space-x-1.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase">Urgency:</span>
             <select
-              className="p-2 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none font-bold"
+              className="p-2 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-white text-xs rounded-xl border border-slate-200 dark:border-slate-600 outline-none font-semibold"
               value={selectedUrgency}
               onChange={(e) => setSelectedUrgency(e.target.value)}
             >
@@ -94,49 +115,48 @@ const NGORequirementsPage = () => {
       {/* REQUIREMENTS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRequests.map((req) => {
-          const ngoDetails = ngos.find(n => n.id === req.ngoId || n.name === req.ngoName);
           const isUrgent = req.urgency === 'HIGH' || req.priority?.includes('Urgent');
 
           return (
             <div
               key={req.id}
-              className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200 dark:border-slate-700 hover:border-emerald-500 transition-all flex flex-col justify-between space-y-5"
+              className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between space-y-4 group"
             >
               <div className="space-y-3">
                 
-                {/* Top Badge & NGO Tag */}
+                {/* Top Badge & Item Title */}
                 <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">
-                      {req.category || 'Food'} Supply Deficit
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-500 tracking-wider block">
+                      {req.category || 'Food'} Deficit
                     </span>
-                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                       {req.item}
                     </h3>
                   </div>
                   
-                  <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase shrink-0 ${
+                  <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${
                     isUrgent
-                      ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border border-red-200 dark:border-red-900'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-900'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
                   }`}>
-                    {isUrgent ? '🔴 Urgent Deficit' : '🟡 Moderate Need'}
+                    {isUrgent ? '🔴 Urgent' : '🟡 Moderate'}
                   </span>
                 </div>
 
                 {/* Organization Details */}
-                <div className="p-3.5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-700 space-y-1.5 text-xs">
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-1 text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="font-extrabold text-slate-900 dark:text-white flex items-center">
-                      <Building2 className="w-3.5 h-3.5 mr-1 text-teal-600" />
-                      {req.ngoName || 'Helping Hands Foundation'}
+                    <span className="font-bold text-slate-900 dark:text-white flex items-center truncate mr-2">
+                      <Building2 className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" />
+                      <span className="truncate">{req.ngoName || 'Helping Hands Foundation'}</span>
                     </span>
-                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded">
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded shrink-0">
                       ✓ Verified
                     </span>
                   </div>
-                  <p className="text-slate-500 dark:text-slate-400 flex items-center">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
+                  <p className="text-slate-500 dark:text-slate-400 flex items-center truncate">
+                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
                     {req.area || req.location || 'Shivajinagar'}, {req.city || 'Pune'}
                   </p>
                 </div>
@@ -144,24 +164,24 @@ const NGORequirementsPage = () => {
                 {/* Quantitative Supply Stats */}
                 <div className="space-y-2 pt-1 text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Exact Quantity Needed:</span>
-                    <span className="text-base font-extrabold text-emerald-600 dark:text-emerald-400">
+                    <span className="text-slate-500 dark:text-slate-400">Target Quantity Needed:</span>
+                    <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
                       {req.quantity} {req.unit}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center text-slate-500">
+                    <span className="flex items-center text-slate-500 dark:text-slate-400">
                       <Users className="w-3.5 h-3.5 mr-1 text-teal-600" /> Feeding Capacity:
                     </span>
                     <strong className="text-slate-900 dark:text-white">{req.beneficiaries || 120} people</strong>
                   </div>
 
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center text-slate-500">
+                    <span className="flex items-center text-slate-500 dark:text-slate-400">
                       <Calendar className="w-3.5 h-3.5 mr-1 text-blue-600" /> Needed By:
                     </span>
-                    <strong className="text-slate-900 dark:text-white">{req.requiredBy || '2026-08-20'}</strong>
+                    <strong className="text-slate-900 dark:text-white">{req.requiredBy || 'Today'}</strong>
                   </div>
                 </div>
 
@@ -173,15 +193,37 @@ const NGORequirementsPage = () => {
 
               </div>
 
-              {/* Action Button */}
-              <button
-                onClick={() => handleDonateForRequirement(req)}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-md shadow-emerald-600/20 transition-all text-xs flex items-center justify-center space-x-2"
-              >
-                <Utensils className="w-4 h-4" />
-                <span>DONATE {req.quantity} {req.unit.toUpperCase()} TO THIS NGO</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {/* Action Buttons: 1-Click Map Routing & Donate */}
+              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleViewOnMap(req)}
+                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1"
+                    title="View this NGO hub on the Logistics Map"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-blue-500" />
+                    <span>View on Map</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/')}
+                    className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1 border border-emerald-200 dark:border-emerald-800"
+                    title="Check available surplus for this shortage"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Find Surplus</span>
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => handleDonateForRequirement(req)}
+                  className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl shadow-xs transition-all text-xs flex items-center justify-center space-x-1.5"
+                >
+                  <Utensils className="w-3.5 h-3.5" />
+                  <span>DONATE {req.quantity} {req.unit.toUpperCase()} DIRECTLY</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
             </div>
           );

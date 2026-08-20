@@ -25,6 +25,7 @@ const FoodSchema = new mongoose.Schema({
     expiryTime: Date,
     photoUrl: String
   }],
+  photos: [String],
   overallExpiry: Date,
   location: {
     type: { type: String, default: 'Point' },

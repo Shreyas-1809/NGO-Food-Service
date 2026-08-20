@@ -4,7 +4,7 @@ import { Package, Clock, Utensils, X, Trash2, Edit, AlertCircle } from 'lucide-r
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const MyPostingsDrawer = ({ user, token, onClose }) => {
+const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
   const [myPostings, setMyPostings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -98,7 +98,7 @@ const MyPostingsDrawer = ({ user, token, onClose }) => {
                     </div>
                   ) : (
                     <div className="flex gap-2 w-full">
-                      <button onClick={() => alert('Edit not fully implemented yet')} className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded flex justify-center items-center text-sm font-medium transition-colors">
+                      <button onClick={() => onEdit && onEdit(post)} className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-700 dark:text-white rounded flex justify-center items-center text-sm font-medium transition-colors">
                         <Edit className="w-3.5 h-3.5 mr-1.5" /> Edit
                       </button>
                       <button onClick={() => handleDelete(post._id)} className="flex-1 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 rounded flex justify-center items-center text-sm font-medium transition-colors">

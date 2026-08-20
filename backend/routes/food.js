@@ -14,7 +14,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only donors can post food' });
     }
 
-    const { title, quantity, foodType, preparedTime, expiryTime, items, overallExpiry, location, pickupAddress, pickupTimeSlot } = req.body;
+    const { title, quantity, foodType, preparedTime, expiryTime, items, photos, overallExpiry, location, pickupAddress, pickupTimeSlot } = req.body;
 
     const newFood = new Food({
       donorId: req.user.id,
@@ -24,8 +24,9 @@ router.post('/', auth, async (req, res) => {
       preparedTime,
       expiryTime,
       items: items || [],
+      photos: photos || [],
       overallExpiry: overallExpiry || expiryTime,
-      location: location || { coordinates: [0, 0] }, // default if not provided
+      location: location ? { type: 'Point', coordinates: location.coordinates || [0, 0] } : { type: 'Point', coordinates: [0, 0] },
       pickupAddress,
       pickupTimeSlot
     });
@@ -158,7 +159,7 @@ router.patch('/:id', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cannot edit claimed food' });
     }
 
-    const { title, quantity, foodType, preparedTime, expiryTime, items, overallExpiry, location } = req.body;
+    const { title, quantity, foodType, preparedTime, expiryTime, items, photos, overallExpiry, location, pickupAddress, pickupTimeSlot } = req.body;
     
     if (title) food.title = title;
     if (quantity) food.quantity = quantity;
@@ -166,8 +167,22 @@ router.patch('/:id', auth, async (req, res) => {
     if (preparedTime) food.preparedTime = preparedTime;
     if (expiryTime) food.expiryTime = expiryTime;
     if (items) food.items = items;
+    if (photos !== undefined) food.photos = photos; // Allow empty array to clear photos
     if (overallExpiry) food.overallExpiry = overallExpiry;
-    if (location) food.location = location;
+    if (location) {
+      food.location = {
+        type: 'Point',
+        coordinates: location.coordinates || food.location?.coordinates || [0, 0]
+      };
+    } else if (food.location && !food.location.type) {
+      // Fix existing documents with malformed GeoJSON (missing type)
+      food.location = {
+        type: 'Point',
+        coordinates: food.location.coordinates || [0, 0]
+      };
+    }
+    if (pickupAddress) food.pickupAddress = pickupAddress;
+    if (pickupTimeSlot) food.pickupTimeSlot = pickupTimeSlot;
 
     await food.save();
     

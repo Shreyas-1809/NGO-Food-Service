@@ -24,6 +24,7 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
         required={required}
         placeholder={placeholder}
         maxLength={maxLength}
+        autoComplete={type === 'password' ? 'new-password' : 'off'}
         className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
       />
       {suffix && (
@@ -63,19 +64,48 @@ const AuthPage = ({ setToken, setUser }) => {
   const [errors, setErrors] = useState({});
   const [globalError, setGlobalError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingCity, setIsLoadingCity] = useState(false);
   const isSubmittingRef = useRef(false);
+  const debounceTimerRef = useRef(null);
+
+  const resetForm = () => {
+    const emptyForm = {
+      email: '',
+      password: '',
+      phone: '',
+      fullName: '',
+      businessName: '',
+      businessDetails: {
+        shopPhone: '',
+        shopAddress: '',
+        shopPincode: '',
+        shopEmail: ''
+      },
+      orgName: '',
+      pincode: '',
+      address: '',
+      city: ''
+    };
+    formDataRef.current = emptyForm;
+    setFormData(emptyForm);
+    setErrors({});
+    setGlobalError('');
+  };
 
   const handleEntrySelection = (isLoginSelection) => {
     setIsLogin(isLoginSelection);
+    resetForm();
     setStep('TYPE_SELECTION');
   };
 
   const handleTypeSelection = (type) => {
     setAccountType(type);
+    resetForm();
     setStep('FORM');
   };
 
   const handleBack = () => {
+    resetForm();
     if (step === 'FORM') setStep('TYPE_SELECTION');
     else if (step === 'TYPE_SELECTION') setStep('ENTRY');
   };
@@ -115,6 +145,30 @@ const AuthPage = ({ setToken, setUser }) => {
 
   const formDataRef = useRef(formData);
 
+  const triggerPincodeLookup = async (pincodeVal) => {
+    if (!pincodeVal || pincodeVal.length !== 6) return;
+    setIsLoadingCity(true);
+    try {
+      const res = await axios.get(`https://api.postalpincode.in/pincode/${pincodeVal}`);
+      if (res.data && res.data[0] && res.data[0].Status === "Success") {
+        const postOffice = res.data[0].PostOffice?.[0];
+        if (postOffice) {
+          const fetchedCity = postOffice.District || postOffice.Region || postOffice.Block || postOffice.State;
+          if (fetchedCity) {
+            const updatedForm = { ...formDataRef.current, city: fetchedCity };
+            formDataRef.current = updatedForm;
+            setFormData(updatedForm);
+            setErrors(prev => ({ ...prev, city: '' }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Pincode lookup failed", err);
+    } finally {
+      setIsLoadingCity(false);
+    }
+  };
+
   const handleChange = (field, value) => {
     // Only allow digits for phone/pincode
     if (['phone', 'shopPhone', 'pincode', 'shopPincode'].includes(field)) {
@@ -140,12 +194,24 @@ const AuthPage = ({ setToken, setUser }) => {
     // Real-time validation
     const errorMsg = validateField(field, value);
     setErrors(prev => ({ ...prev, [field]: errorMsg }));
+
+    // Pincode lookup API
+    if (field === 'pincode' && value.length === 6) {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = setTimeout(() => {
+        triggerPincodeLookup(value);
+      }, 300);
+    }
   };
 
   const handleBlur = (field) => {
     const value = field.startsWith('shop') ? formDataRef.current.businessDetails[field] : formDataRef.current[field];
     const errorMsg = validateField(field, value);
     setErrors(prev => ({ ...prev, [field]: errorMsg }));
+
+    if (field === 'pincode' && value && value.length === 6) {
+      triggerPincodeLookup(value);
+    }
   };
 
   const isFormValid = () => {
@@ -354,6 +420,7 @@ const AuthPage = ({ setToken, setUser }) => {
               <>
                 <InputField 
                   label="Email ID" type="email" required
+                  placeholder="e.g. ngo@example.com"
                   value={formData.email}
                   onChange={e => handleChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
@@ -361,6 +428,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="Password" type={showPassword ? 'text' : 'password'} required
+                  placeholder="Enter your password"
                   value={formData.password}
                   onChange={e => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}
@@ -377,6 +445,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 {/* FLOW 3A: DONOR FORM */}
                 <InputField 
                   label="Full Name" type="text" required
+                  placeholder="e.g. Rahul Sharma"
                   value={formData.fullName}
                   onChange={e => handleChange('fullName', e.target.value)}
                   onBlur={() => handleBlur('fullName')}
@@ -384,6 +453,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                  placeholder="9876543210"
                   value={formData.phone}
                   onChange={e => handleChange('phone', e.target.value)}
                   onBlur={() => handleBlur('phone')}
@@ -391,6 +461,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="Email ID" type="email" required
+                  placeholder="e.g. rahul@example.com"
                   value={formData.email}
                   onChange={e => handleChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
@@ -398,6 +469,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="Profile Password" type={showPassword ? 'text' : 'password'} required
+                  placeholder="Create a strong password"
                   value={formData.password}
                   onChange={e => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}
@@ -412,6 +484,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
                   <InputField 
                     label="Shop Name (Optional)" type="text"
+                    placeholder="e.g. Sharma Sweets"
                     value={formData.businessName}
                     onChange={e => handleChange('businessName', e.target.value)}
                   />
@@ -420,6 +493,7 @@ const AuthPage = ({ setToken, setUser }) => {
                     <div className="pl-4 border-l-2 border-green-500 space-y-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
                       <InputField 
                         label="Shop Phone Number" type="text" required prefix="+91" maxLength={10}
+                        placeholder="9876543210"
                         value={formData.businessDetails.shopPhone}
                         onChange={e => handleChange('shopPhone', e.target.value)}
                         onBlur={() => handleBlur('shopPhone')}
@@ -431,6 +505,7 @@ const AuthPage = ({ setToken, setUser }) => {
                         </label>
                         <textarea
                           required
+                          placeholder="e.g. 123 Main Street"
                           value={formData.businessDetails.shopAddress}
                           onChange={e => handleChange('shopAddress', e.target.value)}
                           onBlur={() => handleBlur('shopAddress')}
@@ -441,6 +516,7 @@ const AuthPage = ({ setToken, setUser }) => {
                       </div>
                       <InputField 
                         label="Shop Pincode" type="text" required maxLength={6}
+                        placeholder="e.g. 411001"
                         value={formData.businessDetails.shopPincode}
                         onChange={e => handleChange('shopPincode', e.target.value)}
                         onBlur={() => handleBlur('shopPincode')}
@@ -448,6 +524,7 @@ const AuthPage = ({ setToken, setUser }) => {
                       />
                       <InputField 
                         label="Shop Email Address" type="email" required
+                        placeholder="e.g. shop@example.com"
                         value={formData.businessDetails.shopEmail}
                         onChange={e => handleChange('shopEmail', e.target.value)}
                         onBlur={() => handleBlur('shopEmail')}
@@ -462,6 +539,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 {/* FLOW 3B: NGO / ORGANISATION FORM */}
                 <InputField 
                   label="Organisation Name" type="text" required
+                  placeholder="e.g. Robin Hood Army"
                   value={formData.orgName}
                   onChange={e => handleChange('orgName', e.target.value)}
                   onBlur={() => handleBlur('orgName')}
@@ -469,6 +547,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="Pincode" type="text" required maxLength={6}
+                  placeholder="e.g. 411001"
                   value={formData.pincode}
                   onChange={e => handleChange('pincode', e.target.value)}
                   onBlur={() => handleBlur('pincode')}
@@ -480,6 +559,7 @@ const AuthPage = ({ setToken, setUser }) => {
                   </label>
                   <textarea
                     required
+                    placeholder="e.g. 123 Relief Camp, Main Street"
                     value={formData.address}
                     onChange={e => handleChange('address', e.target.value)}
                     onBlur={() => handleBlur('address')}
@@ -490,6 +570,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 </div>
                 <InputField 
                   label="Email" type="email" required
+                  placeholder="e.g. contact@ngo.org"
                   value={formData.email}
                   onChange={e => handleChange('email', e.target.value)}
                   onBlur={() => handleBlur('email')}
@@ -497,13 +578,16 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="City" type="text" required
+                  placeholder="e.g. Pune"
                   value={formData.city}
                   onChange={e => handleChange('city', e.target.value)}
                   onBlur={() => handleBlur('city')}
                   error={errors.city}
+                  suffix={isLoadingCity && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>}
                 />
                 <InputField 
                   label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                  placeholder="9876543210"
                   value={formData.phone}
                   onChange={e => handleChange('phone', e.target.value)}
                   onBlur={() => handleBlur('phone')}
@@ -511,6 +595,7 @@ const AuthPage = ({ setToken, setUser }) => {
                 />
                 <InputField 
                   label="Password" type={showPassword ? 'text' : 'password'} required
+                  placeholder="Create a strong password"
                   value={formData.password}
                   onChange={e => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}

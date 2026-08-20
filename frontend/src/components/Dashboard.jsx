@@ -29,9 +29,18 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
 
   const handleClosePostForm = () => {
     setShowPostForm(false);
+    setPrefillData(null); // Clear prefill on close to avoid sticky edit state
     if (location.pathname === '/donate') {
       navigate('/', { replace: true });
     }
+  };
+
+  const handleEditPosting = (post) => {
+    setPrefillData({ ...post, isEdit: true });
+    setShowPostForm(true);
+    // Optional: close drawer if we want, but user said "close the modal and refresh".
+    // We can keep drawer open or close it, let's close it so the user sees the main screen
+    setActiveDrawer(null); 
   };
 
   const fetchNotificationsCount = async () => {
@@ -96,7 +105,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
 
       {/* Drawers Container (Slide-over) */}
       <div className={`w-96 shrink-0 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-2xl transition-all duration-300 ease-in-out z-40 ${activeDrawer ? 'translate-x-0 ml-0' : 'translate-x-full absolute right-20 top-0 bottom-0'}`} style={{ position: activeDrawer ? 'relative' : 'absolute' }}>
-        {activeDrawer === 'POSTINGS' && <MyPostingsDrawer user={user} token={token} onClose={closeDrawer} />}
+        {activeDrawer === 'POSTINGS' && <MyPostingsDrawer user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />}
         {activeDrawer === 'PICKUPS' && <ActivePickupsDrawer user={user} token={token} onClose={closeDrawer} />}
         {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} token={token} socket={socket} onClose={closeDrawer} />}
       </div>

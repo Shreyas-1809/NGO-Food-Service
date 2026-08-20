@@ -33,6 +33,8 @@ const LiveFeed = ({ socket, user, token }) => {
   const [claimStatus, setClaimStatus] = useState('IDLE'); // 'IDLE', 'FORM', 'SUCCESS'
   const [claimMessage, setClaimMessage] = useState('');
   const [claimTime, setClaimTime] = useState('');
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -466,6 +468,25 @@ const LiveFeed = ({ socket, user, token }) => {
                     )}
                   </div>
 
+                  {/* Food Images Lightbox Trigger */}
+                  {selectedListing.photos && selectedListing.photos.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                        <Search className="w-3.5 h-3.5 mr-1.5" /> Attached Images
+                      </h4>
+                      <button 
+                        onClick={() => {
+                          setCurrentPhotoIndex(0);
+                          setIsLightboxOpen(true);
+                        }}
+                        className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 px-4 rounded-xl transition-colors border border-slate-200 dark:border-slate-600 flex items-center justify-center space-x-2 text-sm shadow-sm"
+                      >
+                        <Search className="w-4 h-4" />
+                        <span>View {selectedListing.photos.length} Image{selectedListing.photos.length !== 1 ? 's' : ''}</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Donor Info */}
                   <div>
                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Donor Information</h4>
@@ -550,6 +571,55 @@ const LiveFeed = ({ socket, user, token }) => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {isLightboxOpen && selectedListing?.photos && selectedListing.photos.length > 0 && (
+        <div 
+          className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-black/95 p-4 sm:p-8 animate-in fade-in duration-200" 
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div className="relative w-full max-w-4xl max-h-[85vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <img 
+              src={selectedListing.photos[currentPhotoIndex]} 
+              className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl border border-slate-800" 
+              alt={`Food ${currentPhotoIndex + 1}`} 
+            />
+            
+            {selectedListing.photos.length > 1 && (
+              <>
+                <button 
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentPhotoIndex((prev) => (prev === 0 ? selectedListing.photos.length - 1 : prev - 1));
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button 
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentPhotoIndex((prev) => (prev === selectedListing.photos.length - 1 ? 0 : prev + 1));
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 px-4 py-1.5 rounded-full text-white text-xs font-bold">
+                  {currentPhotoIndex + 1} / {selectedListing.photos.length}
+                </div>
+              </>
+            )}
+          </div>
+          <button 
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-slate-400 hover:text-white transition-colors bg-black/50 p-2.5 rounded-full" 
+            onClick={() => setIsLightboxOpen(false)}
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
         </div>
       )}
     </div>

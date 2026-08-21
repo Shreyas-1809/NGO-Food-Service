@@ -71,7 +71,7 @@ export const registerNgo = (ngoData) => {
 
   const updated = [newNgo, ...ngos];
   localStorage.setItem(NGOS_STORAGE_KEY, JSON.stringify(updated));
-  
+
   // Notification
   addNotification({
     title: 'New NGO Registered 🏛️',
@@ -145,7 +145,7 @@ export const addNotification = (notif) => {
 export const createDonation = (donationData, user = null) => {
   const donations = getStoredDonations();
   const newId = `DON-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
-  
+
   // Default coordinates fallback
   const donorCoords = donationData.pickupCoords || { lat: 18.5204, lng: 73.8567 };
 
@@ -204,22 +204,30 @@ export const createDonation = (donationData, user = null) => {
 
 export const createReceiverRequest = (requestData, user = null) => {
   const requests = getStoredRequests();
+  const orgTitle = user?.orgName || user?.name || user?.fullName || 'Helping Hands Foundation';
+  const orgLocation = user?.location || { lat: 18.5308, lng: 73.8474 };
+  const orgCity = user?.city || 'Pune';
+  const orgArea = requestData.area || requestData.location || user?.address || 'Shivajinagar';
+
   const newReq = {
     id: `req-${Date.now()}`,
-    ngoId: user?.id || 'ngo-101',
-    ngoName: user?.name || 'Helping Hands Foundation',
-    ngoLocation: user?.location || { lat: 18.5308, lng: 73.8474 },
-    item: requestData.item,
+    ngoId: user?.id || user?._id || 'ngo-101',
+    ngoName: orgTitle,
+    ngoLocation: orgLocation,
+    item: requestData.item || requestData.itemName || 'Food Supplies',
     category: requestData.category || 'Food',
-    quantity: Number(requestData.quantity),
+    quantity: Number(requestData.quantity) || 10,
     unit: requestData.unit || 'kg',
     urgency: requestData.urgency || 'HIGH',
-    requiredBy: requestData.requiredBy || '2026-08-20',
-    description: requestData.description || 'Community requirement',
-    city: 'Pune',
-    area: requestData.location || 'Shivajinagar',
-    beneficiaries: requestData.beneficiaries || '100',
-    status: 'ACTIVE'
+    requiredBy: requestData.requiredBy || new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10),
+    description: requestData.description || requestData.notes || '',
+    city: orgCity,
+    area: orgArea,
+    address: requestData.address || user?.address || orgArea,
+    contactPhone: requestData.phone || user?.phone || '',
+    beneficiaries: requestData.beneficiaries || 100,
+    status: 'ACTIVE',
+    createdAt: new Date().toISOString()
   };
 
   const updated = [newReq, ...requests];
@@ -227,7 +235,7 @@ export const createReceiverRequest = (requestData, user = null) => {
 
   addNotification({
     title: 'Requirement Published 📢',
-    message: `Requirement for ${newReq.quantity} ${newReq.unit} of ${newReq.item} published.`,
+    message: `Requirement for ${newReq.quantity} ${newReq.unit} of ${newReq.item} published by ${orgTitle}.`,
     type: 'INFO'
   });
 
@@ -423,4 +431,37 @@ export const updateDonationStatus = (donationId, newStatus) => {
   localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(updated));
   notifyListeners();
   return updated.find(d => d.id === donationId);
+};
+
+// ── Org Receiver Request Management ─────────────────────────────────────────
+
+/** Update editable fields (quantity, urgency) on a receiver/shortage request. */
+export const updateReceiverRequest = (requestId, changes = {}) => {
+  const requests = getStoredRequests();
+  const updated = requests.map(r =>
+    r.id === requestId ? { ...r, ...changes, updatedAt: new Date().toISOString() } : r
+  );
+  localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+  notifyListeners();
+  return updated.find(r => r.id === requestId);
+};
+
+/** Mark a receiver/shortage request as fulfilled (soft-deletes from active view). */
+export const markRequestFulfilled = (requestId) => {
+  const requests = getStoredRequests();
+  const updated = requests.map(r =>
+    r.id === requestId
+      ? { ...r, status: 'FULFILLED', fulfilledAt: new Date().toISOString() }
+      : r
+  );
+  localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+  notifyListeners();
+};
+
+/** Hard-delete a receiver/shortage request posted by the org. */
+export const deleteReceiverRequest = (requestId) => {
+  const requests = getStoredRequests();
+  const updated = requests.filter(r => r.id !== requestId);
+  localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+  notifyListeners();
 };

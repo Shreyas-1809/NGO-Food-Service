@@ -16,13 +16,13 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // Disable actual socket connection for now to stop 404 polling
-const socket = { on: () => {}, off: () => {}, emit: () => {} };
+const socket = { on: () => { }, off: () => { }, emit: () => { } };
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(Boolean(localStorage.getItem('token')));
-  
+
   // Theme state: defaults to saved preference or user's system preference (prefers-color-scheme)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -110,49 +110,49 @@ function App() {
     <ErrorBoundary>
       <Router>
         <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300">
-        <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
-        
-        <main className="flex-1 flex w-full relative">
-          <Routes>
-            {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
-            {!user ? (
-              <>
-                <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} />} />
-              </>
-            ) : (
-              <>
-                {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
-                <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
-                
-                {/* User Activity Log */}
-                <Route path="/activity" element={<ActivityHistory token={token} />} />
-                
-                {/* Verified NGOs Directory */}
-                <Route path="/ngos" element={<FindNGOsPage />} />
-                <Route path="/find-ngos" element={<FindNGOsPage />} />
-                <Route path="/ngo/:id" element={<NGOProfilePage />} />
-                
-                {/* NGO Shortages & Community Needs */}
-                <Route path="/requirements" element={<NGORequirementsPage />} />
-                <Route path="/ngo-requirements" element={<NGORequirementsPage />} />
-                
-                {/* Interactive Live Map */}
-                <Route path="/map" element={<MapPage />} />
-                
-                {/* Direct Donate Flow */}
-                <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
-                
-                {/* Donation Dispatch Tracking */}
-                <Route path="/track/:id" element={<DonationTrackingPage />} />
-                
-                {/* Fallback to Dashboard */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </>
-            )}
-          </Routes>
-        </main>
-      </div>
-    </Router>
+          <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+
+          <main className="flex-1 flex w-full relative">
+            <Routes>
+              {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
+              {!user ? (
+                <>
+                  <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} />} />
+                </>
+              ) : (
+                <>
+                  {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
+                  <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
+
+                  {/* User Activity Log */}
+                  <Route path="/activity" element={<ActivityHistory token={token} />} />
+
+                  {/* Verified NGOs Directory */}
+                  <Route path="/ngos" element={<FindNGOsPage user={user} />} />
+                  <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
+                  <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
+
+                  {/* NGO Shortages & Community Needs */}
+                  <Route path="/requirements" element={<NGORequirementsPage user={user} />} />
+                  <Route path="/ngo-requirements" element={<NGORequirementsPage user={user} />} />
+
+                  {/* Interactive Live Map */}
+                  <Route path="/map" element={<MapPage user={user} />} />
+
+                  {/* Direct Donate Flow */}
+                  <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
+
+                  {/* Donation Dispatch Tracking */}
+                  <Route path="/track/:id" element={<DonationTrackingPage />} />
+
+                  {/* Fallback to Dashboard */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </>
+              )}
+            </Routes>
+          </main>
+        </div>
+      </Router>
     </ErrorBoundary>
   );
 }

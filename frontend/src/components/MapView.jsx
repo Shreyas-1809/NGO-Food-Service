@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps } from '../services/mapsService';
-import { MapPin, ShieldCheck, Info } from 'lucide-react';
+import { MapPin, ShieldCheck, Info, Sparkles } from 'lucide-react';
 
-const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = null }) => {
+const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = null, orgNgoId = null }) => {
   const mapRef = useRef(null);
   const [apiAvailable, setApiAvailable] = useState(true);
 
@@ -24,18 +24,36 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
           ]
         });
 
-        // Add Markers for NGOs (green dots with native title tooltip only)
+        // Add Markers for NGOs
         ngos.forEach((ngo) => {
+          const isOwnHub = orgNgoId && ngo.id === orgNgoId;
+          const isSurplusClaimant = Boolean(ngo.wantsSurplus);
+
+          let fillColor = ngo.verified ? '#10B981' : '#F59E0B';
+          let scale = 10;
+
+          if (isOwnHub) {
+            fillColor = '#F59E0B';
+            scale = 14;
+          } else if (isSurplusClaimant) {
+            fillColor = '#8B5CF6'; // Violet for surplus claimant
+            scale = 14;
+          }
+
           new maps.Marker({
             position: ngo.location,
             map,
-            title: ngo.name,
+            title: isOwnHub
+              ? `${ngo.name} (Your Hub)`
+              : isSurplusClaimant
+              ? `🎯 ${ngo.name} (Wants Your Surplus)`
+              : ngo.name,
             icon: {
               path: maps.SymbolPath.CIRCLE,
-              scale: 10,
-              fillColor: ngo.verified ? '#10B981' : '#F59E0B',
+              scale,
+              fillColor,
               fillOpacity: 1,
-              strokeWeight: 2,
+              strokeWeight: isSurplusClaimant || isOwnHub ? 3 : 2,
               strokeColor: '#FFFFFF'
             }
           });
@@ -84,7 +102,7 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
           <div className="bg-slate-800/90 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center justify-between text-xs z-10 shadow-lg">
             <div className="flex items-center space-x-2">
               <Info className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Map services in demo mode. Configure <code className="text-emerald-300">VITE_GOOGLE_MAPS_API_KEY</code> in <code className="text-emerald-300">.env</code> for Google Maps API rendering.</span>
+              <span>Map rendering mode. Configure <code className="text-emerald-300">VITE_GOOGLE_MAPS_API_KEY</code> in <code className="text-emerald-300">.env</code> for Google Maps API.</span>
             </div>
           </div>
 
@@ -100,33 +118,63 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
                 <MapPin className="w-5 h-5" />
               </div>
               <span className="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
-                📍 Donor Location (Pune)
+                📍 Your Location (Pune)
               </span>
             </div>
 
             {/* NGO Receiver Markers */}
-            {ngos[0] && (
-              <div className="absolute top-1/2 left-2/3 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
-                <div className="bg-emerald-500 text-white p-2.5 rounded-full shadow-xl shadow-emerald-500/50">
-                  <ShieldCheck className="w-5 h-5" />
+            {ngos[0] && (() => {
+              const isOwnHub = orgNgoId && ngos[0].id === orgNgoId;
+              const isSurplusClaimant = Boolean(ngos[0].wantsSurplus);
+
+              return (
+                <div className="absolute top-1/2 left-2/3 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
+                  <div className={`text-white p-2.5 rounded-full shadow-xl ${
+                    isOwnHub
+                      ? 'bg-amber-500 shadow-amber-500/60 ring-2 ring-white'
+                      : isSurplusClaimant
+                      ? 'bg-violet-600 shadow-violet-600/70 ring-2 ring-white animate-pulse'
+                      : 'bg-emerald-500 shadow-emerald-500/50'
+                  }`}>
+                    {isSurplusClaimant ? <Sparkles className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap border ${
+                    isOwnHub
+                      ? 'bg-amber-950 text-amber-200 border-amber-700'
+                      : isSurplusClaimant
+                      ? 'bg-violet-950 text-violet-200 border-violet-700'
+                      : 'bg-emerald-950 text-emerald-200 border-emerald-800'
+                  }`}>
+                    {isOwnHub ? '📍 This is you · ' : isSurplusClaimant ? '🎯 Wants Surplus · ' : '✓ '}{ngos[0].name}
+                  </span>
                 </div>
-                <span className="bg-emerald-950 text-emerald-200 border border-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
-                  ✓ {ngos[0].name}
-                </span>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Second NGO Pin */}
-            {ngos[1] && (
-              <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
-                <div className="bg-teal-500 text-white p-2 rounded-full shadow-lg shadow-teal-500/50">
-                  <ShieldCheck className="w-4 h-4" />
+            {ngos[1] && (() => {
+              const isOwnHub = orgNgoId && ngos[1].id === orgNgoId;
+              const isSurplusClaimant = Boolean(ngos[1].wantsSurplus);
+
+              return (
+                <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
+                  <div className={`text-white p-2 rounded-full shadow-lg ${
+                    isOwnHub
+                      ? 'bg-amber-500 shadow-amber-500/50 ring-2 ring-white'
+                      : isSurplusClaimant
+                      ? 'bg-violet-600 shadow-violet-600/70 ring-2 ring-white'
+                      : 'bg-teal-500 shadow-teal-500/50'
+                  }`}>
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap ${
+                    isOwnHub ? 'bg-amber-950 text-amber-200' : isSurplusClaimant ? 'bg-violet-950 text-violet-200' : 'bg-slate-900 text-slate-300'
+                  }`}>
+                    {isOwnHub ? '📍 This is you · ' : isSurplusClaimant ? '🎯 Wants Surplus · ' : ''}{ngos[1].name}
+                  </span>
                 </div>
-                <span className="bg-slate-900 text-slate-300 text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
-                  {ngos[1].name}
-                </span>
-              </div>
-            )}
+              );
+            })()}
 
           </div>
 

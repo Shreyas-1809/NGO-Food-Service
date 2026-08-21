@@ -9,6 +9,8 @@ import ActivePickupsDrawer from './ActivePickupsDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
 import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus } from 'lucide-react';
 
+import { getStoredNotifications, subscribeToDonationUpdates } from '../services/donationService';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
@@ -19,6 +21,12 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   const [prefillData, setPrefillData] = useState(location.state?.prefill || null);
   const [activeDrawer, setActiveDrawer] = useState(null); // 'POSTINGS', 'PICKUPS', 'NOTIFICATIONS', null
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const isOrg = user?.accountType === 'ORGANISATION' || 
+                user?.accountType === 'ORGANIZATION' || 
+                user?.role === 'ORGANISATION' || 
+                user?.role === 'ORGANIZATION' || 
+                Boolean(user?.orgName);
 
   useEffect(() => {
     if (autoOpenDonate || location.pathname === '/donate' || location.state?.prefill) {
@@ -44,23 +52,57 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   };
 
   const fetchNotificationsCount = async () => {
+    let count = 0;
+
+    // 1. Local stored unread notifications
     try {
-      if (!user || !user.id) return;
-      const res = await axios.get(`${API_URL}/api/notifications/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const unread = res.data.filter(n => !n.read).length;
-      setUnreadCount(unread);
+      const stored = getStoredNotifications();
+      const unreadStored = stored.filter(n => {
+        if (['notif-1', 'notif-2', 'notif-3'].includes(n.id)) return false;
+        if (n.read) return false;
+        if (isOrg) return n.targetRole === 'ORGANISATION';
+        return n.targetRole === 'DONOR';
+      }).length;
+      count += unreadStored;
+    } catch (e) {}
+
+    // 2. Backend unread notifications
+    try {
+      if (user && user.id && token) {
+        const res = await axios.get(`${API_URL}/api/notifications/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const unreadBackend = (res.data || []).filter(n => !n.read).length;
+        count += unreadBackend;
+      }
     } catch (err) {
-      console.error('Failed to fetch notifications', err);
+      // Backend silent fallback
     }
+
+    setUnreadCount(count);
   };
 
   useEffect(() => {
     fetchNotificationsCount();
-    const interval = setInterval(fetchNotificationsCount, 20000); // 20s polling
-    return () => clearInterval(interval);
-  }, [user, token]);
+
+    // Pub/sub live listener
+    const unsubscribe = subscribeToDonationUpdates(fetchNotificationsCount);
+
+    // Cross-tab storage change listener
+    const handleStorage = (e) => {
+      if (e.key === 'donor_bridge_notifications_v1' || e.key === 'donor_bridge_donations_v1' || e.key === 'donor_bridge_requests_v1') {
+        fetchNotificationsCount();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    const interval = setInterval(fetchNotificationsCount, 10000); // 10s polling
+    return () => {
+      unsubscribe();
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+    };
+  }, [user, token, isOrg]);
 
   const closeDrawer = () => {
     setActiveDrawer(null);

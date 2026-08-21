@@ -13,7 +13,7 @@ import {
   Sparkles,
   Phone
 } from 'lucide-react';
-import { createReceiverRequest } from '../services/donationService';
+import { createReceiverRequest, addNotification, getStoredDonations } from '../services/donationService';
 import { useNavigate } from 'react-router-dom';
 
 const OrgPostNeedModal = ({ user, onClose, onSuccess }) => {
@@ -63,6 +63,33 @@ const OrgPostNeedModal = ({ user, onClose, onSuccess }) => {
 
     try {
       const newReq = createReceiverRequest(formData, user);
+      
+      // Match with active donor surplus listings
+      const allDonations = getStoredDonations();
+      const matchedDonation = allDonations.find(d => 
+        (d.status === 'CREATED' || d.status === 'AVAILABLE') &&
+        (
+          (d.foodType && formData.category && d.foodType.toLowerCase().includes(formData.category.toLowerCase())) ||
+          (d.itemName && formData.item && (d.itemName.toLowerCase().includes(formData.item.toLowerCase()) || formData.item.toLowerCase().includes(d.itemName.toLowerCase()))) ||
+          (d.title && formData.item && (d.title.toLowerCase().includes(formData.item.toLowerCase()) || formData.item.toLowerCase().includes(d.title.toLowerCase())))
+        )
+      ) || allDonations.find(d => d.status === 'CREATED' || d.status === 'AVAILABLE');
+
+      // Call addNotification to notify matching donors
+      addNotification({
+        title: 'New NGO Need Matches Your Surplus! 📢',
+        message: `${newReq.ngoName} posted an urgent need for ${newReq.quantity} ${newReq.unit} of ${newReq.item}. Review & accept request to connect your surplus.`,
+        type: 'REQUEST',
+        targetRole: 'DONOR',
+        relatedRequestId: newReq.id,
+        relatedNgoId: newReq.ngoId,
+        relatedNgoName: newReq.ngoName,
+        relatedItem: newReq.item,
+        relatedQuantity: newReq.quantity,
+        relatedUnit: newReq.unit,
+        matchingDonationId: matchedDonation ? matchedDonation.id : null
+      });
+
       setCreatedRequest(newReq);
       if (onSuccess) onSuccess(newReq);
     } catch (err) {

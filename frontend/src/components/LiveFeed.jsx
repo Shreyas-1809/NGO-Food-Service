@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WorkflowNav from './WorkflowNav';
-import { getStoredRequests } from '../services/donationService';
+import { getStoredRequests, addNotification } from '../services/donationService';
 import { calculateMatchScore } from '../services/matchingService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -81,6 +81,22 @@ const LiveFeed = ({ socket, user, token }) => {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
+      // Notify donor via local pub/sub sync as well
+      const orgTitle = user?.orgName || user?.fullName || user?.name || 'Partner Organisation';
+      addNotification({
+        title: 'New Food Claim Request! 🍽️',
+        message: `${orgTitle} requested to claim your surplus listing "${selectedListing?.title}".`,
+        type: 'CLAIM_REQUEST',
+        targetRole: 'DONOR',
+        relatedClaimId: res.data?._id,
+        foodTitle: selectedListing?.title,
+        ngoName: orgTitle,
+        ngoId: user?.id || user?._id,
+        claimMessage,
+        pickupTime: claimTime
+      });
+
       setClaimStatus('SUCCESS');
     } catch (err) {
       console.error(err);

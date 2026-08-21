@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { 
-  MapPin, 
-  Clock, 
-  Utensils, 
-  AlertCircle, 
-  Phone, 
-  Mail, 
-  CheckCircle, 
-  Package, 
+import {
+  MapPin,
+  Clock,
+  Utensils,
+  AlertCircle,
+  Phone,
+  Mail,
+  CheckCircle,
+  Package,
   Search,
   Sparkles,
   ArrowRight,
@@ -55,7 +55,7 @@ const LiveFeed = ({ socket, user, token }) => {
       setListings((prev) => [listing, ...prev]);
     };
     const handleUpdateListing = (updatedListing) => {
-      setListings((prev) => 
+      setListings((prev) =>
         prev.map(l => l._id === updatedListing._id ? updatedListing : l)
       );
       if (selectedListing && selectedListing._id === updatedListing._id) {
@@ -78,7 +78,7 @@ const LiveFeed = ({ socket, user, token }) => {
       const res = await axios.post(`${API_URL}/api/food/${id}/claim`, {
         message: claimMessage,
         requestedPickupTime: claimTime
-      }, { 
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClaimStatus('SUCCESS');
@@ -96,7 +96,7 @@ const LiveFeed = ({ socket, user, token }) => {
     const title = listing.title || '';
     const firstItem = listing.items?.[0]?.itemName || '';
     const itemName = `${title} ${firstItem}`.trim();
-    
+
     let bestMatch = null;
     let highestScore = 0;
 
@@ -186,32 +186,36 @@ const LiveFeed = ({ socket, user, token }) => {
       {/* Clean Header & Filters */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Live Surplus Food Feed</h2>
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+            {user?.accountType === 'ORGANISATION' ? 'Surplus Available For You' : 'Live Surplus Food Feed'}
+          </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Browse available food donations or match with real-time NGO shortage demands.
+            {user?.accountType === 'ORGANISATION'
+              ? 'Claim surplus food matching your needs and arrange fast pickup.'
+              : 'Browse available food donations or match with real-time NGO shortage demands.'}
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
           {/* Search */}
           <div className="relative w-full sm:w-60">
-             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-             <input 
-               type="text" 
-               placeholder="Search dishes or items..." 
-               value={searchQuery} 
-               onChange={e => setSearchQuery(e.target.value)}
-               className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs" 
-             />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search dishes or items..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs"
+            />
           </div>
-          
+
           {/* Category Pills */}
           <div className="flex flex-wrap gap-1.5 justify-start">
             {['ALL', 'VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'].map(f => (
-              <button 
+              <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filter === f ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
               >
                 {f}
               </button>
@@ -219,8 +223,8 @@ const LiveFeed = ({ socket, user, token }) => {
           </div>
 
           {/* Sort Dropdown */}
-          <select 
-            value={sortBy} 
+          <select
+            value={sortBy}
             onChange={e => setSortBy(e.target.value)}
             className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
           >
@@ -234,91 +238,112 @@ const LiveFeed = ({ socket, user, token }) => {
       {/* Grid of Surplus Listings */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {sortedAndFilteredListings.map((listing) => {
-           const title = listing.title || 'Untitled';
-           const portions = listing.quantity || 0;
-           const expiry = listing.overallExpiry || listing.expiryTime;
-           const match = getListingMatch(listing);
-           
-           return (
-          <div 
-            key={listing._id} 
-            onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
-          >
-            {listing.status === 'CLAIMED' && (
-              <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 flex items-center justify-center">
-                <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-xl font-bold flex items-center text-xs">
-                  <AlertCircle className="w-4 h-4 mr-1.5" /> CLAIMED
-                </div>
-              </div>
-            )}
-            <div className="p-5 flex flex-col flex-1 justify-between">
-              <div>
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={title}>{title}</h3>
-                  {listing.foodType === 'VEG' ? (
-                     <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title="Vegetarian"></span>
-                  ) : listing.foodType === 'NON-VEG' ? (
-                     <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title="Non-Vegetarian"></span>
-                  ) : listing.foodType === 'RAW PRODUCE' ? (
-                     <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title="Raw Produce"></span>
-                  ) : (
-                     <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title="Baked Goods"></span>
-                  )}
-                </div>
+          const title = listing.title || 'Untitled';
+          const portions = listing.quantity || 0;
+          const expiry = listing.overallExpiry || listing.expiryTime;
+          const match = getListingMatch(listing);
 
-                <div className="space-y-2.5 mb-3 text-xs">
-                  <div className="flex items-center text-slate-600 dark:text-slate-300">
-                    <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
-                    <strong>{portions} Portions</strong>
+          return (
+            <div
+              key={listing._id}
+              onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
+            >
+              {listing.status === 'CLAIMED' && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 flex items-center justify-center">
+                  <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-xl font-bold flex items-center text-xs">
+                    <AlertCircle className="w-4 h-4 mr-1.5" /> CLAIMED
                   </div>
-                  <div className="flex items-center text-slate-600 dark:text-slate-400">
-                    <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                    <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
-                  </div>
-                  <div className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
-                    <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
-                    {expiry ? `Expires: ${new Date(expiry).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Expiring soon'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Surfaced Shortage Match Banner */}
-              {match ? (
-                <div 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate('/map', { state: { selectedNgoId: match.ngoId, selectedNgoName: match.ngoName } });
-                  }}
-                  className="mt-3 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-[11px] flex items-center justify-between hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
-                  title="Click to view NGO location on Map"
-                >
-                  <div className="flex items-center text-emerald-800 dark:text-emerald-300 font-bold truncate mr-1.5">
-                    <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
-                    <span className="truncate">Matches Shortage at {match.ngoName}</span>
-                  </div>
-                  <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-600 text-white shrink-0 shadow-xs">
-                    {match.score}%
-                  </span>
-                </div>
-              ) : (
-                <div 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate('/requirements');
-                  }}
-                  className="mt-3 p-2.5 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between text-slate-500 hover:text-emerald-600 transition-colors"
-                >
-                  <span className="flex items-center">
-                    <AlertCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                    Check NGO Requirements
-                  </span>
-                  <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               )}
+              <div className="p-5 flex flex-col flex-1 justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={title}>{title}</h3>
+                    {listing.foodType === 'VEG' ? (
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title="Vegetarian"></span>
+                    ) : listing.foodType === 'NON-VEG' ? (
+                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title="Non-Vegetarian"></span>
+                    ) : listing.foodType === 'RAW PRODUCE' ? (
+                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title="Raw Produce"></span>
+                    ) : (
+                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title="Baked Goods"></span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2.5 mb-3 text-xs">
+                    <div className="flex items-center text-slate-600 dark:text-slate-300">
+                      <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
+                      <strong>{portions} Portions</strong>
+                    </div>
+                    <div className="flex items-center text-slate-600 dark:text-slate-400">
+                      <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                      <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
+                    </div>
+                    <div className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
+                      <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
+                      {expiry ? `Expires: ${new Date(expiry).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Expiring soon'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Match Indicator / Actions */}
+                <div className="space-y-2 pt-1">
+                  {/* Surfaced Shortage Match Banner */}
+                  {match ? (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/map', { state: { selectedNgoId: match.ngoId, selectedNgoName: match.ngoName } });
+                      }}
+                      className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-[11px] flex items-center justify-between hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
+                      title="Click to view NGO location on Map"
+                    >
+                      <div className="flex items-center text-emerald-800 dark:text-emerald-300 font-bold truncate mr-1.5">
+                        <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
+                        <span className="truncate">Matches Shortage at {match.ngoName}</span>
+                      </div>
+                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-600 text-white shrink-0 shadow-xs">
+                        {match.score}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/requirements');
+                      }}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between text-slate-500 hover:text-emerald-600 transition-colors cursor-pointer"
+                    >
+                      <span className="flex items-center">
+                        <AlertCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                        Check NGO Requirements
+                      </span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+
+                  {/* Claim / Request Pickup Button for Org accounts */}
+                  {user?.accountType === 'ORGANISATION' && listing.status !== 'CLAIMED' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedListing(listing);
+                        setClaimStatus('FORM');
+                        setClaimMessage('');
+                        setClaimTime('');
+                      }}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                    >
+                      <Utensils className="w-3.5 h-3.5" />
+                      <span>Claim / Request Pickup</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        )})}
+          )
+        })}
         {sortedAndFilteredListings.length === 0 && (
           <div className="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
             <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
@@ -343,7 +368,7 @@ const LiveFeed = ({ socket, user, token }) => {
                 &times;
               </button>
             </div>
-            
+
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {claimStatus === 'SUCCESS' ? (
                 <div className="text-center py-8">
@@ -358,7 +383,7 @@ const LiveFeed = ({ socket, user, token }) => {
                   <h4 className="font-bold text-base text-slate-800 dark:text-white mb-2">Request Food as Verified NGO</h4>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Message for Donor (Optional)</label>
-                    <textarea 
+                    <textarea
                       value={claimMessage}
                       onChange={e => setClaimMessage(e.target.value)}
                       placeholder="e.g. We will arrive in 30 mins with an insulated van..."
@@ -368,8 +393,8 @@ const LiveFeed = ({ socket, user, token }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Estimated Pickup Time (Optional)</label>
-                    <input 
-                      type="time" 
+                    <input
+                      type="time"
                       value={claimTime}
                       onChange={e => setClaimTime(e.target.value)}
                       className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs"
@@ -401,7 +426,7 @@ const LiveFeed = ({ socket, user, token }) => {
                             {matches.length} Matches Found
                           </span>
                         </div>
-                        
+
                         <div className="space-y-2">
                           {matches.slice(0, 2).map((m) => (
                             <div key={m.id || m.ngoId} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-slate-700 flex justify-between items-center text-xs">
@@ -474,7 +499,7 @@ const LiveFeed = ({ socket, user, token }) => {
                       <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
                         <Search className="w-3.5 h-3.5 mr-1.5" /> Attached Images
                       </h4>
-                      <button 
+                      <button
                         onClick={() => {
                           setCurrentPhotoIndex(0);
                           setIsLightboxOpen(true);
@@ -546,7 +571,7 @@ const LiveFeed = ({ socket, user, token }) => {
                 </button>
 
                 {user?.accountType === 'ORGANISATION' && selectedListing.status === 'AVAILABLE' ? (
-                  <button 
+                  <button
                     onClick={() => setClaimStatus('FORM')}
                     className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs"
                   >
@@ -576,49 +601,49 @@ const LiveFeed = ({ socket, user, token }) => {
 
       {/* Lightbox Modal */}
       {isLightboxOpen && selectedListing?.photos && selectedListing.photos.length > 0 && (
-        <div 
-          className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-black/95 p-4 sm:p-8 animate-in fade-in duration-200" 
+        <div
+          className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-black/95 p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setIsLightboxOpen(false)}
         >
           <div className="relative w-full max-w-4xl max-h-[85vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-            <img 
-              src={selectedListing.photos[currentPhotoIndex]} 
-              className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl border border-slate-800" 
-              alt={`Food ${currentPhotoIndex + 1}`} 
+            <img
+              src={selectedListing.photos[currentPhotoIndex]}
+              className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl border border-slate-800"
+              alt={`Food ${currentPhotoIndex + 1}`}
             />
-            
+
             {selectedListing.photos.length > 1 && (
               <>
-                <button 
+                <button
                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     setCurrentPhotoIndex((prev) => (prev === 0 ? selectedListing.photos.length - 1 : prev - 1));
                   }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
-                <button 
+                <button
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     setCurrentPhotoIndex((prev) => (prev === selectedListing.photos.length - 1 ? 0 : prev + 1));
                   }}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
-                
+
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 px-4 py-1.5 rounded-full text-white text-xs font-bold">
                   {currentPhotoIndex + 1} / {selectedListing.photos.length}
                 </div>
               </>
             )}
           </div>
-          <button 
-            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-slate-400 hover:text-white transition-colors bg-black/50 p-2.5 rounded-full" 
+          <button
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-slate-400 hover:text-white transition-colors bg-black/50 p-2.5 rounded-full"
             onClick={() => setIsLightboxOpen(false)}
           >
-             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
           </button>
         </div>
       )}

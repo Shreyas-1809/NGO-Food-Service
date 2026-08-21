@@ -3,10 +3,11 @@ import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import LiveFeed from './LiveFeed';
 import DonorPostForm from './DonorPostForm';
+import OrgPostNeedModal from './OrgPostNeedModal';
 import MyPostingsDrawer from './MyPostingsDrawer';
 import ActivePickupsDrawer from './ActivePickupsDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
-import { Plus, Package, Truck, Bell, Utensils, Scale } from 'lucide-react';
+import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -14,6 +15,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showPostForm, setShowPostForm] = useState(autoOpenDonate || location.pathname === '/donate' || Boolean(location.state?.prefill));
+  const [showOrgNeedModal, setShowOrgNeedModal] = useState(false);
   const [prefillData, setPrefillData] = useState(location.state?.prefill || null);
   const [activeDrawer, setActiveDrawer] = useState(null); // 'POSTINGS', 'PICKUPS', 'NOTIFICATIONS', null
   const [unreadCount, setUnreadCount] = useState(0);
@@ -38,9 +40,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   const handleEditPosting = (post) => {
     setPrefillData({ ...post, isEdit: true });
     setShowPostForm(true);
-    // Optional: close drawer if we want, but user said "close the modal and refresh".
-    // We can keep drawer open or close it, let's close it so the user sees the main screen
-    setActiveDrawer(null); 
+    setActiveDrawer(null);
   };
 
   const fetchNotificationsCount = async () => {
@@ -69,7 +69,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
 
   return (
     <div className="flex flex-1 w-full relative overflow-hidden bg-slate-50 dark:bg-slate-900">
-      
+
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative p-6">
         <div className="max-w-7xl mx-auto">
@@ -77,25 +77,36 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
           {/* Top Spacing / Content Start */}
           <div className="pt-2"></div>
 
-          {/* Post Food Modal Overlay */}
+          {/* Post Food Modal Overlay (Donor) */}
           {showPostForm && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
               <div className="w-full max-w-2xl relative animate-in zoom-in-95 duration-300">
-                <button 
+                <button
                   onClick={handleClosePostForm}
                   className="absolute -top-10 right-0 text-white hover:text-slate-200 flex items-center font-bold text-sm"
                 >
                   Close <span className="text-2xl ml-1.5 font-normal">&times;</span>
                 </button>
-                <DonorPostForm 
-                  socket={socket} 
+                <DonorPostForm
+                  socket={socket}
                   user={user}
-                  token={token} 
+                  token={token}
                   prefill={prefillData}
-                  onSuccess={handleClosePostForm} 
+                  onSuccess={handleClosePostForm}
                 />
               </div>
             </div>
+          )}
+
+          {/* Post Need Modal Overlay (Organisation) */}
+          {showOrgNeedModal && (
+            <OrgPostNeedModal
+              user={user}
+              onClose={() => setShowOrgNeedModal(false)}
+              onSuccess={() => {
+                // Keep modal on confirmation step, user can click close or navigate
+              }}
+            />
           )}
 
           {/* Live Feed */}
@@ -113,20 +124,32 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
       {/* Right-Hand Icon Navigation Bar */}
       <aside className="w-20 bg-slate-900 border-l border-slate-800 flex flex-col items-center py-6 gap-6 shrink-0 z-50">
         {user.accountType === 'DONOR' && (
-          <button 
+          <button
             onClick={() => { closeDrawer(); setShowPostForm(true); }}
-            className="w-12 h-12 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-emerald-400 flex justify-center items-center transition-colors group relative"
+            className="w-12 h-12 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-emerald-400 flex justify-center items-center transition-colors group relative cursor-pointer"
             title="Post Surplus Food"
           >
             <Plus className="w-6 h-6" />
             <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Post Food</span>
           </button>
         )}
-        
+
+        {/* Post a Need (Org-only) */}
+        {user.accountType === 'ORGANISATION' && (
+          <button
+            onClick={() => { closeDrawer(); setShowOrgNeedModal(true); }}
+            className="w-12 h-12 rounded-xl text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 flex justify-center items-center transition-colors group relative cursor-pointer border border-amber-500/30"
+            title="Post a Need / Shortage"
+          >
+            <Plus className="w-6 h-6" />
+            <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Post a Need</span>
+          </button>
+        )}
+
         {user.accountType === 'DONOR' && (
-          <button 
+          <button
             onClick={() => setActiveDrawer(activeDrawer === 'POSTINGS' ? null : 'POSTINGS')}
-            className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative ${activeDrawer === 'POSTINGS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
+            className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative cursor-pointer ${activeDrawer === 'POSTINGS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
             title="My Postings"
           >
             <Package className="w-6 h-6" />
@@ -134,18 +157,29 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
           </button>
         )}
 
-        <button 
+        {user.accountType === 'ORGANISATION' && (
+          <button
+            onClick={() => navigate('/requirements')}
+            className="w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative cursor-pointer text-slate-300 hover:bg-slate-800 hover:text-amber-400"
+            title="My Postings & Needs"
+          >
+            <Package className="w-6 h-6" />
+            <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">My Postings</span>
+          </button>
+        )}
+
+        <button
           onClick={() => setActiveDrawer(activeDrawer === 'PICKUPS' ? null : 'PICKUPS')}
-          className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative ${activeDrawer === 'PICKUPS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
+          className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative cursor-pointer ${activeDrawer === 'PICKUPS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
           title="Active Pickups"
         >
           <Truck className="w-6 h-6" />
           <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Active Pickups</span>
         </button>
 
-        <button 
+        <button
           onClick={() => setActiveDrawer(activeDrawer === 'NOTIFICATIONS' ? null : 'NOTIFICATIONS')}
-          className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative ${activeDrawer === 'NOTIFICATIONS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
+          className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative cursor-pointer ${activeDrawer === 'NOTIFICATIONS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
           title="Notifications"
         >
           <div className="relative">

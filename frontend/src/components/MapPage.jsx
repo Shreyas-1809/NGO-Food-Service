@@ -511,6 +511,7 @@ const MapPage = ({ user }) => {
             onSelectNgo={setSelectedNgo}
             userLocation={userLocation}
             orgNgoId={orgNgoId}
+            redirectNgo={redirectNgo}
           />
         </div>
 
@@ -518,7 +519,7 @@ const MapPage = ({ user }) => {
 
       {/* Organisation Inter-NGO Action Modals */}
       {contactNgo && <ContactNgoModal ngo={contactNgo} onClose={() => setContactNgo(null)} />}
-      {redirectNgo && <RedirectSurplusModal ngo={redirectNgo} user={user} onClose={() => setRedirectNgo(null)} />}
+      {redirectNgo && <RedirectSurplusModal ngo={redirectNgo} user={user} userLocation={userLocation} onClose={() => setRedirectNgo(null)} />}
     </div>
   );
 };

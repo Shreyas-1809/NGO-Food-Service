@@ -22,7 +22,20 @@ const notifyListeners = () => {
 export const getStoredDonations = () => {
   try {
     const data = localStorage.getItem(DONATIONS_STORAGE_KEY);
-    if (data) return JSON.parse(data);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // If storage has no available/created items, merge any new available seed donations
+        const hasAvailable = parsed.some(d => d.status === 'AVAILABLE' || d.status === 'CREATED');
+        if (!hasAvailable) {
+          const availableSeeds = MOCK_INITIAL_DONATIONS.filter(d => d.status === 'AVAILABLE');
+          const merged = [...availableSeeds, ...parsed];
+          localStorage.setItem(DONATIONS_STORAGE_KEY, JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      }
+    }
   } catch (e) {
     console.error('Failed to read stored donations:', e);
   }

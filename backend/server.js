@@ -33,11 +33,13 @@ const activityRoutes = require('./routes/activity');
 const foodRoutes = require('./routes/food');
 const notificationRoutes = require('./routes/notifications');
 const claimRoutes = require('./routes/claims');
+const needRoutes = require('./routes/needs');
 app.use('/api/auth', authRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/claims', claimRoutes);
+app.use('/api/needs', needRoutes);
 
 // Socket.io for Real-time alerts
 io.on('connection', (socket) => {
@@ -62,6 +64,10 @@ const connectDB = async () => {
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     
+    // Start background auto-delete job (runs every 5 minutes)
+    const { startAutoDeleteJob } = require('./services/autoDeleteService');
+    startAutoDeleteJob(5 * 60 * 1000);
+
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

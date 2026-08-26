@@ -14,25 +14,9 @@ const STEPS = [
     id: 'surplus',
     stepNumber: 1,
     title: 'Surplus Feed',
-    subtitle: 'Browse & Post Food',
+    subtitle: 'Browse & Claim Surplus Food',
     path: '/',
     icon: Package
-  },
-  {
-    id: 'shortages',
-    stepNumber: 2,
-    title: 'NGO Shortages',
-    subtitle: 'Demand & Deficits',
-    path: '/requirements',
-    icon: AlertCircle
-  },
-  {
-    id: 'map',
-    stepNumber: 3,
-    title: 'Logistics Map',
-    subtitle: 'Hubs & Routing',
-    path: '/map',
-    icon: MapPin
   }
 ];
 

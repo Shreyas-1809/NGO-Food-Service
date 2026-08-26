@@ -14,6 +14,7 @@ const UserSchema = new mongoose.Schema({
   // Personal / Donor fields
   fullName: { type: String },
   businessName: { type: String },
+  description: { type: String },
   businessDetails: {
     shopAddress: String,
     shopPincode: String,

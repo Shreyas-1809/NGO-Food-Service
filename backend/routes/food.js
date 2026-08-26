@@ -14,7 +14,14 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only donors can post food' });
     }
 
-    const { title, quantity, foodType, preparedTime, expiryTime, items, photos, overallExpiry, location, pickupAddress, pickupTimeSlot } = req.body;
+    const { title, quantity, foodType, preparedTime, expiryTime, items, photos, overallExpiry, location, pickupAddress, pickupTimeSlot, autoDeleteValue, autoDeleteUnit, autoDeleteAt: explicitAutoDeleteAt } = req.body;
+
+    let computedAutoDeleteAt = explicitAutoDeleteAt ? new Date(explicitAutoDeleteAt) : null;
+    if (!computedAutoDeleteAt && autoDeleteValue && Number(autoDeleteValue) > 0) {
+      const val = Number(autoDeleteValue);
+      const hours = autoDeleteUnit === 'DAYS' ? val * 24 : val;
+      computedAutoDeleteAt = new Date(Date.now() + hours * 60 * 60 * 1000);
+    }
 
     const newFood = new Food({
       donorId: req.user.id,
@@ -26,6 +33,7 @@ router.post('/', auth, async (req, res) => {
       items: items || [],
       photos: photos || [],
       overallExpiry: overallExpiry || expiryTime,
+      autoDeleteAt: computedAutoDeleteAt,
       location: location ? { type: 'Point', coordinates: location.coordinates || [0, 0] } : { type: 'Point', coordinates: [0, 0] },
       pickupAddress,
       pickupTimeSlot
@@ -75,14 +83,20 @@ router.get('/my-listings', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
-
 // @route   GET /api/food
 // @desc    Get all available food listings
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const foods = await Food.find({ status: 'AVAILABLE' })
+    const now = new Date();
+    const foods = await Food.find({
+      status: 'AVAILABLE',
+      $or: [
+        { autoDeleteAt: { $exists: false } },
+        { autoDeleteAt: null },
+        { autoDeleteAt: { $gt: now } }
+      ]
+    })
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
       .sort({ createdAt: -1 });
     res.json(foods);
@@ -157,6 +171,13 @@ router.patch('/:id', auth, async (req, res) => {
     // Cannot edit if already claimed
     if (food.status !== 'AVAILABLE') {
       return res.status(400).json({ message: 'Cannot edit claimed food' });
+    }
+
+    // Enforce 12-hour edit restriction rule
+    const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+    const timeElapsed = Date.now() - new Date(food.createdAt).getTime();
+    if (timeElapsed > TWELVE_HOURS_MS) {
+      return res.status(403).json({ message: 'Editing is only allowed within 12 hours of creation.' });
     }
 
     const { title, quantity, foodType, preparedTime, expiryTime, items, photos, overallExpiry, location, pickupAddress, pickupTimeSlot } = req.body;
@@ -286,3 +307,5 @@ router.get('/active-pickups', auth, async (req, res) => {
     res.status(500).send('Server Error');
   }
 });
+
+module.exports = router;

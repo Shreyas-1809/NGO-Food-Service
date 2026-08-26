@@ -137,13 +137,13 @@ const NotificationsDrawer = ({ user, token, socket, onClose }) => {
   };
 
   const handleNotificationClick = async (notif) => {
-    if (notif.type === 'CLAIM_REQUEST' && notif.relatedClaimId) {
+    if ((notif.type === 'CLAIM_REQUEST' || notif.type === 'CLAIM_ACCEPTED' || notif.type === 'CLAIM_DECLINED') && notif.relatedClaimId) {
       setLoadingClaim(true);
       try {
         const res = await axios.get(`${API_URL}/api/claims/${notif.relatedClaimId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setSelectedClaim({ ...res.data, notificationId: notif._id });
+        setSelectedClaim({ ...res.data, notificationId: notif._id, notifType: notif.type });
         setShowDeclineInput(false);
         setDeclineReason('');
       } catch (err) {
@@ -152,7 +152,6 @@ const NotificationsDrawer = ({ user, token, socket, onClose }) => {
         setLoadingClaim(false);
       }
     } else {
-      // For general notifications, once viewed it clears
       handleDismissNotification(notif);
     }
   };
@@ -273,49 +272,69 @@ const NotificationsDrawer = ({ user, token, socket, onClose }) => {
       <div className="flex-1 overflow-y-auto p-4 relative">
         {selectedClaim ? (
           <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 animate-in slide-in-from-right-4 space-y-4">
-            <button onClick={() => setSelectedClaim(null)} className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center hover:underline cursor-pointer">
+            <button onClick={() => setSelectedClaim(null)} className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center hover:underline cursor-pointer">
                &larr; Back to notifications
             </button>
-            <h4 className="font-extrabold text-base text-slate-900 dark:text-white">Organisation Claim Request</h4>
+            <h4 className="font-extrabold text-base text-slate-900 dark:text-white">Organisation Claim Details</h4>
             
-            <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
-              <p className="font-bold text-slate-900 dark:text-white text-sm">{selectedClaim.ngoId?.orgName || selectedClaim.ngoId?.fullName}</p>
-              <div className="text-slate-600 dark:text-slate-400 flex items-center">
-                <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                {(() => {
-                  const donorCoords = selectedClaim.foodId?.location?.coordinates;
-                  const ngoCoords = selectedClaim.ngoId?.location?.coordinates;
-                  const dist = getDistance(
-                    donorCoords?.[1], donorCoords?.[0], 
-                    ngoCoords?.[1], ngoCoords?.[0]
-                  );
-                  return dist !== null ? `${dist.toFixed(1)} km away` : 'Pune Hub';
-                })()}
-              </div>
-              {selectedClaim.message && (
-                <p className="mt-1 text-xs italic text-slate-700 dark:text-slate-300">"{selectedClaim.message}"</p>
+            {/* NGO Information Box */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+              <span className="font-bold text-[10px] uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">NGO Information</span>
+              <p className="font-bold text-slate-900 dark:text-white text-sm">{selectedClaim.ngoId?.orgName || selectedClaim.ngoId?.fullName || 'Verified NGO'}</p>
+              {selectedClaim.ngoId?.address && (
+                <div className="text-slate-600 dark:text-slate-300 flex items-center">
+                  <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
+                  <span>{[selectedClaim.ngoId.address, selectedClaim.ngoId.city].filter(Boolean).join(', ')}</span>
+                </div>
+              )}
+              {selectedClaim.ngoId?.phone && (
+                <div className="text-slate-600 dark:text-slate-300 flex items-center">
+                  <span className="font-semibold text-slate-500 mr-1.5">Phone:</span>
+                  <span>{selectedClaim.ngoId.phone}</span>
+                </div>
+              )}
+              {selectedClaim.ngoId?.email && (
+                <div className="text-slate-600 dark:text-slate-300 flex items-center">
+                  <span className="font-semibold text-slate-500 mr-1.5">Email:</span>
+                  <span>{selectedClaim.ngoId.email}</span>
+                </div>
               )}
             </div>
 
-            <div className="bg-white dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
-              <span className="font-bold text-[10px] uppercase text-slate-400 block tracking-wider">Requested Item</span>
-              <p className="font-bold text-slate-800 dark:text-white">{selectedClaim.foodId?.title}</p>
-              <p className="text-slate-600 dark:text-slate-400">{selectedClaim.foodId?.quantity} servings</p>
+            {/* Request Description / Message Box */}
+            {selectedClaim.message && (
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
+                <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">Request Message / Intent</span>
+                <p className="italic text-slate-700 dark:text-slate-200">"{selectedClaim.message}"</p>
+              </div>
+            )}
+
+            {/* Food Listing & Pickup Time Box */}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+              <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">Listing Details</span>
+              <p className="font-bold text-slate-800 dark:text-white text-sm">{selectedClaim.foodId?.title || 'Surplus Food'}</p>
+              <p className="text-slate-600 dark:text-slate-300">{selectedClaim.foodId?.quantity || 0} Servings</p>
+              {selectedClaim.requestedPickupTime && (
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 font-semibold flex items-center">
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5 text-emerald-500 shrink-0" />
+                  <span>Requested Pickup: {new Date(selectedClaim.requestedPickupTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                </div>
+              )}
             </div>
 
             {selectedClaim.status === 'PENDING' ? (
               <div className="flex flex-col gap-2 pt-2">
                 {!showDeclineInput ? (
-                  <>
-                    <button onClick={handleAcceptBackendClaim} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer text-xs">
+                  <div className="flex gap-2">
+                    <button onClick={handleAcceptBackendClaim} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer text-xs">
                       <Check className="w-4 h-4" />
                       <span>Accept Request</span>
                     </button>
-                    <button onClick={() => setShowDeclineInput(true)} className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold flex items-center justify-center space-x-1.5 cursor-pointer text-xs">
+                    <button onClick={() => setShowDeclineInput(true)} className="flex-1 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl font-bold flex items-center justify-center space-x-1.5 cursor-pointer text-xs">
                       <XCircle className="w-4 h-4" />
-                      <span>Decline</span>
+                      <span>Decline Request</span>
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <div className="space-y-2 animate-in fade-in">
                     <input 
@@ -357,8 +376,6 @@ const NotificationsDrawer = ({ user, token, socket, onClose }) => {
         ) : (
           <div className="space-y-3">
             {combinedNotifications.map(note => {
-              const isRequest = note.type === 'REQUEST' || note.type === 'CLAIM_REQUEST';
-
               return (
                 <div 
                   key={note._id} 
@@ -387,19 +404,6 @@ const NotificationsDrawer = ({ user, token, socket, onClose }) => {
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-
-                  {/* Donor 1-Click Accept Request Button inside Notification */}
-                  {!isOrg && isRequest && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex gap-2" onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleAcceptRequest(note)}
-                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
-                      >
-                        <Check className="w-4 h-4" />
-                        <span>Accept Request</span>
-                      </button>
-                    </div>
-                  )}
 
                   <span className="text-[10px] text-slate-400 block">
                     {note.time || (note.createdAt ? new Date(note.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently')}

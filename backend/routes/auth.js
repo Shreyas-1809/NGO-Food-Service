@@ -100,4 +100,35 @@ router.get('/me', auth, async (req, res, next) => {
   }
 });
 
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { 
+      fullName, orgName, phone, address, city, pincode, businessName, description 
+    } = req.body;
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (fullName !== undefined) user.fullName = fullName;
+    if (orgName !== undefined) user.orgName = orgName;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+    if (city !== undefined) user.city = city;
+    if (pincode !== undefined) user.pincode = pincode;
+    if (businessName !== undefined) user.businessName = businessName;
+    if (description !== undefined) user.description = description;
+
+    await user.save();
+
+    const userObj = user.toObject();
+    delete userObj.password;
+    userObj.name = userObj.orgName || userObj.fullName;
+
+    res.json(userObj);
+  } catch (err) {
+    console.error('Profile update error:', err.message);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 module.exports = router;

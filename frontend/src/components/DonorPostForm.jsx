@@ -26,6 +26,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
 
   const [items, setItems] = useState([createEmptyItem()]);
   const [photos, setPhotos] = useState([]);
+  const [autoDeleteValue, setAutoDeleteValue] = useState('');
+  const [autoDeleteUnit, setAutoDeleteUnit] = useState('HOURS');
 
   useEffect(() => {
     if (prefill) {
@@ -167,6 +169,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       items: processedItems,
       overallExpiry: minExpiry.toISOString(),
       photos: photos,
+      autoDeleteValue: autoDeleteValue ? Number(autoDeleteValue) : null,
+      autoDeleteUnit: autoDeleteUnit,
       location: { type: 'Point', coordinates: [77.5946, 12.9716] }, // Mock coordinates
       pickupAddress: sharedFields.pickupAddress,
       pickupTimeSlot: {
@@ -476,6 +480,32 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                 onChange={handleMultiPhotoUpload}
               />
             </label>
+          </div>
+        </div>
+
+        {/* Auto-Delete Option */}
+        <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2 mt-6">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center">
+            <Trash2 className="w-4 h-4 mr-1.5 text-red-500" /> Auto-Delete Listing
+          </label>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Specify when this listing should be automatically removed from the system to prevent stale posts.</p>
+          <div className="flex gap-3 items-center pt-1">
+            <input
+              type="number"
+              min="1"
+              placeholder="e.g. 12"
+              value={autoDeleteValue}
+              onChange={e => setAutoDeleteValue(e.target.value)}
+              className="w-32 px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+            />
+            <select
+              value={autoDeleteUnit}
+              onChange={e => setAutoDeleteUnit(e.target.value)}
+              className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold"
+            >
+              <option value="HOURS">Hours after posting</option>
+              <option value="DAYS">Days after posting</option>
+            </select>
           </div>
         </div>
 

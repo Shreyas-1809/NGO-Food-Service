@@ -13,7 +13,9 @@ import {
   Sparkles,
   ArrowRight,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WorkflowNav from './WorkflowNav';
@@ -22,7 +24,7 @@ import { calculateMatchScore } from '../services/matchingService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const LiveFeed = ({ socket, user, token }) => {
+const LiveFeed = ({ socket, user, token, onEdit }) => {
   const navigate = useNavigate();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +34,143 @@ const LiveFeed = ({ socket, user, token }) => {
   const [selectedListing, setSelectedListing] = useState(null);
   const [claimStatus, setClaimStatus] = useState('IDLE'); // 'IDLE', 'FORM', 'SUCCESS'
   const [claimMessage, setClaimMessage] = useState('');
-  const [claimTime, setClaimTime] = useState('');
+
+  // Default clean time helper (30 mins from current time formatted as HH:mm)
+  const getDefaultPickupTime = () => {
+    const d = new Date(Date.now() + 30 * 60 * 1000);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  const [claimTime, setClaimTime] = useState(getDefaultPickupTime());
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+
+  const isOrg = user?.accountType === 'ORGANISATION' || 
+                user?.accountType === 'ORGANIZATION' || 
+                user?.role === 'ORGANISATION' || 
+                user?.role === 'ORGANIZATION' || 
+                Boolean(user?.orgName);
+  const isDonor = !isOrg;
+
+  // Part 1: Donor Dashboard toggle, claims & postings state
+  const [showMyUploads, setShowMyUploads] = useState(false);
+  const [donorClaims, setDonorClaims] = useState([]);
+  const [loadingDonorClaims, setLoadingDonorClaims] = useState(false);
+  const [donorPostingsTab, setDonorPostingsTab] = useState('ALL'); // ALL, ACTIVE, ACCEPTED, REJECTED
+  const [donorPostings, setDonorPostings] = useState([]);
+  const [loadingDonorPostings, setLoadingDonorPostings] = useState(false);
+
+  // Part 2: NGO Dashboard toggle & shortages state
+  const [showMyShortages, setShowMyShortages] = useState(false);
+  const [myNeeds, setMyNeeds] = useState([]);
+  const [loadingMyNeeds, setLoadingMyNeeds] = useState(false);
+
+  const setPresetTime = (minutesToAdd) => {
+    const d = new Date(Date.now() + minutesToAdd * 60 * 1000);
+    setClaimTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+  };
+
+  const fetchDonorClaims = async () => {
+    if (!isDonor || !token) return;
+    setLoadingDonorClaims(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/claims/donor/my-requests`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDonorClaims(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch donor claims:', err);
+    } finally {
+      setLoadingDonorClaims(false);
+    }
+  };
+
+  const fetchDonorPostings = async () => {
+    if (!isDonor || !token) return;
+    setLoadingDonorPostings(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/food/my-listings`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Raw API Response from /api/food/my-listings:', res.data);
+      setDonorPostings(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch donor postings:', err);
+    } finally {
+      setLoadingDonorPostings(false);
+    }
+  };
+
+  const fetchMyNeeds = async () => {
+    if (!isOrg || !token) return;
+    setLoadingMyNeeds(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/needs/my-needs`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setMyNeeds(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch my needs:', err);
+    } finally {
+      setLoadingMyNeeds(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isDonor) {
+      fetchDonorClaims();
+      if (showMyUploads) {
+        fetchDonorPostings();
+      }
+    } else if (isOrg) {
+      fetchMyNeeds();
+    }
+  }, [user, token, isDonor, isOrg, showMyUploads]);
+
+  const handleAcceptClaim = async (claimId) => {
+    try {
+      await axios.patch(`${API_URL}/api/claims/${claimId}/accept`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Claim request accepted successfully!');
+      fetchDonorClaims();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to accept claim');
+    }
+  };
+
+  const handleDeclineClaim = async (claimId) => {
+    const reason = window.prompt('Reason for declining (optional):');
+    if (reason === null) return;
+    try {
+      await axios.patch(`${API_URL}/api/claims/${claimId}/decline`, { reason }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Claim request declined.');
+      fetchDonorClaims();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to decline claim');
+    }
+  };
+
+  const handleDeletePosting = async (foodId) => {
+    if (!window.confirm('Are you sure you want to delete this food posting?')) return;
+    try {
+      await axios.delete(`${API_URL}/api/food/${foodId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchDonorPostings();
+      const res = await axios.get(`${API_URL}/api/food`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setListings(res.data || []);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to delete posting');
+    }
+  };
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -199,175 +335,530 @@ const LiveFeed = ({ socket, user, token }) => {
 
   return (
     <div className="space-y-6">
-      {/* Clean Header & Filters */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            {user?.accountType === 'ORGANISATION' ? 'Surplus Available For You' : 'Live Surplus Food Feed'}
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {user?.accountType === 'ORGANISATION'
-              ? 'Claim surplus food matching your needs and arrange fast pickup.'
-              : 'Browse available food donations or match with real-time NGO shortage demands.'}
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          {/* Search */}
-          <div className="relative w-full sm:w-60">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search dishes or items..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs"
-            />
+      {/* Donor View Mode Toggle */}
+      {isDonor && (
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Donor Command Dashboard</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {!showMyUploads ? 'Default View: Active NGO claim requests submitted on your food listings.' : 'Toggled View: Managing your uploaded surplus food listings.'}
+            </p>
           </div>
-
-          {/* Category Pills */}
-          <div className="flex flex-wrap gap-1.5 justify-start">
-            {['ALL', 'VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'].map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
-              >
-                {f}
-              </button>
-            ))}
+          <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyUploads ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+              NGO Requests
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showMyUploads}
+                onChange={e => setShowMyUploads(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-emerald-600"></div>
+            </label>
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyUploads ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+              Show My Uploads/Postings
+            </span>
           </div>
-
-          {/* Sort Dropdown */}
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
-          >
-            <option>Expiring Soonest</option>
-            <option>Recently Added</option>
-            <option>Nearest Location</option>
-          </select>
         </div>
-      </div>
+      )}
 
-      {/* Grid of Surplus Listings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {sortedAndFilteredListings.map((listing) => {
-          const title = listing.title || 'Untitled';
-          const portions = listing.quantity || 0;
-          const expiry = listing.overallExpiry || listing.expiryTime;
-          const match = getListingMatch(listing);
+      {/* NGO View Mode Toggle */}
+      {isOrg && (
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">Organisation Demand Hub</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {!showMyShortages ? 'Default View: Active surplus food listings available for claiming.' : 'Toggled View: Managing your organisation shortage requests.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyShortages ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+              Surplus Feed
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showMyShortages}
+                onChange={e => setShowMyShortages(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-amber-500"></div>
+            </label>
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+              Show My Shortages/Needs
+            </span>
+          </div>
+        </div>
+      )}
 
-          return (
-            <div
-              key={listing._id}
-              onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
+      {isDonor && !showMyUploads ? (
+        /* VIEW 1: NGO Claim Requests View for Donors */
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center">
+              <Package className="w-5 h-5 mr-2 text-emerald-600" />
+              NGO Claim Requests ({donorClaims.length})
+            </h3>
+            <button
+              onClick={fetchDonorClaims}
+              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
             >
-              {listing.status === 'CLAIMED' && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 flex items-center justify-center">
-                  <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-xl font-bold flex items-center text-xs">
-                    <AlertCircle className="w-4 h-4 mr-1.5" /> CLAIMED
+              Refresh Requests
+            </button>
+          </div>
+
+          {loadingDonorClaims ? (
+            <div className="text-center py-12 text-slate-500">Loading claim requests...</div>
+          ) : donorClaims.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-2">
+              <AlertCircle className="w-10 h-10 text-slate-400 mx-auto" />
+              <h4 className="font-bold text-slate-700 dark:text-slate-300">No Claim Requests Yet</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">When verified NGOs request to claim your surplus food listings, their requests will appear here for your direct review.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {donorClaims.map((claim) => (
+                <div key={claim._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                        NGO Request
+                      </span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        claim.status === 'ACCEPTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
+                        claim.status === 'DECLINED' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' :
+                        'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                      }`}>
+                        {claim.status}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                        {claim.ngoId?.orgName || claim.ngoId?.fullName || 'Verified NGO'}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Requesting: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || 'Surplus Listing'}</strong> ({claim.foodId?.quantity || 0} servings)
+                      </p>
+                    </div>
+
+                    {claim.message && (
+                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs italic text-slate-600 dark:text-slate-300">
+                        "{claim.message}"
+                      </div>
+                    )}
+
+                    <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                      {claim.requestedPickupTime && (
+                        <div className="flex items-center">
+                          <Clock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
+                          <span>Requested Pickup: <strong>{new Date(claim.requestedPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                        </div>
+                      )}
+                      <div className="flex items-center">
+                        <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
+                        <span>Address: {claim.ngoId?.address || claim.ngoId?.city || 'Pune'}</span>
+                      </div>
+                    </div>
                   </div>
+
+                  {claim.status === 'PENDING' ? (
+                    <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                      <button
+                        onClick={() => handleAcceptClaim(claim._id)}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
+                      >
+                        Accept Request
+                      </button>
+                      <button
+                        onClick={() => handleDeclineClaim(claim._id)}
+                        className="flex-1 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400 font-bold rounded-xl text-xs transition-colors"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
+                      {claim.status === 'ACCEPTED' ? '✓ Accepted — Arranging Pickup' : 'Decline Processed'}
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="p-5 flex flex-col flex-1 justify-between">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={title}>{title}</h3>
-                    {listing.foodType === 'VEG' ? (
-                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title="Vegetarian"></span>
-                    ) : listing.foodType === 'NON-VEG' ? (
-                      <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title="Non-Vegetarian"></span>
-                    ) : listing.foodType === 'RAW PRODUCE' ? (
-                      <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title="Raw Produce"></span>
-                    ) : (
-                      <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title="Baked Goods"></span>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : isDonor && showMyUploads ? (
+        /* VIEW 2: INLINE DONOR POSTINGS & UPLOADS VIEW */
+        <div className="space-y-6">
+          {/* Header & Status Filter Tabs Bar */}
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
+                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+                My Food Postings & Uploads ({donorPostings.length})
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Manage your active surplus listings, edit postings within the 12-hour window, or remove completed items.
+              </p>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto overflow-x-auto">
+              {[
+                { key: 'ALL', label: 'All Postings' },
+                { key: 'ACTIVE', label: 'Active' },
+                { key: 'ACCEPTED', label: 'Accepted' },
+                { key: 'REJECTED', label: 'Rejected' },
+                { key: 'NON_CLAIMED', label: 'Non-Claimed' }
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setDonorPostingsTab(tab.key)}
+                  className={`flex-1 md:flex-none py-1.5 px-3 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                    donorPostingsTab === tab.key
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Postings Grid */}
+          {(() => {
+            const filteredPostings = donorPostings.filter(post => {
+              if (donorPostingsTab === 'ALL') return true;
+              if (donorPostingsTab === 'ACTIVE') return post.status === 'AVAILABLE' && Boolean(post.pendingClaimId);
+              if (donorPostingsTab === 'NON_CLAIMED') return post.status === 'AVAILABLE' && !post.pendingClaimId;
+              if (donorPostingsTab === 'ACCEPTED') return post.status === 'CLAIMED' || post.status === 'COMPLETED';
+              if (donorPostingsTab === 'REJECTED') return post.status === 'DECLINED' || post.claimStatus === 'DECLINED';
+              return true;
+            });
+
+            if (loadingDonorPostings) {
+              return <div className="text-center py-12 text-slate-500">Loading your food postings...</div>;
+            }
+
+            if (filteredPostings.length === 0) {
+              return (
+                <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-2">
+                  <Package className="w-10 h-10 text-slate-400 mx-auto opacity-50" />
+                  <h4 className="font-bold text-slate-700 dark:text-slate-300">No Postings Found</h4>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    {donorPostingsTab === 'ALL'
+                      ? 'You have not uploaded any surplus food listings yet.'
+                      : `No postings currently under "${donorPostingsTab}" status.`}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPostings.map(post => {
+                  return (
+                    <div key={post._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            {post.foodType}
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                            post.status === 'AVAILABLE' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
+                            post.status === 'CLAIMED' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' :
+                            'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300'
+                          }`}>
+                            {post.status}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{post.title}</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Servings: <strong className="text-slate-800 dark:text-slate-200">{post.quantity} Portions</strong>
+                          </p>
+                        </div>
+
+                        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center">
+                            <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
+                            <span>Expires: {new Date(post.expiryTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
+                            <span>Pickup: {post.pickupAddress || 'Address on file'}</span>
+                          </div>
+                        </div>
+
+                        {/* Items breakdown if present */}
+                        {post.items && post.items.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Itemized Details</span>
+                            {post.items.map((item, idx) => (
+                              <div key={idx} className="flex justify-between text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
+                                <span>{item.itemName}</span>
+                                <span className="font-semibold">{item.quantity} {item.unit}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      ) : isOrg && showMyShortages ? (
+        /* VIEW 3: INLINE NGO SHORTAGES & NEEDS VIEW */
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
+                <Package className="w-5 h-5 mr-2 text-amber-500" />
+                My Organisation Shortages & Needs ({myNeeds.length})
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Manage your posted shortage requests, track fulfillment status, or update demand.
+              </p>
+            </div>
+            <button
+              onClick={fetchMyNeeds}
+              className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400"
+            >
+              Refresh Shortages
+            </button>
+          </div>
+
+          {loadingMyNeeds ? (
+            <div className="text-center py-12 text-slate-500">Loading shortages...</div>
+          ) : myNeeds.length === 0 ? (
+            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-2">
+              <Package className="w-10 h-10 text-slate-400 mx-auto opacity-50" />
+              <h4 className="font-bold text-slate-700 dark:text-slate-300">No Shortage Requests Found</h4>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">Use the "+ Post Shortage" button in the right sidebar to publish your food and ration needs.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {myNeeds.map(need => (
+                <div key={need._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300">
+                        {need.category || 'Food'} Deficit
+                      </span>
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                        need.status === 'ACTIVE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
+                        need.status === 'FULFILLED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' :
+                        'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300'
+                      }`}>
+                        {need.status}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{need.title}</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Needed Quantity: <strong className="text-slate-800 dark:text-slate-200">{need.quantity} {need.unit || 'servings'}</strong>
+                      </p>
+                    </div>
+
+                    {need.description && (
+                      <p className="text-xs italic text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                        "{need.description}"
+                      </p>
                     )}
                   </div>
 
-                  <div className="space-y-2.5 mb-3 text-xs">
-                    <div className="flex items-center text-slate-600 dark:text-slate-300">
-                      <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
-                      <strong>{portions} Portions</strong>
-                    </div>
-                    <div className="flex items-center text-slate-600 dark:text-slate-400">
-                      <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                      <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
-                    </div>
-                    <div className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
-                      <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
-                      {expiry ? `Expires: ${new Date(expiry).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Expiring soon'}
-                    </div>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+                    {need.status === 'ACTIVE' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await axios.patch(`${API_URL}/api/needs/${need._id}`, { status: 'FULFILLED' }, { headers: { Authorization: `Bearer ${token}` } });
+                            fetchMyNeeds();
+                          } catch (e) { alert('Failed to update status'); }
+                        }}
+                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                      >
+                        Mark Fulfilled
+                      </button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm('Delete this shortage request?')) return;
+                        try {
+                          await axios.delete(`${API_URL}/api/needs/${need._id}`, { headers: { Authorization: `Bearer ${token}` } });
+                          fetchMyNeeds();
+                        } catch (e) { alert('Failed to delete'); }
+                      }}
+                      className="py-2 px-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Regular Surplus Feed View */
+        <>
+          {/* Clean Header & Filters */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {user?.accountType === 'ORGANISATION' ? 'Surplus Available For You' : 'Live Surplus Food Feed'}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                {user?.accountType === 'ORGANISATION'
+                  ? 'Claim surplus food matching your needs and arrange fast pickup.'
+                  : 'Browse available food donations.'}
+              </p>
+            </div>
 
-                {/* Match Indicator / Actions */}
-                <div className="space-y-2 pt-1">
-                  {/* Surfaced Shortage Match Banner */}
-                  {match ? (
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/map', { state: { selectedNgoId: match.ngoId, selectedNgoName: match.ngoName } });
-                      }}
-                      className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/80 text-[11px] flex items-center justify-between hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
-                      title="Click to view NGO location on Map"
-                    >
-                      <div className="flex items-center text-emerald-800 dark:text-emerald-300 font-bold truncate mr-1.5">
-                        <Sparkles className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
-                        <span className="truncate">Matches Shortage at {match.ngoName}</span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              {/* Search */}
+              <div className="relative w-full sm:w-60">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search dishes or items..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs"
+                />
+              </div>
+
+              {/* Category Pills */}
+              <div className="flex flex-wrap gap-1.5 justify-start">
+                {['ALL', 'VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sort Dropdown */}
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
+              >
+                <option>Expiring Soonest</option>
+                <option>Recently Added</option>
+                <option>Nearest Location</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Grid of Surplus Listings */}
+      {(!user || user.accountType !== 'DONOR' || showMyUploads) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {sortedAndFilteredListings.map((listing) => {
+            const title = listing.title || 'Untitled';
+            const portions = listing.quantity || 0;
+            const expiry = listing.overallExpiry || listing.expiryTime;
+            const match = getListingMatch(listing);
+
+            return (
+              <div
+                key={listing._id}
+                onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
+              >
+                {listing.status === 'CLAIMED' && (
+                  <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 flex items-center justify-center">
+                    <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-xl font-bold flex items-center text-xs">
+                      <AlertCircle className="w-4 h-4 mr-1.5" /> CLAIMED
+                    </div>
+                  </div>
+                )}
+                <div className="p-5 flex flex-col flex-1 justify-between">
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={title}>{title}</h3>
+                      {listing.foodType === 'VEG' ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title="Vegetarian"></span>
+                      ) : listing.foodType === 'NON-VEG' ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title="Non-Vegetarian"></span>
+                      ) : listing.foodType === 'RAW PRODUCE' ? (
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title="Raw Produce"></span>
+                      ) : (
+                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title="Baked Goods"></span>
+                      )}
+                    </div>
+
+                    <div className="space-y-2.5 mb-3 text-xs">
+                      <div className="flex items-center text-slate-600 dark:text-slate-300">
+                        <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
+                        <strong>{portions} Portions</strong>
                       </div>
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-600 text-white shrink-0 shadow-xs">
-                        {match.score}%
-                      </span>
+                      <div className="flex items-center text-slate-600 dark:text-slate-400">
+                        <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                        <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
+                      </div>
+                      <div className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
+                        <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
+                        <span>Expires: {new Date(expiry).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      </div>
                     </div>
-                  ) : (
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/requirements');
-                      }}
-                      className="p-2.5 bg-slate-50 dark:bg-slate-700/40 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] flex items-center justify-between text-slate-500 hover:text-emerald-600 transition-colors cursor-pointer"
-                    >
-                      <span className="flex items-center">
-                        <AlertCircle className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                        Check NGO Requirements
-                      </span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </div>
-                  )}
 
-                  {/* Claim / Request Pickup Button for Org accounts */}
-                  {user?.accountType === 'ORGANISATION' && listing.status !== 'CLAIMED' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedListing(listing);
-                        setClaimStatus('FORM');
-                        setClaimMessage('');
-                        setClaimTime('');
-                      }}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-                    >
-                      <Utensils className="w-3.5 h-3.5" />
-                      <span>Claim / Request Pickup</span>
-                    </button>
-                  )}
+                    {/* Matched shortage pill */}
+                    {match ? (
+                      <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-[11px]">
+                        <span className="font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center mb-0.5">
+                          <Sparkles className="w-3 h-3 mr-1 text-emerald-600" />
+                          Matches {match.ngoName}
+                        </span>
+                        <span className="text-slate-600 dark:text-slate-400 line-clamp-1">
+                          Needs: {match.quantity} {match.unit} {match.item}
+                        </span>
+                      </div>
+                    ) : null}
+
+                    {/* Claim / Request Pickup Button for Org accounts */}
+                    {user?.accountType === 'ORGANISATION' && listing.status !== 'CLAIMED' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedListing(listing);
+                          setClaimStatus('FORM');
+                          setClaimMessage('');
+                          setClaimTime(getDefaultPickupTime());
+                        }}
+                        className="w-full mt-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                      >
+                        <Utensils className="w-3.5 h-3.5" />
+                        <span>Claim / Request Pickup</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
+            );
+          })}
+          {sortedAndFilteredListings.length === 0 && (
+            <div className="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+              <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+              <p className="font-bold text-sm text-slate-700 dark:text-slate-200">No surplus food available right now</p>
+              <p className="text-xs mt-1">Check back soon for new food listings.</p>
             </div>
-          )
-        })}
-        {sortedAndFilteredListings.length === 0 && (
-          <div className="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-            <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-            <p className="font-bold text-sm text-slate-700 dark:text-slate-200">No surplus food available right now</p>
-            <p className="text-xs mt-1">Check back soon or explore NGO shortages to donate directly.</p>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Detailed Surplus Modal with Matched NGO Shortages */}
       {selectedListing && (
@@ -408,12 +899,37 @@ const LiveFeed = ({ socket, user, token }) => {
                     ></textarea>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Estimated Pickup Time (Optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                      Estimated Pickup Time
+                    </label>
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setPresetTime(30)}
+                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                      >
+                        +30 mins
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPresetTime(60)}
+                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                      >
+                        +1 hour
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPresetTime(120)}
+                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                      >
+                        +2 hours
+                      </button>
+                    </div>
                     <input
                       type="time"
                       value={claimTime}
                       onChange={e => setClaimTime(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs"
+                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
@@ -570,43 +1086,19 @@ const LiveFeed = ({ socket, user, token }) => {
             {/* Action Bar */}
             {claimStatus === 'IDLE' && (
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-2">
-                <button
-                  onClick={() => {
-                    const match = getListingMatch(selectedListing);
-                    setSelectedListing(null);
-                    if (match) {
-                      navigate('/map', { state: { selectedNgoId: match.ngoId, selectedNgoName: match.ngoName } });
-                    } else {
-                      navigate('/map');
-                    }
-                  }}
-                  className="flex-1 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1"
-                >
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>View on Map</span>
-                </button>
-
                 {user?.accountType === 'ORGANISATION' && selectedListing.status === 'AVAILABLE' ? (
                   <button
                     onClick={() => setClaimStatus('FORM')}
-                    className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs"
+                    className="w-full bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs cursor-pointer"
                   >
                     Request Food
                   </button>
-                ) : selectedListing.status !== 'AVAILABLE' ? (
-                  <button disabled className="flex-1 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 font-bold py-2.5 px-4 rounded-xl cursor-not-allowed text-xs">
-                    {selectedListing.status}
-                  </button>
                 ) : (
                   <button
-                    onClick={() => {
-                      setSelectedListing(null);
-                      navigate('/requirements');
-                    }}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl transition-colors shadow-xs text-xs flex items-center justify-center space-x-1"
+                    onClick={() => setSelectedListing(null)}
+                    className="w-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-xs cursor-pointer"
                   >
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    <span>See All Shortages</span>
+                    Close
                   </button>
                 )}
               </div>

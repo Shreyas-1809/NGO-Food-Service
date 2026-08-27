@@ -16,7 +16,11 @@ import {
 import { createReceiverRequest, addNotification, getStoredDonations } from '../services/donationService';
 import { useNavigate } from 'react-router-dom';
 
-const OrgPostNeedModal = ({ user, onClose, onSuccess }) => {
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -42,7 +46,7 @@ const OrgPostNeedModal = ({ user, onClose, onSuccess }) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -54,47 +58,38 @@ const OrgPostNeedModal = ({ user, onClose, onSuccess }) => {
       setError('Please enter a valid target quantity.');
       return;
     }
-    if (!formData.requiredBy) {
-      setError('Please select a needed-by date.');
-      return;
-    }
 
     setIsSubmitting(true);
 
     try {
-      const newReq = createReceiverRequest(formData, user);
-      
-      // Match with active donor surplus listings
-      const allDonations = getStoredDonations();
-      const matchedDonation = allDonations.find(d => 
-        (d.status === 'CREATED' || d.status === 'AVAILABLE') &&
-        (
-          (d.foodType && formData.category && d.foodType.toLowerCase().includes(formData.category.toLowerCase())) ||
-          (d.itemName && formData.item && (d.itemName.toLowerCase().includes(formData.item.toLowerCase()) || formData.item.toLowerCase().includes(d.itemName.toLowerCase()))) ||
-          (d.title && formData.item && (d.title.toLowerCase().includes(formData.item.toLowerCase()) || formData.item.toLowerCase().includes(d.title.toLowerCase())))
-        )
-      ) || allDonations.find(d => d.status === 'CREATED' || d.status === 'AVAILABLE');
-
-      // Call addNotification to notify matching donors
-      addNotification({
-        title: 'New NGO Need Matches Your Surplus! 📢',
-        message: `${newReq.ngoName} posted an urgent need for ${newReq.quantity} ${newReq.unit} of ${newReq.item}. Review & accept request to connect your surplus.`,
-        type: 'REQUEST',
-        targetRole: 'DONOR',
-        relatedRequestId: newReq.id,
-        relatedNgoId: newReq.ngoId,
-        relatedNgoName: newReq.ngoName,
-        relatedItem: newReq.item,
-        relatedQuantity: newReq.quantity,
-        relatedUnit: newReq.unit,
-        matchingDonationId: matchedDonation ? matchedDonation.id : null
+      // Post to backend API
+      const res = await axios.post(`${API_URL}/api/needs`, {
+        title: formData.item,
+        category: formData.category,
+        quantity: Number(formData.quantity),
+        unit: formData.unit,
+        urgency: formData.urgency,
+        description: formData.description
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
-      setCreatedRequest(newReq);
-      if (onSuccess) onSuccess(newReq);
+      // Local fallback sync
+      const newReq = createReceiverRequest(formData, user);
+      
+      setCreatedRequest({
+        ...newReq,
+        _id: res.data._id,
+        item: res.data.title || formData.item,
+        quantity: res.data.quantity || formData.quantity,
+        unit: res.data.unit || formData.unit,
+        urgency: res.data.urgency || formData.urgency
+      });
+
+      if (onSuccess) onSuccess(res.data);
     } catch (err) {
       console.error(err);
-      setError('Failed to post shortage need. Please try again.');
+      setError(err.response?.data?.message || 'Failed to post shortage need. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

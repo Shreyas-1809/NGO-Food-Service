@@ -9,8 +9,6 @@ import ActivityHistory from './components/ActivityHistory';
 // Integrated Feature Pages (Accessible when logged in)
 import FindNGOsPage from './components/FindNGOsPage';
 import NGOProfilePage from './components/NGOProfilePage';
-import NGORequirementsPage from './components/NGORequirementsPage';
-import MapPage from './components/MapPage';
 import DonationTrackingPage from './components/DonationTrackingPage';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -110,7 +108,14 @@ function App() {
     <ErrorBoundary>
       <Router>
         <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300">
-          <Navbar user={user} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+          <Navbar 
+            user={user} 
+            token={token}
+            onLogout={handleLogout} 
+            isDarkMode={isDarkMode} 
+            toggleTheme={toggleTheme} 
+            onUserUpdated={(updatedUser) => setUser(updatedUser)}
+          />
 
           <main className="flex-1 flex w-full relative">
             <Routes>
@@ -131,13 +136,6 @@ function App() {
                   <Route path="/ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
-
-                  {/* NGO Shortages & Community Needs */}
-                  <Route path="/requirements" element={<NGORequirementsPage user={user} />} />
-                  <Route path="/ngo-requirements" element={<NGORequirementsPage user={user} />} />
-
-                  {/* Interactive Live Map */}
-                  <Route path="/map" element={<MapPage user={user} />} />
 
                   {/* Direct Donate Flow */}
                   <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />

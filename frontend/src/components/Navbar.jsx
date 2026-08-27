@@ -14,9 +14,11 @@ import {
   LayoutDashboard
 } from 'lucide-react';
 import MapConfigModal from './MapConfigModal';
+import ProfileEditModal from './ProfileEditModal';
 
-const Navbar = ({ user, onLogout, isDarkMode, toggleTheme }) => {
+const Navbar = ({ user, token, onLogout, isDarkMode, toggleTheme, onUserUpdated }) => {
   const [showMapConfig, setShowMapConfig] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const location = useLocation();
 
   return (
@@ -52,45 +54,11 @@ const Navbar = ({ user, onLogout, isDarkMode, toggleTheme }) => {
               <Building2 className="w-3.5 h-3.5" />
               <span>Find NGOs</span>
             </Link>
-
-            <Link
-              to="/requirements"
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition-colors ${
-                location.pathname === '/requirements' 
-                  ? 'bg-green-50 dark:bg-slate-800 text-green-700 dark:text-green-400 font-bold' 
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-              <span>Shortages</span>
-            </Link>
-
-            <Link
-              to="/map"
-              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition-colors ${
-                location.pathname === '/map' 
-                  ? 'bg-green-50 dark:bg-slate-800 text-green-700 dark:text-green-400 font-bold' 
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>Map</span>
-            </Link>
           </div>
         )}
       </div>
 
       <div className="flex items-center space-x-4">
-        {user && (
-          <button
-            onClick={() => setShowMapConfig(true)}
-            className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-medium transition-colors"
-            title="Configure Google Maps API Key"
-          >
-            <Key className="w-3.5 h-3.5 text-slate-400" />
-            <span>Map Key</span>
-          </button>
-        )}
 
         <button
           onClick={toggleTheme}
@@ -113,13 +81,17 @@ const Navbar = ({ user, onLogout, isDarkMode, toggleTheme }) => {
             >
               <Activity className="h-4 w-4 mr-1" /> History
             </Link>
-            <div className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
-              <UserCircle className="h-6 w-6 text-slate-400 dark:text-slate-500 mr-2" />
+            <button
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 p-1.5 rounded-xl transition-colors cursor-pointer"
+              title="Click to edit profile & description"
+            >
+              <UserCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400 mr-2 shrink-0" />
               <div className="flex flex-col text-left">
-                <span className="truncate max-w-[120px]">{user.name || user.fullName || user.orgName || 'User'}</span>
-                <span className="text-xs text-slate-500 dark:text-slate-400">{user.role || user.accountType}</span>
+                <span className="truncate max-w-[120px] font-bold">{user.name || user.fullName || user.orgName || 'User'}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">{user.role || user.accountType}</span>
               </div>
-            </div>
+            </button>
             <button 
               onClick={onLogout}
               className="flex items-center text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 px-3 py-1.5 rounded-lg font-medium"
@@ -134,6 +106,17 @@ const Navbar = ({ user, onLogout, isDarkMode, toggleTheme }) => {
         <MapConfigModal
           onClose={() => setShowMapConfig(false)}
           onSaved={() => setShowMapConfig(false)}
+        />
+      )}
+
+      {showProfileModal && (
+        <ProfileEditModal
+          user={user}
+          token={token}
+          onClose={() => setShowProfileModal(false)}
+          onUserUpdated={(updatedUser) => {
+            if (onUserUpdated) onUserUpdated(updatedUser);
+          }}
         />
       )}
     </nav>

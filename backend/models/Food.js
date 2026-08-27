@@ -27,6 +27,7 @@ const FoodSchema = new mongoose.Schema({
   }],
   photos: [String],
   overallExpiry: Date,
+  autoDeleteAt: Date,
   location: {
     type: { type: String, default: 'Point' },
     coordinates: [Number] // [longitude, latitude]

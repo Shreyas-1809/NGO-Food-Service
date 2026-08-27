@@ -15,11 +15,14 @@ import {
   ChevronRight,
   ExternalLink,
   Edit,
-  Trash2
+  Trash2,
+  Truck,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import WorkflowNav from './WorkflowNav';
-import { getStoredRequests, addNotification } from '../services/donationService';
+import { getStoredRequests, addNotification, confirmDonationMatch, assignVolunteerToDonation } from '../services/donationService';
 import { calculateMatchScore } from '../services/matchingService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -56,7 +59,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [showMyUploads, setShowMyUploads] = useState(false);
   const [donorClaims, setDonorClaims] = useState([]);
   const [loadingDonorClaims, setLoadingDonorClaims] = useState(false);
-  const [donorPostingsTab, setDonorPostingsTab] = useState('ALL'); // ALL, ACTIVE, ACCEPTED, REJECTED
+  const [donorPostingsTab, setDonorPostingsTab] = useState('ALL'); // ALL, ACTIVE, ACCEPTED, REJECTED, NON_CLAIMED
   const [donorPostings, setDonorPostings] = useState([]);
   const [loadingDonorPostings, setLoadingDonorPostings] = useState(false);
 
@@ -127,13 +130,43 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     }
   }, [user, token, isDonor, isOrg, showMyUploads]);
 
-  const handleAcceptClaim = async (claimId) => {
+  const handleAcceptClaim = async (claimId, claimData = null) => {
     try {
-      await axios.patch(`${API_URL}/api/claims/${claimId}/accept`, {}, {
+      const res = await axios.patch(`${API_URL}/api/claims/${claimId}/accept`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      alert('Claim request accepted successfully!');
+      
+      const code = res.data?.verificationCode;
+      alert(`Claim request accepted successfully! Verification Code: ${code || 'Generated'}`);
+
+      // Trigger the existing further pickup workflow (assignVolunteerToDonation / tracking timeline)
+      const targetClaim = claimData || donorClaims.find(c => c._id === claimId) || res.data?.claim;
+      const ngoId = targetClaim?.ngoId?._id || targetClaim?.ngoId?.id || targetClaim?.ngoId;
+      const ngoName = targetClaim?.ngoId?.orgName || targetClaim?.ngoId?.fullName || 'Partner Organisation';
+      const foodId = targetClaim?.foodId?._id || targetClaim?.foodId || res.data?.food?._id;
+
+      if (foodId) {
+        confirmDonationMatch(foodId, ngoId, ngoName);
+        assignVolunteerToDonation(foodId, {
+          name: 'Rahul Verma (Rider)',
+          phone: '+91 98233 44112',
+          coords: { lat: 18.5240, lng: 73.8445 }
+        });
+      }
+
+      // Two-way sync notification
+      const donorName = user?.orgName || user?.fullName || user?.name || 'Donor';
+      addNotification({
+        title: 'Claim Request Accepted! 🤝',
+        message: `${donorName} accepted your claim request. Volunteer assigned for pickup!`,
+        type: 'SUCCESS',
+        targetRole: 'ORGANISATION',
+        targetNgoId: ngoId,
+        donorName
+      });
+
       fetchDonorClaims();
+      fetchDonorPostings();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Failed to accept claim');
@@ -149,6 +182,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       });
       alert('Claim request declined.');
       fetchDonorClaims();
+      fetchDonorPostings();
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Failed to decline claim');
@@ -178,7 +212,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         const res = await axios.get(`${API_URL}/api/food`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setListings(res.data);
+        setListings(res.data || []);
       } catch (err) {
         console.error(err);
       } finally {
@@ -197,19 +231,65 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       if (selectedListing && selectedListing._id === updatedListing._id) {
         setSelectedListing(updatedListing);
       }
+      if (isDonor) {
+        fetchDonorPostings();
+        fetchDonorClaims();
+      }
     };
 
-    socket.on('NEW_FOOD_LISTING', handleNewListing);
-    socket.on('LISTING_UPDATED', handleUpdateListing);
+    const handleClaimRequestReceived = (data) => {
+      if (isDonor && (data.donorId === user?.id || data.donorId === user?._id)) {
+        fetchDonorClaims();
+        fetchDonorPostings();
+        addNotification({
+          title: 'New NGO Claim Request! 🍽️',
+          message: `${data.ngoName || 'An NGO'} requested to claim "${data.foodTitle || 'your surplus food'}".`,
+          type: 'INFO'
+        });
+      }
+    };
+
+    const handleClaimAccepted = () => {
+      if (isDonor) {
+        fetchDonorClaims();
+        fetchDonorPostings();
+      }
+    };
+
+    const handleClaimDeclined = () => {
+      if (isDonor) {
+        fetchDonorClaims();
+        fetchDonorPostings();
+      }
+    };
+
+    if (socket && typeof socket.on === 'function') {
+      socket.on('NEW_FOOD_LISTING', handleNewListing);
+      socket.on('LISTING_UPDATED', handleUpdateListing);
+      socket.on('CLAIM_REQUEST_RECEIVED', handleClaimRequestReceived);
+      socket.on('CLAIM_ACCEPTED', handleClaimAccepted);
+      socket.on('CLAIM_DECLINED', handleClaimDeclined);
+    }
 
     return () => {
-      socket.off('NEW_FOOD_LISTING', handleNewListing);
-      socket.off('LISTING_UPDATED', handleUpdateListing);
+      if (socket && typeof socket.off === 'function') {
+        socket.off('NEW_FOOD_LISTING', handleNewListing);
+        socket.off('LISTING_UPDATED', handleUpdateListing);
+        socket.off('CLAIM_REQUEST_RECEIVED', handleClaimRequestReceived);
+        socket.off('CLAIM_ACCEPTED', handleClaimAccepted);
+        socket.off('CLAIM_DECLINED', handleClaimDeclined);
+      }
     };
-  }, [socket, token, selectedListing]);
+  }, [socket, token, selectedListing, isDonor, user]);
 
   const handleClaim = async (id) => {
     if (user?.accountType !== 'ORGANISATION') return alert('Only organisations can claim food');
+    console.log('[DEBUG handleClaim] Initiating claim for food id:', id, {
+      message: claimMessage,
+      requestedPickupTime: claimTime,
+      user,
+      hasToken: Boolean(token)
+    });
     try {
       const res = await axios.post(`${API_URL}/api/food/${id}/claim`, {
         message: claimMessage,
@@ -218,25 +298,17 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Notify donor via local pub/sub sync as well
-      const orgTitle = user?.orgName || user?.fullName || user?.name || 'Partner Organisation';
-      addNotification({
-        title: 'New Food Claim Request! 🍽️',
-        message: `${orgTitle} requested to claim your surplus listing "${selectedListing?.title}".`,
-        type: 'CLAIM_REQUEST',
-        targetRole: 'DONOR',
-        relatedClaimId: res.data?._id,
-        foodTitle: selectedListing?.title,
-        ngoName: orgTitle,
-        ngoId: user?.id || user?._id,
-        claimMessage,
-        pickupTime: claimTime
-      });
-
+      console.log('[DEBUG handleClaim] Claim response:', res.status, res.data);
       setClaimStatus('SUCCESS');
     } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || 'Failed to claim');
+      console.error('[DEBUG handleClaim ERROR]', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        headers: err.response?.headers,
+        message: err.message
+      });
+      alert(err.response?.data?.message || 'Failed to submit claim. Please try again.');
     }
   };
 
@@ -504,38 +576,103 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               </p>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto overflow-x-auto">
-              {[
-                { key: 'ALL', label: 'All Postings' },
-                { key: 'ACTIVE', label: 'Active' },
-                { key: 'ACCEPTED', label: 'Accepted' },
-                { key: 'REJECTED', label: 'Rejected' },
-                { key: 'NON_CLAIMED', label: 'Non-Claimed' }
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  onClick={() => setDonorPostingsTab(tab.key)}
-                  className={`flex-1 md:flex-none py-1.5 px-3 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                    donorPostingsTab === tab.key
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            {/* Filter Tabs with Counts */}
+            {(() => {
+              const now = new Date();
+              const counts = {
+                ALL: donorPostings.length,
+                ACTIVE: 0,
+                ACCEPTED: 0,
+                REJECTED: 0,
+                NON_CLAIMED: 0
+              };
+
+              donorPostings.forEach(p => {
+                const expiryDate = new Date(p.expiryTime || p.overallExpiry || p.createdAt);
+                const isExpired = expiryDate <= now;
+                const hasAcceptedClaim = Boolean(p.acceptedClaim) || p.status === 'ACCEPTED' || p.status === 'CLAIMED' || p.status === 'COMPLETED';
+                const allClaimsDeclined = p.claims && p.claims.length > 0 && p.claims.every(c => c.status === 'DECLINED');
+                const isRejected = p.status === 'REJECTED' || p.status === 'DECLINED' || allClaimsDeclined;
+
+                if (hasAcceptedClaim) {
+                  counts.ACCEPTED++;
+                } else if (isRejected) {
+                  counts.REJECTED++;
+                } else if (isExpired && (!p.claims || p.claims.length === 0)) {
+                  counts.NON_CLAIMED++;
+                } else if (!isExpired) {
+                  counts.ACTIVE++;
+                } else {
+                  counts.NON_CLAIMED++;
+                }
+              });
+
+              return (
+                <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto overflow-x-auto gap-1">
+                  {[
+                    { key: 'ALL', label: 'All Postings', count: counts.ALL },
+                    { key: 'ACTIVE', label: 'Active', count: counts.ACTIVE },
+                    { key: 'ACCEPTED', label: 'Accepted', count: counts.ACCEPTED },
+                    { key: 'REJECTED', label: 'Rejected', count: counts.REJECTED },
+                    { key: 'NON_CLAIMED', label: 'Non-Claimed', count: counts.NON_CLAIMED }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setDonorPostingsTab(tab.key)}
+                      className={`flex-1 md:flex-none py-1.5 px-3 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 ${
+                        donorPostingsTab === tab.key
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                        donorPostingsTab === tab.key
+                          ? 'bg-emerald-700 text-emerald-100'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}>
+                        {tab.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Postings Grid */}
           {(() => {
+            const now = new Date();
             const filteredPostings = donorPostings.filter(post => {
+              const expiryDate = new Date(post.expiryTime || post.overallExpiry || post.createdAt);
+              const isExpired = expiryDate <= now;
+              const hasAcceptedClaim = Boolean(post.acceptedClaim) || post.status === 'ACCEPTED' || post.status === 'CLAIMED' || post.status === 'COMPLETED';
+              const allClaimsDeclined = post.claims && post.claims.length > 0 && post.claims.every(c => c.status === 'DECLINED');
+              const isRejected = post.status === 'REJECTED' || post.status === 'DECLINED' || allClaimsDeclined;
+
+              // 1. All Postings — show every surplus item the logged-in donor has posted, regardless of status
               if (donorPostingsTab === 'ALL') return true;
-              if (donorPostingsTab === 'ACTIVE') return post.status === 'AVAILABLE' && Boolean(post.pendingClaimId);
-              if (donorPostingsTab === 'NON_CLAIMED') return post.status === 'AVAILABLE' && !post.pendingClaimId;
-              if (donorPostingsTab === 'ACCEPTED') return post.status === 'CLAIMED' || post.status === 'COMPLETED';
-              if (donorPostingsTab === 'REJECTED') return post.status === 'DECLINED' || post.claimStatus === 'DECLINED';
+
+              // 2. Active — show the logged-in donor's postings that are still within their valid window (not expired) and have NOT yet been claimed/accepted by any NGO
+              if (donorPostingsTab === 'ACTIVE') {
+                return !isExpired && !hasAcceptedClaim && !isRejected;
+              }
+
+              // 3. Accepted — show the logged-in donor's postings where an NGO has claimed/requested the item and the donor (or system) has accepted that claim
+              if (donorPostingsTab === 'ACCEPTED') {
+                return hasAcceptedClaim;
+              }
+
+              // 4. Rejected — show the logged-in donor's postings where an NGO's claim request was explicitly rejected/declined by the donor, OR the donor rejected all incoming requests for that item
+              if (donorPostingsTab === 'REJECTED') {
+                return isRejected && !hasAcceptedClaim;
+              }
+
+              // 5. Non-Claimed — show the logged-in donor's postings that have expired (past their expiry time) without any NGO ever claiming/requesting them
+              if (donorPostingsTab === 'NON_CLAIMED') {
+                return isExpired && !hasAcceptedClaim && (!post.claims || post.claims.length === 0);
+              }
+
               return true;
             });
 
@@ -557,22 +694,45 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               );
             }
 
+            const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredPostings.map(post => {
+                  const isEditable = (Date.now() - new Date(post.createdAt).getTime()) <= TWELVE_HOURS_MS;
+                  const expiryDate = new Date(post.expiryTime || post.overallExpiry || post.createdAt);
+                  const isExpired = expiryDate <= now;
+                  const hasAcceptedClaim = Boolean(post.acceptedClaim) || post.status === 'ACCEPTED' || post.status === 'CLAIMED' || post.status === 'COMPLETED';
+                  const allClaimsDeclined = post.claims && post.claims.length > 0 && post.claims.every(c => c.status === 'DECLINED');
+                  const isRejected = post.status === 'REJECTED' || post.status === 'DECLINED' || allClaimsDeclined;
+                  const isNonClaimed = isExpired && !hasAcceptedClaim && (!post.claims || post.claims.length === 0);
+
+                  // Derived label & color
+                  let statusLabel = 'ACTIVE';
+                  let statusBadgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+
+                  if (hasAcceptedClaim) {
+                    statusLabel = 'ACCEPTED';
+                    statusBadgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+                  } else if (isRejected) {
+                    statusLabel = 'REJECTED';
+                    statusBadgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+                  } else if (isNonClaimed || isExpired) {
+                    statusLabel = 'NON-CLAIMED';
+                    statusBadgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600';
+                  }
+
+                  const claimingNgo = post.acceptedClaim?.ngoId || post.claimantId;
+
                   return (
-                    <div key={post._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div key={post._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow">
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                             {post.foodType}
                           </span>
-                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                            post.status === 'AVAILABLE' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
-                            post.status === 'CLAIMED' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' :
-                            'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300'
-                          }`}>
-                            {post.status}
+                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border ${statusBadgeClass}`}>
+                            {statusLabel}
                           </span>
                         </div>
 
@@ -586,13 +746,82 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
                           <div className="flex items-center">
                             <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                            <span>Expires: {new Date(post.expiryTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                            <span>
+                              {isExpired ? 'Expired: ' : 'Expires: '}
+                              <strong>{new Date(post.expiryTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</strong>
+                            </span>
                           </div>
                           <div className="flex items-center">
                             <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
                             <span>Pickup: {post.pickupAddress || 'Address on file'}</span>
                           </div>
                         </div>
+
+                        {/* Incoming Pending Claim Request Callout */}
+                        {post.pendingClaim && (
+                          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-900/60 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center">
+                                🔔 Incoming Request
+                              </span>
+                              <span className="text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold px-2 py-0.5 rounded-full">
+                                Pending Review
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-700 dark:text-slate-300">
+                              <strong>{post.pendingClaim.ngoId?.orgName || post.pendingClaim.ngoId?.fullName || 'Verified NGO'}</strong> requested this item.
+                              {post.pendingClaim.requestedPickupTime && (
+                                <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                  Pickup: {new Date(post.pendingClaim.requestedPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </p>
+                            {post.pendingClaim.message && (
+                              <p className="text-[11px] italic text-slate-600 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg">
+                                "{post.pendingClaim.message}"
+                              </p>
+                            )}
+                            <div className="flex gap-2 pt-1">
+                              <button
+                                onClick={() => handleAcceptClaim(post.pendingClaim._id, post.pendingClaim)}
+                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Accept
+                              </button>
+                              <button
+                                onClick={() => handleDeclineClaim(post.pendingClaim._id)}
+                                className="flex-1 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              >
+                                <XCircle className="w-3.5 h-3.5" /> Decline
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Accepted Claim Details & Tracking Link */}
+                        {hasAcceptedClaim && (
+                          <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-900/60 space-y-2">
+                            <div className="flex justify-between items-center text-xs">
+                              <span className="font-bold text-blue-800 dark:text-blue-300 flex items-center">
+                                🤝 Matched Receiver
+                              </span>
+                              {post.verificationCode && (
+                                <span className="font-mono font-bold text-[11px] bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 px-2 py-0.5 rounded">
+                                  Code: {post.verificationCode}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-700 dark:text-slate-300">
+                              Claimed by: <strong>{claimingNgo?.orgName || claimingNgo?.fullName || 'Verified NGO Partner'}</strong>
+                            </p>
+                            <button
+                              onClick={() => navigate('/track')}
+                              className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                            >
+                              <Truck className="w-3.5 h-3.5" /> View Delivery Tracking
+                            </button>
+                          </div>
+                        )}
 
                         {/* Items breakdown if present */}
                         {post.items && post.items.length > 0 && (
@@ -606,6 +835,24 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             ))}
                           </div>
                         )}
+                      </div>
+
+                      {/* Card Bottom Actions */}
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center gap-2">
+                        {isEditable && (
+                          <button
+                            onClick={() => onEdit && onEdit(post)}
+                            className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <Edit className="w-3.5 h-3.5" /> Edit
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeletePosting(post._id)}
+                          className={`${isEditable ? 'flex-1' : 'w-full'} py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
                       </div>
                     </div>
                   );
@@ -764,8 +1011,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         </>
       )}
 
-      {/* Grid of Surplus Listings */}
-      {(!user || user.accountType !== 'DONOR' || showMyUploads) && (
+      {/* Grid of Surplus Listings — visible to NGOs and unauthenticated users only.
+           Donors have their own scoped "My Postings" view (donorPostings) from /api/food/my-listings
+           which is already filtered server-side by donorId, so they must NOT see this all-donors grid. */}
+      {(!user || user.accountType !== 'DONOR') && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {sortedAndFilteredListings.map((listing) => {
             const title = listing.title || 'Untitled';

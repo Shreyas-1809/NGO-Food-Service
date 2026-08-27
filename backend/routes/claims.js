@@ -48,8 +48,8 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // @route   PATCH /api/claims/:id/accept
-// @desc    Accept a claim request
-// @access  Private (Donor only)
+// @desc    Accept a claim request (Donor only)
+// @access  Private
 router.patch('/:id/accept', auth, async (req, res) => {
   try {
     const claim = await Claim.findById(req.params.id);
@@ -70,21 +70,31 @@ router.patch('/:id/accept', auth, async (req, res) => {
     claim.status = 'ACCEPTED';
     await claim.save();
 
+    // Auto-decline any other pending claims for this same food item
+    await Claim.updateMany(
+      { foodId: food._id, _id: { $ne: claim._id }, status: 'PENDING' },
+      { status: 'DECLINED', declineReason: 'Another organisation request was accepted by the donor.' }
+    );
+
     const code = Math.floor(1000 + Math.random() * 9000).toString();
-    food.status = 'CLAIMED';
+    food.status = 'ACCEPTED';
     food.claimantId = claim.ngoId;
     food.verificationCode = code;
     await food.save();
 
-    // Mark related notification as read
-    const notification = await Notification.findOne({ relatedClaimId: claim._id, userId: req.user.id });
-    if (notification) {
-      notification.read = true;
-      await notification.save();
-    }
+    // Update the original CLAIM_REQUEST notification for the donor:
+    // change its stage to reflect accepted state and mark as read.
+    await Notification.findOneAndUpdate(
+      { relatedClaimId: claim._id, userId: req.user.id, type: 'CLAIM_REQUEST' },
+      {
+        read: true,
+        stage: 'Accepted — awaiting NGO confirmation'
+      }
+    );
 
-    // Notify NGO with structured claim response type
-    const donorUser = await require('../models/User').findById(req.user.id).select('fullName orgName phone address city');
+    // Notify NGO with full lifecycle context
+    const User = require('../models/User');
+    const donorUser = await User.findById(req.user.id).select('fullName orgName phone address city');
     const donorName = donorUser?.orgName || donorUser?.fullName || 'Donor';
 
     const ngoNotification = new Notification({
@@ -92,13 +102,29 @@ router.patch('/:id/accept', auth, async (req, res) => {
       type: 'CLAIM_ACCEPTED',
       title: 'Claim Request Accepted! 🤝',
       message: `${donorName} accepted your claim for "${food.title}". Verification Code: ${code}`,
-      relatedClaimId: claim._id
+      relatedClaimId: claim._id,
+      relatedFoodId: food._id,
+      stage: 'Accepted — awaiting your confirmation'
     });
     await ngoNotification.save();
 
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('LISTING_UPDATED', food);
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      // Targeted emit to NGO's room only
+      emitToUser(claim.ngoId, 'CLAIM_ACCEPTED', {
+        claim,
+        food,
+        ngoId: claim.ngoId.toString(),
+        verificationCode: code,
+        donorName
+      });
+      emitToUser(claim.ngoId, 'NEW_NOTIFICATION', {
+        ...ngoNotification.toObject(),
+        userId: claim.ngoId.toString()
+      });
+
+      // Also notify the donor's own room that the listing updated
+      emitToUser(req.user.id, 'LISTING_UPDATED', food);
     }
 
     res.json({ claim, food, verificationCode: code });
@@ -109,8 +135,8 @@ router.patch('/:id/accept', auth, async (req, res) => {
 });
 
 // @route   PATCH /api/claims/:id/decline
-// @desc    Decline a claim request
-// @access  Private (Donor only)
+// @desc    Decline a claim request (Donor only)
+// @access  Private
 router.patch('/:id/decline', auth, async (req, res) => {
   try {
     const claim = await Claim.findById(req.params.id);
@@ -132,31 +158,116 @@ router.patch('/:id/decline', auth, async (req, res) => {
     claim.declineReason = req.body.reason || '';
     await claim.save();
 
-    // Mark related notification as read
-    const notification = await Notification.findOne({ relatedClaimId: claim._id, userId: req.user.id });
-    if (notification) {
-      notification.read = true;
-      await notification.save();
+    // Check if other pending claims exist for this food item
+    const pendingRemaining = await Claim.countDocuments({ foodId: food._id, status: 'PENDING' });
+    const acceptedRemaining = await Claim.countDocuments({ foodId: food._id, status: 'ACCEPTED' });
+
+    if (pendingRemaining === 0 && acceptedRemaining === 0) {
+      food.status = 'REJECTED';
+      await food.save();
     }
 
-    const donorUser = await require('../models/User').findById(req.user.id).select('fullName orgName');
+    // Mark the donor's CLAIM_REQUEST notification as read
+    await Notification.findOneAndUpdate(
+      { relatedClaimId: claim._id, userId: req.user.id, type: 'CLAIM_REQUEST' },
+      { read: true, stage: 'Declined' }
+    );
+
+    const User = require('../models/User');
+    const donorUser = await User.findById(req.user.id).select('fullName orgName');
     const donorName = donorUser?.orgName || donorUser?.fullName || 'Donor';
 
-    // Notify NGO
+    // Notify NGO of the decline
     const ngoNotification = new Notification({
       userId: claim.ngoId,
       type: 'CLAIM_DECLINED',
       title: 'Claim Request Declined',
       message: `${donorName} declined your claim for "${food.title}".${req.body.reason ? ` Reason: ${req.body.reason}` : ''}`,
-      relatedClaimId: claim._id
+      relatedClaimId: claim._id,
+      relatedFoodId: food._id,
+      stage: 'Request declined'
     });
     await ngoNotification.save();
 
-    // Food status stays AVAILABLE
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      emitToUser(claim.ngoId, 'CLAIM_DECLINED', {
+        claim,
+        food,
+        ngoId: claim.ngoId.toString(),
+        donorName,
+        reason: req.body.reason || ''
+      });
+      emitToUser(claim.ngoId, 'NEW_NOTIFICATION', {
+        ...ngoNotification.toObject(),
+        userId: claim.ngoId.toString()
+      });
+      emitToUser(req.user.id, 'LISTING_UPDATED', food);
+    }
 
     res.json({ claim, food });
   } catch (err) {
     console.error('Error declining claim:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   PATCH /api/claims/:id/ngo-confirm
+// @desc    NGO confirms their side after being accepted — advances the workflow stage.
+//          Notifies the donor that the NGO is confirmed and pickup is imminent.
+// @access  Private (ORGANISATION only)
+router.patch('/:id/ngo-confirm', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'ORGANISATION') {
+      return res.status(403).json({ message: 'Only organisations can confirm a claim' });
+    }
+
+    const claim = await Claim.findById(req.params.id)
+      .populate('foodId')
+      .populate('ngoId', 'orgName fullName');
+    if (!claim) {
+      return res.status(404).json({ message: 'Claim not found' });
+    }
+    if (claim.ngoId._id.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized — this is not your claim' });
+    }
+    if (claim.status !== 'ACCEPTED') {
+      return res.status(400).json({ message: 'Claim must be in ACCEPTED state to confirm' });
+    }
+
+    const food = claim.foodId;
+    const ngoName = claim.ngoId?.orgName || claim.ngoId?.fullName || 'Organisation';
+
+    // Update NGO's own CLAIM_ACCEPTED notification stage
+    await Notification.findOneAndUpdate(
+      { relatedClaimId: claim._id, userId: req.user.id, type: 'CLAIM_ACCEPTED' },
+      { stage: 'Confirmed — volunteer being arranged', read: true }
+    );
+
+    // Notify the donor that the NGO confirmed
+    const donorNotification = new Notification({
+      userId: food.donorId,
+      type: 'NGO_CONFIRMED',
+      title: 'NGO Confirmed Pickup! ✅',
+      message: `${ngoName} confirmed collection for "${food.title}". Prepare for pickup.`,
+      relatedClaimId: claim._id,
+      relatedFoodId: food._id,
+      stage: 'NGO confirmed — volunteer being arranged'
+    });
+    await donorNotification.save();
+
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      emitToUser(food.donorId, 'NGO_CONFIRMED', { claim, food, ngoName });
+      emitToUser(food.donorId, 'NEW_NOTIFICATION', {
+        ...donorNotification.toObject(),
+        userId: food.donorId.toString()
+      });
+    }
+
+    res.json({ success: true, message: 'Confirmation sent to donor' });
+  } catch (err) {
+    console.error('Error confirming NGO side:', err.message);
     res.status(500).send('Server Error');
   }
 });

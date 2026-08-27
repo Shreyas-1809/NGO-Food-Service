@@ -90,8 +90,9 @@ router.post('/login', async (req, res, next) => {
 router.get('/me', auth, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
-    // Add dynamic name property for frontend convenience
+    // Add dynamic name property and id for frontend convenience
     const userObj = user.toObject();
+    userObj.id = userObj._id.toString();
     userObj.name = userObj.orgName || userObj.fullName;
     res.json(userObj);
   } catch (err) {

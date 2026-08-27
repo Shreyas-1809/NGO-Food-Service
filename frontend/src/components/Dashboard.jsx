@@ -52,34 +52,20 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   };
 
   const fetchNotificationsCount = async () => {
-    let count = 0;
-
-    // 1. Local stored unread notifications
     try {
-      const stored = getStoredNotifications();
-      const unreadStored = stored.filter(n => {
-        if (['notif-1', 'notif-2', 'notif-3'].includes(n.id)) return false;
-        if (n.read) return false;
-        if (isOrg) return n.targetRole === 'ORGANISATION';
-        return n.targetRole === 'DONOR';
-      }).length;
-      count += unreadStored;
-    } catch (e) {}
-
-    // 2. Backend unread notifications
-    try {
-      if (user && user.id && token) {
-        const res = await axios.get(`${API_URL}/api/notifications/${user.id}`, {
+      const uid = user?.id || user?._id;
+      if (uid && token) {
+        const res = await axios.get(`${API_URL}/api/notifications/${uid}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const unreadBackend = (res.data || []).filter(n => !n.read).length;
-        count += unreadBackend;
+        setUnreadCount(unreadBackend);
+      } else {
+        setUnreadCount(0);
       }
     } catch (err) {
-      // Backend silent fallback
+      setUnreadCount(0);
     }
-
-    setUnreadCount(count);
   };
 
   useEffect(() => {
@@ -88,21 +74,33 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
     // Pub/sub live listener
     const unsubscribe = subscribeToDonationUpdates(fetchNotificationsCount);
 
-    // Cross-tab storage change listener
-    const handleStorage = (e) => {
-      if (e.key === 'donor_bridge_notifications_v1' || e.key === 'donor_bridge_donations_v1' || e.key === 'donor_bridge_requests_v1') {
+    // Socket real-time notification listeners
+    if (socket) {
+      const handleNewNotification = () => {
         fetchNotificationsCount();
-      }
-    };
-    window.addEventListener('storage', handleStorage);
+      };
+      socket.on('NEW_NOTIFICATION', handleNewNotification);
+      socket.on('CLAIM_REQUEST_RECEIVED', handleNewNotification);
+      socket.on('CLAIM_ACCEPTED', handleNewNotification);
+      socket.on('CLAIM_DECLINED', handleNewNotification);
+      socket.on('NGO_CONFIRMED', handleNewNotification);
+      socket.on('PICKUP_CONFIRMED', handleNewNotification);
 
-    const interval = setInterval(fetchNotificationsCount, 10000); // 10s polling
+      return () => {
+        unsubscribe();
+        socket.off('NEW_NOTIFICATION', handleNewNotification);
+        socket.off('CLAIM_REQUEST_RECEIVED', handleNewNotification);
+        socket.off('CLAIM_ACCEPTED', handleNewNotification);
+        socket.off('CLAIM_DECLINED', handleNewNotification);
+        socket.off('NGO_CONFIRMED', handleNewNotification);
+        socket.off('PICKUP_CONFIRMED', handleNewNotification);
+      };
+    }
+
     return () => {
       unsubscribe();
-      window.removeEventListener('storage', handleStorage);
-      clearInterval(interval);
     };
-  }, [user, token, isOrg]);
+  }, [user, token, isOrg, socket]);
 
   const closeDrawer = () => {
     setActiveDrawer(null);
@@ -159,7 +157,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
       <div className={`w-96 shrink-0 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-2xl transition-all duration-300 ease-in-out z-40 ${activeDrawer ? 'translate-x-0 ml-0' : 'translate-x-full absolute right-20 top-0 bottom-0'}`} style={{ position: activeDrawer ? 'relative' : 'absolute' }}>
         {activeDrawer === 'POSTINGS' && <MyPostingsDrawer user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />}
         {activeDrawer === 'SHORTAGES' && <MyShortagesDrawer token={token} onClose={closeDrawer} />}
-        {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} token={token} socket={socket} onClose={closeDrawer} />}
+        {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} token={token} socket={socket} onClose={closeDrawer} onNotificationChange={fetchNotificationsCount} />}
       </div>
 
       {/* Right-Hand Icon Navigation Bar */}

@@ -53,9 +53,7 @@ const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
     );
   }
 
-  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
-
-  const activePostings = (Array.isArray(myPostings) ? myPostings : []).filter(post => post.status === 'AVAILABLE');
+  const activePostings = (Array.isArray(myPostings) ? myPostings : []).filter(post => post.status === 'AVAILABLE' || post.status === 'ACTIVE');
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-slate-800">

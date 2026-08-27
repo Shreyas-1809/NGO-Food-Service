@@ -41,16 +41,50 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/claims', claimRoutes);
 app.use('/api/needs', needRoutes);
 
-// Socket.io for Real-time alerts
+// ---------------------------------------------------------------------------
+// Socket.io — User rooms for targeted (private) notifications
+// ---------------------------------------------------------------------------
+// Each client joins their own room ("room:<userId>") after connecting.
+// All server-side emits use io.to('room:<userId>').emit(...) instead of
+// io.emit(...) so notifications are strictly private per-user.
+// ---------------------------------------------------------------------------
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-  
+
+  // Client emits 'join_room' with their userId immediately after login.
+  socket.on('join_room', (userId) => {
+    if (userId) {
+      socket.join(`room:${userId}`);
+      console.log(`Socket ${socket.id} joined room:${userId}`);
+    }
+  });
+
+  // Client emits 'leave_room' on logout (optional — disconnect also cleans rooms).
+  socket.on('leave_room', (userId) => {
+    if (userId) {
+      socket.leave(`room:${userId}`);
+      console.log(`Socket ${socket.id} left room:${userId}`);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
 });
 
 app.set('io', io); // Make io accessible in routes
+
+// ---------------------------------------------------------------------------
+// Shared helper: emit a socket event to a specific user's room only.
+// Usage in routes: const { emitToUser } = require('./socketHelper');
+// ---------------------------------------------------------------------------
+// We attach it to app so routes can access it via req.app.get('emitToUser')
+const emitToUser = (userId, event, data) => {
+  if (userId) {
+    io.to(`room:${userId.toString()}`).emit(event, data);
+  }
+};
+app.set('emitToUser', emitToUser);
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/food_bridge';

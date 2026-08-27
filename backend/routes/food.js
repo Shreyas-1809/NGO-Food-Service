@@ -5,6 +5,8 @@ const Food = require('../models/Food');
 const Claim = require('../models/Claim');
 const Notification = require('../models/Notification');
 
+const User = require('../models/User');
+
 // @route   POST /api/food
 // @desc    Create a new food listing
 // @access  Private (DONOR only)
@@ -30,6 +32,7 @@ router.post('/', auth, async (req, res) => {
       foodType,
       preparedTime,
       expiryTime,
+      status: 'AVAILABLE',
       items: items || [],
       photos: photos || [],
       overallExpiry: overallExpiry || expiryTime,
@@ -41,7 +44,7 @@ router.post('/', auth, async (req, res) => {
 
     const food = await newFood.save();
     
-    // If you want to emit via socket.io to alert NGOs:
+    // Alert NGOs via socket.io:
     const io = req.app.get('io');
     if (io) {
       io.emit('NEW_FOOD_LISTING', food);
@@ -55,7 +58,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // @route   GET /api/food/my-listings
-// @desc    Get current donor's food listings
+// @desc    Get current logged-in donor's food listings only (Strictly scoped by donorId at query level)
 // @access  Private (DONOR only)
 router.get('/my-listings', auth, async (req, res) => {
   try {
@@ -63,16 +66,65 @@ router.get('/my-listings', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only donors can access their listings' });
     }
 
+    // STRICT QUERY-LEVEL SCOPING: Only fetch postings where donorId equals the logged-in user ID
     const foods = await Food.find({ donorId: req.user.id })
+      .populate('claimantId', 'orgName fullName phone email address city')
       .lean()
       .sort({ createdAt: -1 });
 
+    const now = new Date();
+
+    // Fetch all claims related to this donor's food postings
+    const foodIds = foods.map(f => f._id);
+    const allClaims = await Claim.find({ foodId: { $in: foodIds } })
+      .populate('ngoId', 'orgName fullName phone email address city location')
+      .lean()
+      .sort({ createdAt: -1 });
+
+    // Group claims by foodId
+    const claimsByFoodId = {};
+    for (const claim of allClaims) {
+      const fid = claim.foodId.toString();
+      if (!claimsByFoodId[fid]) {
+        claimsByFoodId[fid] = [];
+      }
+      claimsByFoodId[fid].push(claim);
+    }
+
+    // Process and enrich each food item with its claim lifecycle details & computed status
     for (let food of foods) {
-      if (food.status === 'AVAILABLE') {
-        const pendingClaim = await Claim.findOne({ foodId: food._id, status: 'PENDING' });
-        if (pendingClaim) {
-          food.pendingClaimId = pendingClaim._id;
-        }
+      const fid = food._id.toString();
+      const foodClaims = claimsByFoodId[fid] || [];
+      food.claims = foodClaims;
+
+      const pendingClaim = foodClaims.find(c => c.status === 'PENDING');
+      const acceptedClaim = foodClaims.find(c => c.status === 'ACCEPTED');
+      const declinedClaims = foodClaims.filter(c => c.status === 'DECLINED');
+
+      if (pendingClaim) {
+        food.pendingClaimId = pendingClaim._id;
+        food.pendingClaim = pendingClaim;
+      }
+      if (acceptedClaim) {
+        food.acceptedClaim = acceptedClaim;
+      }
+
+      // Determine accurate category state
+      const expiryDate = new Date(food.expiryTime || food.overallExpiry || food.createdAt);
+      const isExpired = expiryDate <= now;
+
+      if (food.status === 'CLAIMED' || food.status === 'ACCEPTED' || food.status === 'COMPLETED' || acceptedClaim) {
+        food.computedStatus = 'ACCEPTED';
+      } else if (food.status === 'REJECTED' || food.status === 'DECLINED' || (foodClaims.length > 0 && foodClaims.length === declinedClaims.length)) {
+        food.computedStatus = 'REJECTED';
+      } else if (isExpired && foodClaims.length === 0) {
+        food.computedStatus = 'NON_CLAIMED';
+      } else if (!isExpired && (food.status === 'AVAILABLE' || food.status === 'ACTIVE')) {
+        food.computedStatus = 'ACTIVE';
+      } else if (isExpired && !acceptedClaim) {
+        food.computedStatus = 'NON_CLAIMED';
+      } else {
+        food.computedStatus = food.status;
       }
     }
       
@@ -90,7 +142,7 @@ router.get('/', auth, async (req, res) => {
   try {
     const now = new Date();
     const foods = await Food.find({
-      status: 'AVAILABLE',
+      status: { $in: ['AVAILABLE', 'ACTIVE'] },
       $or: [
         { autoDeleteAt: { $exists: false } },
         { autoDeleteAt: null },
@@ -115,7 +167,7 @@ router.post('/:id/claim', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only organisations can claim food' });
     }
     const food = await Food.findById(req.params.id);
-    if (!food || food.status !== 'AVAILABLE') {
+    if (!food || (food.status !== 'AVAILABLE' && food.status !== 'ACTIVE')) {
       return res.status(400).json({ message: 'Food not available' });
     }
 
@@ -135,21 +187,69 @@ router.post('/:id/claim', auth, async (req, res) => {
     });
     await newClaim.save();
 
+    // Fetch NGO details for real-time notification
+    const ngoUser = await User.findById(req.user.id).select('orgName fullName phone email address city');
+    const ngoName = ngoUser?.orgName || ngoUser?.fullName || 'Organisation';
+    // Format pickup time string safely whether it's HH:mm, ISO date, or text
+    let pickupTimeStr = 'Flexible';
+    if (requestedPickupTime) {
+      if (/^\d{1,2}:\d{2}/.test(requestedPickupTime)) {
+        pickupTimeStr = requestedPickupTime;
+      } else {
+        const parsedDate = new Date(requestedPickupTime);
+        pickupTimeStr = !isNaN(parsedDate.getTime()) 
+          ? parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : requestedPickupTime;
+      }
+    }
+
     const notification = new Notification({
       userId: food.donorId,
       type: 'CLAIM_REQUEST',
+      title: `New Claim Request from ${ngoName}`,
       relatedClaimId: newClaim._id,
-      message: 'Someone wants to claim your food!' // We'll construct full message on frontend or can do it here
+      relatedFoodId: food._id,
+      message: `${ngoName} requested to claim "${food.title}". Pickup: ${pickupTimeStr}.${message ? ` "${message}"` : ''}`,
+      stage: 'Awaiting your decision'
     });
     await notification.save();
     
-    // We do NOT change the food status here. It remains AVAILABLE until accepted.
-    // However, we could emit a socket event to update the LiveFeed if needed.
-    // For now, returning the claim.
+    // Send real-time Socket.io notification — targeted to the donor's room only
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      const populatedClaim = await Claim.findById(newClaim._id)
+        .populate('ngoId', 'orgName fullName phone email address city')
+        .populate('foodId');
+
+      // Targeted: only the donor receives this event
+      emitToUser(food.donorId, 'CLAIM_REQUEST_RECEIVED', {
+        donorId: food.donorId.toString(),
+        claim: populatedClaim || newClaim,
+        ngo: ngoUser,
+        ngoName,
+        foodTitle: food.title,
+        foodId: food._id,
+        requestedPickupTime,
+        message: message || '',
+        notification
+      });
+
+      emitToUser(food.donorId, 'NEW_NOTIFICATION', {
+        ...notification.toObject(),
+        userId: food.donorId.toString(),
+        ngoName,
+        foodTitle: food.title,
+        claimId: newClaim._id
+      });
+
+      // Broadcast listing update to all NGOs browsing the feed (public event, not private)
+      req.app.get('io').emit('LISTING_UPDATED', food);
+    }
+
     res.json(newClaim);
   } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
+    console.error('Error claiming food:', err);
+    res.status(500).json({ message: err.message || 'Server Error' });
   }
 });
 
@@ -275,8 +375,42 @@ router.patch('/verify-pickup/:id', auth, async (req, res) => {
     
     food.status = 'COMPLETED';
     await food.save();
-    
+
+    // Notify both donor and NGO of completed delivery
+    const emitToUser = req.app.get('emitToUser');
     const io = req.app.get('io');
+
+    try {
+      // Find the accepted claim to know the NGO
+      const acceptedClaim = await Claim.findOne({ foodId: food._id, status: 'ACCEPTED' });
+      if (acceptedClaim && emitToUser) {
+        // Notify NGO — pickup completed
+        const ngoPickupNotif = new Notification({
+          userId: acceptedClaim.ngoId,
+          type: 'PICKUP_CONFIRMED',
+          title: 'Pickup Completed ✓',
+          message: `Pickup of "${food.title}" has been verified and completed. Thank you!`,
+          relatedClaimId: acceptedClaim._id,
+          relatedFoodId: food._id,
+          stage: 'Delivered ✓'
+        });
+        await ngoPickupNotif.save();
+        emitToUser(acceptedClaim.ngoId, 'PICKUP_CONFIRMED', { food, claim: acceptedClaim });
+        emitToUser(acceptedClaim.ngoId, 'NEW_NOTIFICATION', {
+          ...ngoPickupNotif.toObject(),
+          userId: acceptedClaim.ngoId.toString()
+        });
+
+        // Update stage on NGO's existing CLAIM_ACCEPTED notification
+        await Notification.findOneAndUpdate(
+          { relatedClaimId: acceptedClaim._id, userId: acceptedClaim.ngoId, type: 'CLAIM_ACCEPTED' },
+          { stage: 'Delivered ✓' }
+        );
+      }
+    } catch (notifErr) {
+      console.error('Error creating pickup notifications:', notifErr.message);
+    }
+
     if (io) io.emit('LISTING_UPDATED', food);
     
     res.json(food);

@@ -11,10 +11,13 @@ import FindNGOsPage from './components/FindNGOsPage';
 import NGOProfilePage from './components/NGOProfilePage';
 import DonationTrackingPage from './components/DonationTrackingPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import { io } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-// Disable actual socket connection for now to stop 404 polling
-const socket = { on: () => { }, off: () => { }, emit: () => { } };
+const socket = io(API_URL, {
+  autoConnect: true,
+  transports: ['websocket', 'polling']
+});
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -60,9 +63,17 @@ function App() {
   const toggleTheme = () => setIsDarkMode(prev => !prev);
 
   useEffect(() => {
-    // Socket setup
+    // Socket setup — no-op, room joining handled after user is loaded
     return () => socket.off('connect');
   }, []);
+
+  // Join the user's private socket room once we know their ID
+  useEffect(() => {
+    const uid = user?.id || user?._id;
+    if (uid) {
+      socket.emit('join_room', uid);
+    }
+  }, [user]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -88,6 +99,8 @@ function App() {
   }, [token]);
 
   const handleLogout = () => {
+    const uid = user?.id || user?._id;
+    if (uid) socket.emit('leave_room', uid);
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);

@@ -7,7 +7,11 @@ const FoodSchema = new mongoose.Schema({
   foodType: { type: String, enum: ['VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'], required: true },
   preparedTime: { type: Date, required: true },
   expiryTime: { type: Date, required: true },
-  status: { type: String, enum: ['AVAILABLE', 'CLAIMED', 'COMPLETED'], default: 'AVAILABLE' },
+  status: { 
+    type: String, 
+    enum: ['AVAILABLE', 'ACTIVE', 'ACCEPTED', 'CLAIMED', 'REJECTED', 'DECLINED', 'NON_CLAIMED', 'COMPLETED'], 
+    default: 'AVAILABLE' 
+  },
   claimantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verificationCode: { type: String },
   pickupAddress: { type: String },

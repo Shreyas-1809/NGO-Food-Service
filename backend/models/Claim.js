@@ -20,7 +20,7 @@ const ClaimSchema = new mongoose.Schema({
     type: String
   },
   requestedPickupTime: {
-    type: Date
+    type: String
   },
   declineReason: {
     type: String

@@ -1,0 +1,674 @@
+{
+  "activities": [
+    {
+      "_id": "6a85cce25bce6d161d616d85",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Account Created",
+      "timestamp": "2026-08-19T15:33:54.185Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86c48238def83be34827c0",
+      "userId": "6a86c48138def83be34827bf",
+      "action": "Account Created",
+      "timestamp": "2026-08-20T09:10:26.788Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86c4f25b2567829ae6b0c1",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Account Created",
+      "timestamp": "2026-08-20T09:12:18.420Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86c6615b2567829ae6b0c4",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T09:18:25.569Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86c7c45b2567829ae6b0c9",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T09:24:20.925Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86c8485b2567829ae6b0cd",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Account Created",
+      "timestamp": "2026-08-20T09:26:32.747Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86ca5938def83be34827c5",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T09:35:21.819Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86cd04c05dd4a53ffc9e75",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T09:46:44.761Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86cdac5b2567829ae6b0d0",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T09:49:32.537Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86cf895b2567829ae6b0d5",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T09:57:29.297Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86d1ad5b2567829ae6b0dc",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T10:06:37.255Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86d2b75b2567829ae6b0ef",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T10:11:03.809Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86d2f23391cc5c09890195",
+      "userId": "6a86d2f23391cc5c09890194",
+      "action": "Account Created",
+      "timestamp": "2026-08-20T10:12:02.960Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86e1c433809ec29e58221d",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T11:15:16.645Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86e59c33809ec29e582226",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T11:31:40.015Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86e6f233809ec29e582233",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T11:37:22.591Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86e7c433809ec29e582236",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T11:40:52.599Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86edab33809ec29e582247",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T12:06:03.235Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86f1f633809ec29e58225e",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T12:24:22.347Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86f39a33809ec29e582270",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T12:31:22.027Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a86f4f033809ec29e582289",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T12:37:04.079Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a873778a28e9d4b2d93d910",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T17:20:56.480Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a874060d5a3152c56e393be",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T17:58:56.367Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a87593c47e0130337f36ea4",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-20T19:45:00.781Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a882507864a774900a09b72",
+      "userId": "6a86c4f15b2567829ae6b0c0",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T10:14:31.870Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a882668864a774900a09b7a",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Account Created",
+      "timestamp": "2026-08-21T10:20:24.023Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a882fe6cb85af50a6743ec3",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T11:00:54.092Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88330571dcd15d968d343b",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T11:14:13.422Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8837a571dcd15d968d3444",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T11:33:57.094Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88472571dcd15d968d3499",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T12:40:05.991Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88477671dcd15d968d34aa",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T12:41:26.855Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8849d171dcd15d968d34d6",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T12:51:29.281Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88504671dcd15d968d354f",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T13:19:02.680Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88507d71dcd15d968d356c",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T13:19:57.930Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88514771dcd15d968d35ad",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T13:23:19.353Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88612d71dcd15d968d35fb",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T14:31:09.449Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8866cc71dcd15d968d361c",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T14:55:08.347Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88673f71dcd15d968d363e",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T14:57:03.069Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88686271dcd15d968d3663",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:01:54.388Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8868a471dcd15d968d3664",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:03:00.163Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88693771dcd15d968d368d",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:05:27.395Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a886a7c71dcd15d968d36bf",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:10:52.015Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a886b1471dcd15d968d36d8",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:13:24.905Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a886e3271dcd15d968d36f9",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:26:42.076Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a886e6471dcd15d968d3702",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:27:32.825Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a886f0071dcd15d968d371c",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:30:08.838Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8871b971dcd15d968d3761",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:41:45.289Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88726371dcd15d968d3796",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:44:35.624Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88731571dcd15d968d37af",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T15:47:33.211Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88c8967db2164aceb25bb8",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T21:52:22.077Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88c9dd7db2164aceb25c00",
+      "userId": "6a88c9dd7db2164aceb25bff",
+      "action": "Account Created",
+      "timestamp": "2026-08-21T21:57:49.812Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a88ca2a7db2164aceb25c1d",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-21T21:59:06.646Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8954eb14ab6948e5762d43",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-22T07:51:07.070Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a89552114ab6948e5762d5d",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-22T07:52:01.375Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8a91947c4295b21db1b28f",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-23T06:22:12.531Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8b17c0e167a25ce60bed2e",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-23T15:54:40.092Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8b1a27e167a25ce60bed2f",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-23T16:04:55.498Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8b2ab9e167a25ce60bed81",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-23T17:15:37.330Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8b2ec8e167a25ce60bedba",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-23T17:32:56.214Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8bdfdf30d83a98d2814916",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T06:08:31.540Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8be11630d83a98d2814945",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T06:13:42.825Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8be735789d8bd961517ebe",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T06:39:49.696Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8be97d30d83a98d2814946",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T06:49:33.310Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8be9c230d83a98d281495d",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T06:50:42.869Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8bebff30d83a98d281499e",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T07:00:15.348Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8bec4130d83a98d28149cf",
+      "userId": "6a882667864a774900a09b79",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T07:01:21.672Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8bedd130d83a98d2814a00",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "action": "Logged In",
+      "timestamp": "2026-08-24T07:08:01.601Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8e842dd765cd8575002557",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-26T06:14:05.043Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8e8459d765cd8575002570",
+      "userId": "6a88c9dd7db2164aceb25bff",
+      "action": "Logged In",
+      "timestamp": "2026-08-26T06:14:49.582Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8e84dcd765cd85750025bc",
+      "userId": "6a85cce15bce6d161d616d84",
+      "action": "Logged In",
+      "timestamp": "2026-08-26T06:17:00.988Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8e8539d765cd85750025d5",
+      "userId": "6a88c9dd7db2164aceb25bff",
+      "action": "Logged In",
+      "timestamp": "2026-08-26T06:18:33.253Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8edeb0b1ba717cd8fb7071",
+      "userId": "6a88c9dd7db2164aceb25bff",
+      "action": "Logged In",
+      "timestamp": "2026-08-26T12:40:16.068Z",
+      "__v": 0
+    }
+  ],
+  "claims": [],
+  "foods": [],
+  "notifications": [
+    {
+      "_id": "6a88726d71dcd15d968d37a4",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "type": "INFO",
+      "message": "Your claim for \"dumplings\" was accepted! Code: 1863",
+      "read": false,
+      "createdAt": "2026-08-21T15:44:45.190Z",
+      "updatedAt": "2026-08-21T15:44:45.190Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a8b2acee167a25ce60bed8f",
+      "userId": "6a86c8485b2567829ae6b0cc",
+      "type": "INFO",
+      "message": "Your claim for \"sizzlers\" was accepted! Code: 3931",
+      "read": false,
+      "createdAt": "2026-08-23T17:15:58.924Z",
+      "updatedAt": "2026-08-23T17:15:58.924Z",
+      "__v": 0
+    }
+  ],
+  "users": [
+    {
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a85cce15bce6d161d616d84",
+      "accountType": "DONOR",
+      "email": "shreyassgaidhani@gmail.com",
+      "phone": "8421923414",
+      "fullName": "shreyas",
+      "businessName": "Shrey Bakeries",
+      "createdAt": "2026-08-19T15:33:53.931Z",
+      "updatedAt": "2026-08-26T07:21:01.289Z",
+      "__v": 0,
+      "address": "",
+      "city": "",
+      "description": "I am Shreyas...Welcome to my kitche.n.what would you like to eat\n",
+      "orgName": "",
+      "pincode": ""
+    },
+    {
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a86c48138def83be34827bf",
+      "accountType": "DONOR",
+      "email": "test@test.com",
+      "phone": "1234567890",
+      "fullName": "John Doe",
+      "businessName": "",
+      "createdAt": "2026-08-20T09:10:25.683Z",
+      "updatedAt": "2026-08-20T09:10:25.683Z",
+      "__v": 0
+    },
+    {
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a86c4f15b2567829ae6b0c0",
+      "accountType": "DONOR",
+      "email": "tanviprabhu@gmail.com",
+      "phone": "8378967955",
+      "fullName": "tanvi prabhu",
+      "businessName": "",
+      "createdAt": "2026-08-20T09:12:17.996Z",
+      "updatedAt": "2026-08-20T09:12:17.996Z",
+      "__v": 0
+    },
+    {
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a86c8485b2567829ae6b0cc",
+      "accountType": "ORGANISATION",
+      "email": "tanvi@gmail.com",
+      "phone": "8378967955",
+      "orgName": "tanvi",
+      "city": "pune",
+      "pincode": "411046",
+      "address": "kothrud",
+      "createdAt": "2026-08-20T09:26:32.498Z",
+      "updatedAt": "2026-08-20T09:26:32.498Z",
+      "__v": 0
+    },
+    {
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a86d2f23391cc5c09890194",
+      "accountType": "DONOR",
+      "email": "tanishkaghewari@gmail.com",
+      "phone": "9270388322",
+      "fullName": "Tanishka Ghewari",
+      "businessName": "",
+      "createdAt": "2026-08-20T10:12:02.725Z",
+      "updatedAt": "2026-08-20T10:12:02.725Z",
+      "__v": 0
+    },
+    {
+      "businessDetails": {
+        "shopAddress": "Kothrud",
+        "shopPincode": "411046",
+        "shopEmail": "shop@gmail.com"
+      },
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a882667864a774900a09b79",
+      "accountType": "DONOR",
+      "email": "tanviprabhu1982@gmail.com",
+      "phone": "8378967955",
+      "fullName": "Tanvi Prabhu",
+      "businessName": "NGO_Private_limited",
+      "createdAt": "2026-08-21T10:20:23.825Z",
+      "updatedAt": "2026-08-21T10:20:23.825Z",
+      "__v": 0
+    },
+    {
+      "location": {
+        "type": "Point",
+        "coordinates": [
+          0,
+          0
+        ]
+      },
+      "_id": "6a88c9dd7db2164aceb25bff",
+      "accountType": "ORGANISATION",
+      "email": "shreyas@gmail.com",
+      "phone": "8975909076",
+      "orgName": "shrey homes",
+      "city": "Pune",
+      "pincode": "411046",
+      "address": "pict clg",
+      "createdAt": "2026-08-21T21:57:49.501Z",
+      "updatedAt": "2026-08-21T21:57:49.501Z",
+      "__v": 0
+    }
+  ]
+}

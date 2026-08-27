@@ -287,7 +287,7 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
 
       setNotifications(prev => prev.map(n =>
         n._id === notif._id
-          ? { ...n, stage: 'Confirmed — volunteer being arranged', read: true }
+          ? { ...n, stage: 'Confirmed — preparing for pickup', read: true }
           : n
       ));
 

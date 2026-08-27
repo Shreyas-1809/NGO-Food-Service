@@ -158,6 +158,30 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/food/:id
+// @desc    Get single food listing by ID
+// @access  Private
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const food = await Food.findById(req.params.id)
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
+      .populate('claimantId', 'orgName fullName phone email address city');
+    if (!food) {
+      return res.status(404).json({ message: 'Food item not found' });
+    }
+    const foodObj = food.toObject();
+    const claims = await Claim.find({ foodId: food._id })
+      .populate('ngoId', 'orgName fullName phone email address city location')
+      .sort({ createdAt: -1 });
+    foodObj.claims = claims;
+    foodObj.acceptedClaim = claims.find(c => c.status === 'ACCEPTED');
+    res.json(foodObj);
+  } catch (err) {
+    console.error('Error fetching food by id:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 // @route   POST /api/food/:id/claim
 // @desc    Request to claim food (NGO only)
 // @access  Private

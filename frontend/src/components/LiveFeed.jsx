@@ -394,8 +394,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         if (!hasLocA && !hasLocB) return 0;
         if (!hasLocA) return 1;
         if (!hasLocB) return -1;
-        const distA = Math.pow(a.location.coordinates[0] - 77.59, 2) + Math.pow(a.location.coordinates[1] - 12.97, 2);
-        const distB = Math.pow(b.location.coordinates[0] - 77.59, 2) + Math.pow(b.location.coordinates[1] - 12.97, 2);
+        // Calculate distance relative to Pune center (73.8567° E, 18.5204° N)
+        const distA = Math.pow(a.location.coordinates[0] - 73.8567, 2) + Math.pow(a.location.coordinates[1] - 18.5204, 2);
+        const distB = Math.pow(b.location.coordinates[0] - 73.8567, 2) + Math.pow(b.location.coordinates[1] - 18.5204, 2);
         return distA - distB;
       });
     }
@@ -815,7 +816,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               Claimed by: <strong>{claimingNgo?.orgName || claimingNgo?.fullName || 'Verified NGO Partner'}</strong>
                             </p>
                             <button
-                              onClick={() => navigate('/track')}
+                              onClick={() => navigate(`/track/${post._id || post.id}`)}
                               className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                             >
                               <Truck className="w-3.5 h-3.5" /> View Delivery Tracking

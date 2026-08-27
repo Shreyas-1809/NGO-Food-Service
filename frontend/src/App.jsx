@@ -155,6 +155,7 @@ function App() {
 
                   {/* Donation Dispatch Tracking */}
                   <Route path="/track/:id" element={<DonationTrackingPage />} />
+                  <Route path="/track" element={<DonationTrackingPage />} />
 
                   {/* Fallback to Dashboard */}
                   <Route path="*" element={<Navigate to="/" replace />} />

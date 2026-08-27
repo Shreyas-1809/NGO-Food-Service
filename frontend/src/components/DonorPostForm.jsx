@@ -160,6 +160,17 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     const totalQuantity = processedItems.reduce((acc, curr) => acc + curr.quantity, 0);
     const mainTitle = processedItems.length > 1 ? "Assorted Surplus Batch" : processedItems[0].itemName;
 
+    // Dynamically geocode pickupAddress or fallback to user/Pune coordinates
+    let pickupCoords = { lat: 18.5074, lng: 73.8077 }; // Default Kothrud, Pune
+    try {
+      if (sharedFields.pickupAddress) {
+        const { geocodeAddress } = await import('../services/mapsService');
+        pickupCoords = await geocodeAddress(sharedFields.pickupAddress);
+      }
+    } catch (geoErr) {
+      console.warn('Geocoding failed, using local Pune coords:', geoErr);
+    }
+
     const newFood = {
       title: mainTitle,
       quantity: totalQuantity,
@@ -171,7 +182,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       photos: photos,
       autoDeleteValue: autoDeleteValue ? Number(autoDeleteValue) : null,
       autoDeleteUnit: autoDeleteUnit,
-      location: { type: 'Point', coordinates: [77.5946, 12.9716] }, // Mock coordinates
+      location: { type: 'Point', coordinates: [pickupCoords.lng, pickupCoords.lat] },
       pickupAddress: sharedFields.pickupAddress,
       pickupTimeSlot: {
         start: new Date(sharedFields.startTime).toISOString(),

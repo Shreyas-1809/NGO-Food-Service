@@ -182,17 +182,26 @@ export const geocodeAddress = async (address) => {
     console.warn('[MapsService] Nominatim geocode fallback:', err.message);
   }
 
-  // 3. Known city landmarks fallback
+  // 3. Known city and Pune area landmarks fallback
   const addrLower = address.toLowerCase();
+  if (addrLower.includes('kothrud')) return { lat: 18.5074, lng: 73.8077 };
+  if (addrLower.includes('shivajinagar') || addrLower.includes('university')) return { lat: 18.5308, lng: 73.8474 };
+  if (addrLower.includes('vimannagar') || addrLower.includes('viman nagar')) return { lat: 18.5679, lng: 73.9143 };
+  if (addrLower.includes('hinjewadi') || addrLower.includes('hinjawadi')) return { lat: 18.5913, lng: 73.7389 };
+  if (addrLower.includes('hadapsar') || addrLower.includes('magarpatta')) return { lat: 18.5089, lng: 73.9259 };
+  if (addrLower.includes('deccan') || addrLower.includes('fc road') || addrLower.includes('jm road')) return { lat: 18.5196, lng: 73.8412 };
+  if (addrLower.includes('baner') || addrLower.includes('balewadi')) return { lat: 18.5590, lng: 73.7868 };
+  if (addrLower.includes('aundh')) return { lat: 18.5602, lng: 73.8031 };
+  if (addrLower.includes('katraj') || addrLower.includes('pict') || addrLower.includes('dhankawadi') || addrLower.includes('clg')) return { lat: 18.4575, lng: 73.8508 };
+  if (addrLower.includes('karve') || addrLower.includes('karvenagar')) return { lat: 18.4900, lng: 73.8150 };
+  if (addrLower.includes('swargate')) return { lat: 18.5018, lng: 73.8586 };
+  if (addrLower.includes('kharadi')) return { lat: 18.5515, lng: 73.9348 };
+  if (addrLower.includes('wakad')) return { lat: 18.5987, lng: 73.7688 };
+  if (addrLower.includes('pimpri') || addrLower.includes('chinchwad')) return { lat: 18.6279, lng: 73.8131 };
   if (addrLower.includes('mumbai')) return { lat: 19.0760, lng: 72.8777 };
   if (addrLower.includes('delhi')) return { lat: 28.6139, lng: 77.2090 };
-  if (addrLower.includes('bangalore') || addrLower.includes('bengaluru')) return { lat: 12.9716, lng: 77.5946 };
   if (addrLower.includes('hyderabad')) return { lat: 17.3850, lng: 78.4867 };
-  if (addrLower.includes('kothrud')) return { lat: 18.5074, lng: 73.8077 };
-  if (addrLower.includes('vimannagar') || addrLower.includes('viman nagar')) return { lat: 18.5679, lng: 73.9143 };
-  if (addrLower.includes('hinjewadi')) return { lat: 18.5913, lng: 73.7389 };
-  if (addrLower.includes('hadapsar')) return { lat: 18.5089, lng: 73.9259 };
-  if (addrLower.includes('shivajinagar')) return { lat: 18.5308, lng: 73.8474 };
+  if (addrLower.includes('bangalore') || addrLower.includes('bengaluru')) return { lat: 12.9716, lng: 77.5946 };
 
   return { lat: 18.5204, lng: 73.8567 }; // Default Pune Center
 };

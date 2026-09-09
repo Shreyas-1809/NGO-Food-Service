@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Package, Clock, Utensils, X, Trash2, Edit, AlertCircle } from 'lucide-react';
+import Drawer from './ui/Drawer';
+import Button from './ui/Button';
+import StatusBadge from './ui/StatusBadge';
+import EmptyState from './ui/EmptyState';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
+const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
+const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
   const [myPostings, setMyPostings] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,47 +47,37 @@ const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
 
   if (user.accountType !== 'DONOR') {
     return (
-      <div className="h-full flex flex-col">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
-          <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center">
-            <Package className="w-5 h-5 mr-2 text-green-600" /> Edit Postings
-          </h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-800 dark:hover:text-white"><X className="w-5 h-5" /></button>
-        </div>
+      <Drawer
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Edit Postings"
+        icon={Package}
+      >
         <div className="p-6 text-center text-slate-500">Only donors have active postings.</div>
-      </div>
+      </Drawer>
     );
   }
 
   const activePostings = (Array.isArray(myPostings) ? myPostings : []).filter(post => post.status === 'AVAILABLE' || post.status === 'ACTIVE');
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-slate-800">
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-800 z-10">
-        <div>
-          <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center">
-            <Package className="w-5 h-5 mr-2 text-emerald-600" /> Edit Postings
-          </h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Active surplus listings (Edit within 12h or Delete)
-          </p>
-        </div>
-        <button onClick={onClose} className="text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer p-1">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Edit Postings"
+      subtitle="Active surplus listings (Edit within 12h or Delete)"
+      icon={Package}
+      width="w-full max-w-md"
+    >
+      <div className="flex-1 space-y-4">
         {loading ? (
           <div className="text-center py-8 text-slate-500">Loading active postings...</div>
         ) : activePostings.length === 0 ? (
-          <div className="text-xs text-slate-500 text-center py-12 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 space-y-2 p-6">
-            <Package className="w-8 h-8 mx-auto text-slate-400 opacity-50" />
-            <p className="font-bold text-slate-700 dark:text-slate-300">No Active Postings Found</p>
-            <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
-              You do not have any active surplus food postings available for editing or deletion right now.
-            </p>
-          </div>
+          <EmptyState
+            icon={Package}
+            message="No Active Postings Found"
+            className="py-12"
+          />
         ) : (
           activePostings.map(post => {
             const isEditable = (Date.now() - new Date(post.createdAt).getTime()) <= TWELVE_HOURS_MS;
@@ -89,13 +85,7 @@ const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
               <div key={post._id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3">
                 <div className="flex justify-between items-start">
                   <h4 className="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{post.title}</h4>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0 ml-2 ${
-                    post.status === 'AVAILABLE' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 
-                    post.status === 'CLAIMED' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400' :
-                    'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300'
-                  }`}>
-                    {post.status}
-                  </span>
+                  <StatusBadge status={post.status} />
                 </div>
                 
                 <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
@@ -111,22 +101,28 @@ const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
                 <div className="pt-2 border-t border-slate-200 dark:border-slate-600 space-y-2">
                   <div className="flex gap-2">
                     {isEditable && (
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1"
                         onClick={() => {
                           onClose();
                           onEdit && onEdit(post);
                         }}
-                        className="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-800 dark:text-white rounded-lg flex justify-center items-center text-xs font-bold transition-colors cursor-pointer"
+                        icon={Edit}
                       >
-                        <Edit className="w-3.5 h-3.5 mr-1" /> Edit
-                      </button>
+                        Edit
+                      </Button>
                     )}
-                    <button
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      className={isEditable ? 'flex-1' : 'w-full'}
                       onClick={() => handleDelete(post._id)}
-                      className={`${isEditable ? 'flex-1' : 'w-full'} py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-lg flex justify-center items-center text-xs font-bold transition-colors cursor-pointer`}
+                      icon={Trash2}
                     >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
-                    </button>
+                      Delete
+                    </Button>
                   </div>
                   {!isEditable && (
                     <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium text-center bg-amber-50 dark:bg-amber-950/40 p-1 rounded-lg border border-amber-200 dark:border-amber-900">
@@ -139,7 +135,7 @@ const MyPostingsDrawer = ({ user, token, onClose, onEdit }) => {
           })
         )}
       </div>
-    </div>
+    </Drawer>
   );
 };
 

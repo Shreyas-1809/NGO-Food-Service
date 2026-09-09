@@ -46,7 +46,20 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   };
 
   const handleEditPosting = (post) => {
-    setPrefillData({ ...post, isEdit: true });
+    if (post.isNewPostSignal) {
+      setPrefillData(null);
+      setShowPostForm(true);
+      setActiveDrawer(null);
+      return;
+    }
+    
+    // For reposts, we don't want isEdit to be true because it's a new post creation, just with prefilled data
+    if (post.isRepost) {
+      setPrefillData({ ...post, isEdit: false });
+    } else {
+      setPrefillData({ ...post, isEdit: true });
+    }
+    
     setShowPostForm(true);
     setActiveDrawer(null);
   };
@@ -117,6 +130,8 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
           {/* Top Spacing / Content Start */}
           <div className="pt-2"></div>
 
+
+
           {/* Post Food Modal Overlay (Donor) */}
           {showPostForm && (
             <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
@@ -153,12 +168,12 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
         </div>
       </main>
 
-      {/* Drawers Container (Slide-over) */}
-      <div className={`w-96 shrink-0 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-2xl transition-all duration-300 ease-in-out z-40 ${activeDrawer ? 'translate-x-0 ml-0' : 'translate-x-full absolute right-20 top-0 bottom-0'}`} style={{ position: activeDrawer ? 'relative' : 'absolute' }}>
-        {activeDrawer === 'POSTINGS' && <MyPostingsDrawer user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />}
-        {activeDrawer === 'SHORTAGES' && <MyShortagesDrawer token={token} onClose={closeDrawer} />}
-        {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} token={token} socket={socket} onClose={closeDrawer} onNotificationChange={fetchNotificationsCount} />}
-      </div>
+      {/* Drawers Container - Using Shared Drawer Component */}
+      <>
+        <MyPostingsDrawer isOpen={activeDrawer === 'POSTINGS'} user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />
+        <MyShortagesDrawer isOpen={activeDrawer === 'SHORTAGES'} token={token} onClose={closeDrawer} />
+        <NotificationsDrawer isOpen={activeDrawer === 'NOTIFICATIONS'} user={user} token={token} socket={socket} onClose={closeDrawer} onNotificationChange={fetchNotificationsCount} />
+      </>
 
       {/* Right-Hand Icon Navigation Bar */}
       <aside className="w-20 bg-slate-900 border-l border-slate-800 flex flex-col items-center py-6 gap-6 shrink-0 z-50">

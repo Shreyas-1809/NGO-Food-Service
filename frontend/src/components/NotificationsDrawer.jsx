@@ -18,6 +18,9 @@ import {
   Truck,
   CheckCheck
 } from 'lucide-react';
+import Drawer from './ui/Drawer';
+import Button from './ui/Button';
+import EmptyState from './ui/EmptyState';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -67,7 +70,7 @@ const formatTimeAgo = (dateString) => {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChange }) => {
+const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificationChange }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -335,27 +338,15 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
   const unreadList = notifications.filter(n => !n.read);
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-slate-800 select-none">
-
-      {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xs z-10">
-        <div>
-          <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center">
-            <Bell className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400" />
-            Notifications
-          </h3>
-          <span className="text-[11px] text-slate-400 block">
-            {isOrg ? 'Donor acceptances, updates & tracking' : 'Incoming organisation claims & shortage alerts'}
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
-          title="Close panel"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Notifications"
+      subtitle={isOrg ? 'Donor acceptances, updates & tracking' : 'Incoming organisation claims & shortage alerts'}
+      icon={Bell}
+      width="w-full max-w-md"
+    >
+      <div className="flex flex-col h-full space-y-3 relative">
 
       {/* Quick Action Bar (Mark all read & Clear all) */}
       {notifications.length > 0 && !selectedClaim && (
@@ -384,7 +375,7 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
       )}
 
       {/* Main Notification Stream */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 relative">
+      <div className="flex-1 space-y-3 relative">
         {selectedClaim ? (
           /* Expanded Claim Details View */
           <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 animate-in slide-in-from-right-4 space-y-4">
@@ -470,20 +461,22 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
               <div className="flex flex-col gap-2 pt-2">
                 {!showDeclineInput ? (
                   <div className="flex gap-2">
-                    <button
+                    <Button
+                      variant="primary"
+                      className="flex-1"
                       onClick={handleAcceptBackendClaim}
-                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer text-xs transition-colors"
+                      icon={Check}
                     >
-                      <Check className="w-4 h-4" />
-                      <span>Accept Request</span>
-                    </button>
-                    <button
+                      Accept Request
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="flex-1"
                       onClick={() => setShowDeclineInput(true)}
-                      className="flex-1 py-2.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl font-bold flex items-center justify-center space-x-1.5 cursor-pointer text-xs transition-colors"
+                      icon={XCircle}
                     >
-                      <XCircle className="w-4 h-4" />
-                      <span>Decline Request</span>
-                    </button>
+                      Decline Request
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-2 animate-in fade-in">
@@ -495,18 +488,20 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
                       className="w-full p-2.5 text-xs border border-slate-200 dark:border-slate-600 rounded-xl dark:bg-slate-800 dark:text-white outline-none focus:border-red-500"
                     />
                     <div className="flex gap-2">
-                      <button
+                      <Button
+                        variant="danger"
+                        className="flex-1"
                         onClick={handleDeclineBackendClaim}
-                        className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer transition-colors"
                       >
                         Confirm Decline
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        className="flex-1"
                         onClick={() => setShowDeclineInput(false)}
-                        className="flex-1 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer transition-colors"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -523,15 +518,18 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
             <span>Loading notifications...</span>
           </div>
         ) : notifications.length === 0 ? (
-          <div className="text-xs text-slate-500 text-center py-14 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 space-y-2 p-6">
-            <Bell className="w-8 h-8 mx-auto text-slate-400 mb-2 opacity-40" />
-            <p className="font-bold text-sm text-slate-700 dark:text-slate-200">No active notifications</p>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              {isOrg
-                ? 'Incoming acceptance notifications and tracking updates from donors will appear here.'
-                : 'Incoming claim requests and updates from verified NGOs will appear here.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={Bell}
+            message="No active notifications"
+            className="py-14"
+            action={
+              <p className="text-[11px] text-slate-400 leading-relaxed text-center">
+                {isOrg
+                  ? 'Incoming acceptance notifications and tracking updates from donors will appear here.'
+                  : 'Incoming claim requests and updates from verified NGOs will appear here.'}
+              </p>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {notifications.map(note => {
@@ -603,25 +601,29 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
                     <div className="pt-1 border-t border-emerald-100 dark:border-emerald-900/40" onClick={e => e.stopPropagation()}>
                       {inlineDeclineId !== note._id ? (
                         <div className="flex gap-2">
-                          <button
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="flex-1"
                             disabled={isActing}
                             onClick={(e) => handleInlineAccept(note, e)}
-                            className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl font-bold flex items-center justify-center space-x-1 shadow-xs cursor-pointer text-xs transition-colors"
+                            icon={Check}
                           >
-                            <Check className="w-3.5 h-3.5" />
-                            <span>{isActing ? 'Accepting...' : 'Accept'}</span>
-                          </button>
-                          <button
+                            {isActing ? 'Accepting...' : 'Accept'}
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            className="flex-1"
                             disabled={isActing}
                             onClick={(e) => {
                               e.stopPropagation();
                               setInlineDeclineId(note._id);
                             }}
-                            className="flex-1 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 rounded-xl font-bold flex items-center justify-center space-x-1 cursor-pointer text-xs transition-colors"
+                            icon={XCircle}
                           >
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Decline</span>
-                          </button>
+                            Decline
+                          </Button>
                         </div>
                       ) : (
                         <div className="space-y-2 pt-1 animate-in fade-in">
@@ -633,23 +635,26 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
                             className="w-full p-2 text-xs border border-slate-200 dark:border-slate-600 rounded-xl dark:bg-slate-800 dark:text-white outline-none focus:border-red-500"
                           />
                           <div className="flex gap-2">
-                            <button
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              className="flex-1"
                               disabled={isActing}
                               onClick={(e) => handleInlineDecline(note, e)}
-                              className="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs cursor-pointer transition-colors"
                             >
                               {isActing ? 'Declining...' : 'Confirm Decline'}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setInlineDeclineId(null);
                                 setInlineDeclineReason('');
                               }}
-                              className="py-1.5 px-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer transition-colors"
                             >
                               Cancel
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -689,7 +694,8 @@ const NotificationsDrawer = ({ user, token, socket, onClose, onNotificationChang
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </Drawer>
   );
 };
 

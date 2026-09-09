@@ -20,6 +20,7 @@
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.1",
+    "node-cron": "^4.6.0",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.3"
   }

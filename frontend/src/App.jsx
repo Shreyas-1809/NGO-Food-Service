@@ -8,6 +8,7 @@ import ActivityHistory from './components/ActivityHistory';
 
 // Integrated Feature Pages (Accessible when logged in)
 import FindNGOsPage from './components/FindNGOsPage';
+import MapPage from './components/MapPage';
 import NGOProfilePage from './components/NGOProfilePage';
 import DonationTrackingPage from './components/DonationTrackingPage';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -145,9 +146,10 @@ function App() {
                   {/* User Activity Log */}
                   <Route path="/activity" element={<ActivityHistory token={token} />} />
 
-                  {/* Verified NGOs Directory */}
+                  {/* Verified NGOs Directory & Map */}
                   <Route path="/ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
+                  <Route path="/map" element={<MapPage user={user} />} />
                   <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
 
                   {/* Direct Donate Flow */}

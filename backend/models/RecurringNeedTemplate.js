@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const NeedSchema = new mongoose.Schema({
+const RecurringNeedTemplateSchema = new mongoose.Schema({
   ngoId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -31,15 +31,6 @@ const NeedSchema = new mongoose.Schema({
   description: {
     type: String
   },
-  status: {
-    type: String,
-    enum: ['ACTIVE', 'FULFILLED', 'CANCELLED'],
-    default: 'ACTIVE'
-  },
-  recurringTemplateId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'RecurringNeedTemplate'
-  },
   location: {
     type: {
       type: String,
@@ -50,9 +41,26 @@ const NeedSchema = new mongoose.Schema({
       type: [Number],
       default: [0, 0]
     }
+  },
+  frequency: {
+    type: String,
+    enum: ['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['ACTIVE', 'PAUSED', 'CANCELLED'],
+    default: 'ACTIVE'
+  },
+  nextOccurrence: {
+    type: Date,
+    required: true
+  },
+  lastGenerated: {
+    type: Date
   }
 }, { timestamps: true });
 
-NeedSchema.index({ location: '2dsphere' }, { sparse: true });
+RecurringNeedTemplateSchema.index({ location: '2dsphere' }, { sparse: true });
 
-module.exports = mongoose.model('Need', NeedSchema);
+module.exports = mongoose.model('RecurringNeedTemplate', RecurringNeedTemplateSchema);

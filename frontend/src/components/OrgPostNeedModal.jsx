@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { createReceiverRequest, addNotification, getStoredDonations } from '../services/donationService';
 import { useNavigate } from 'react-router-dom';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
 
 import axios from 'axios';
 
@@ -35,7 +37,8 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
     city: user?.city || 'Pune',
     address: user?.address || '',
     phone: user?.phone || '',
-    description: ''
+    description: '',
+    frequency: 'ONE_TIME'
   });
 
   const [error, setError] = useState('');
@@ -44,6 +47,45 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFrequencyChange = (newFreq) => {
+    let newDateStr = formData.requiredBy;
+    
+    if (newFreq !== 'ONE_TIME') {
+      const today = new Date();
+      // Handle the math in local timezone to avoid weird day shifts
+      const nextDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+      if (newFreq === 'DAILY') {
+        nextDate.setDate(nextDate.getDate() + 1);
+      } else if (newFreq === 'WEEKLY') {
+        nextDate.setDate(nextDate.getDate() + 7);
+      } else if (newFreq === 'BIWEEKLY') {
+        nextDate.setDate(nextDate.getDate() + 14);
+      } else if (newFreq === 'MONTHLY') {
+        const currentMonth = nextDate.getMonth();
+        const targetMonth = currentMonth + 1;
+        const currentDay = nextDate.getDate();
+        
+        nextDate.setMonth(targetMonth, 1);
+        
+        // Find last day of target month
+        const lastDayOfTargetMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+        nextDate.setDate(Math.min(currentDay, lastDayOfTargetMonth));
+      }
+      
+      const yyyy = nextDate.getFullYear();
+      const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(nextDate.getDate()).padStart(2, '0');
+      newDateStr = `${yyyy}-${mm}-${dd}`;
+    }
+
+    setFormData(prev => ({ 
+      ...prev, 
+      frequency: newFreq,
+      requiredBy: newFreq === 'ONE_TIME' ? prev.requiredBy : newDateStr
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -59,34 +101,74 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
       return;
     }
 
+    // Validate date is not in the past
+    const selectedDate = new Date(formData.requiredBy);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to midnight for comparison
+    
+    // Set time of selectedDate to midnight as well
+    selectedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate < today) {
+      setError('Date cannot be in the past.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Post to backend API
-      const res = await axios.post(`${API_URL}/api/needs`, {
-        title: formData.item,
-        category: formData.category,
-        quantity: Number(formData.quantity),
-        unit: formData.unit,
-        urgency: formData.urgency,
-        description: formData.description
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (formData.frequency === 'ONE_TIME') {
+        // Post to backend API
+        const res = await axios.post(`${API_URL}/api/needs`, {
+          title: formData.item,
+          category: formData.category,
+          quantity: Number(formData.quantity),
+          unit: formData.unit,
+          urgency: formData.urgency,
+          description: formData.description
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
-      // Local fallback sync
-      const newReq = createReceiverRequest(formData, user);
-      
-      setCreatedRequest({
-        ...newReq,
-        _id: res.data._id,
-        item: res.data.title || formData.item,
-        quantity: res.data.quantity || formData.quantity,
-        unit: res.data.unit || formData.unit,
-        urgency: res.data.urgency || formData.urgency
-      });
+        // Local fallback sync
+        const newReq = createReceiverRequest(formData, user);
+        
+        setCreatedRequest({
+          ...newReq,
+          _id: res.data._id,
+          item: res.data.title || formData.item,
+          quantity: res.data.quantity || formData.quantity,
+          unit: res.data.unit || formData.unit,
+          urgency: res.data.urgency || formData.urgency
+        });
 
-      if (onSuccess) onSuccess(res.data);
+        if (onSuccess) onSuccess(res.data);
+      } else {
+        // Post to recurring needs API
+        const res = await axios.post(`${API_URL}/api/recurring-needs`, {
+          title: formData.item,
+          category: formData.category,
+          quantity: Number(formData.quantity),
+          unit: formData.unit,
+          urgency: formData.urgency,
+          description: formData.description,
+          frequency: formData.frequency
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        setCreatedRequest({
+          ...formData,
+          _id: res.data._id,
+          item: res.data.title || formData.item,
+          quantity: res.data.quantity || formData.quantity,
+          unit: res.data.unit || formData.unit,
+          urgency: res.data.urgency || formData.urgency,
+          isRecurring: true
+        });
+
+        if (onSuccess) onSuccess(res.data);
+      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || 'Failed to post shortage need. Please try again.');
@@ -96,41 +178,14 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-center items-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-      <div className="w-full max-w-2xl relative animate-in zoom-in-95 duration-300 my-8">
-        
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="absolute -top-10 right-0 text-white hover:text-slate-200 flex items-center font-bold text-sm cursor-pointer"
-        >
-          Close <span className="text-2xl ml-1.5 font-normal">&times;</span>
-        </button>
-
-        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-          
-          {/* Header */}
-          <div className="p-6 bg-gradient-to-r from-amber-500/10 via-emerald-500/10 to-teal-500/10 dark:from-amber-500/20 dark:via-emerald-500/20 dark:to-teal-500/20 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-amber-500 text-white rounded-2xl shadow-md">
-                <AlertCircle className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                  Organisation Portal
-                </span>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                  {createdRequest ? 'Shortage Published Successfully!' : 'Post an Urgent Need / Shortage'}
-                </h2>
-              </div>
-            </div>
-            <span className="text-xs font-semibold px-3 py-1 bg-white/80 dark:bg-slate-800/80 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-              {user?.orgName || user?.name || 'Verified Hub'}
-            </span>
-          </div>
-
-          {/* Body Content */}
-          <div className="p-6">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={createdRequest ? 'Shortage Published Successfully!' : 'Post an Urgent Need / Shortage'}
+      subtitle={user?.orgName || user?.name || 'Verified Hub'}
+      confirmClose={!createdRequest}
+    >
+      <div className="flex-1 space-y-4">
             
             {/* SUCCESS CONFIRMATION SCREEN */}
             {createdRequest ? (
@@ -140,10 +195,12 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Your Shortage is Live for Donors & Volunteers
+                    {createdRequest.isRecurring ? 'Recurring Template Created' : 'Your Shortage is Live for Donors & Volunteers'}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                    Matching surplus food donors will be notified immediately. Donors can also fulfill this demand directly from the shortages feed.
+                    {createdRequest.isRecurring 
+                      ? `This request will automatically generate on a ${formData.frequency.toLowerCase()} basis. The first occurrence is live.` 
+                      : 'Matching surplus food donors will be notified immediately. Donors can also fulfill this demand directly from the shortages feed.'}
                   </p>
                 </div>
 
@@ -218,22 +275,24 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
 
                 {/* Actions */}
                 <div className="flex gap-3 max-w-md mx-auto pt-2">
-                  <button
+                  <Button
+                    variant="primary"
+                    className="flex-1"
                     onClick={() => {
                       onClose();
                       navigate('/requirements');
                     }}
-                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1.5 shadow-sm cursor-pointer"
+                    icon={ArrowRight}
                   >
-                    <span>View on Shortages Page</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                  <button
+                    View on Shortages Page
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="px-6"
                     onClick={onClose}
-                    className="py-3 px-6 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
                   >
                     Done
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -408,15 +467,33 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
 
                     <div>
                       <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        Needed By Date <span className="text-red-500">*</span>
+                        {formData.frequency === 'ONE_TIME' ? 'Needed By Date' : 'First Occurrence Date'} <span className="text-red-500">*</span>
                       </label>
                       <input 
                         type="date"
                         required
+                        min={new Date().toISOString().split('T')[0]} // Quick HTML5 validation fallback
                         value={formData.requiredBy}
                         onChange={(e) => handleChange('requiredBy', e.target.value)}
                         className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                       />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Frequency <span className="text-red-500">*</span>
+                      </label>
+                      <select 
+                        value={formData.frequency}
+                        onChange={(e) => handleFrequencyChange(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold"
+                      >
+                        <option value="ONE_TIME">One-time Request</option>
+                        <option value="DAILY">Daily</option>
+                        <option value="WEEKLY">Weekly</option>
+                        <option value="BIWEEKLY">Bi-weekly</option>
+                        <option value="MONTHLY">Monthly</option>
+                      </select>
                     </div>
 
                     <div className="md:col-span-2">
@@ -436,32 +513,30 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
 
                 {/* Submit Action */}
                 <div className="pt-2 flex justify-end space-x-3">
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
                     onClick={onClose}
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                    className="px-5"
                   >
                     Cancel
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="submit"
+                    variant="primary"
+                    className="px-6 bg-amber-500 hover:bg-amber-600 text-white"
                     disabled={isSubmitting}
-                    className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md hover:shadow-lg transition-all flex items-center space-x-2 cursor-pointer"
+                    loading={isSubmitting}
+                    icon={AlertCircle}
                   >
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{isSubmitting ? 'Publishing Shortage...' : 'Publish Need / Shortage'}</span>
-                  </button>
+                    Publish Need / Shortage
+                  </Button>
                 </div>
 
               </form>
             )}
 
-          </div>
-
-        </div>
-
       </div>
-    </div>
+    </Modal>
   );
 };
 

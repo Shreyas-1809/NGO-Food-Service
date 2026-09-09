@@ -1,85 +1,219 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Clock, Loader2, Activity } from 'lucide-react';
+import { Loader2, Search, Filter, Package, Activity, Calendar } from 'lucide-react';
+import StatusBadge from './ui/StatusBadge';
+import HistoryDetailDrawer from './HistoryDetailDrawer';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const ActivityHistory = ({ token }) => {
-  const [activities, setActivities] = useState([]);
+const ActivityHistory = ({ token, user }) => {
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Filtering state
+  const [statusTab, setStatusTab] = useState('ALL'); // ALL, SENT, ACCEPTED, DECLINED, PENDING
+  const [searchTerm, setSearchTerm] = useState('');
+  const [minQty, setMinQty] = useState('');
+  const [maxQty, setMaxQty] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Selected Record
+  const [selectedRecord, setSelectedRecord] = useState(null);
+
   useEffect(() => {
-    const fetchActivity = async () => {
+    const fetchHistory = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/activity`, {
+        const res = await axios.get(`${API_URL}/api/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setActivities(res.data);
+        setHistory(res.data);
       } catch (err) {
-        console.error('Failed to fetch activity history', err);
-        setError('Could not load activity history.');
+        console.error('Failed to fetch history', err);
+        setError('Could not load donation history.');
       } finally {
         setLoading(false);
       }
     };
 
     if (token) {
-      fetchActivity();
+      fetchHistory();
     }
   }, [token]);
+
+  const filteredHistory = useMemo(() => {
+    return history.filter(item => {
+      // 1. Status / Direction Tabs
+      if (statusTab === 'SENT') {
+        if (item.direction !== 'SENT' && item.direction !== 'POSTED') return false;
+      } else if (statusTab === 'ACCEPTED') {
+        if (item.overallStatus !== 'ACCEPTED' && item.overallStatus !== 'COMPLETED') return false;
+      } else if (statusTab === 'DECLINED') {
+        if (item.overallStatus !== 'CANCELLED') return false;
+      } else if (statusTab === 'PENDING') {
+        if (item.overallStatus !== 'PENDING' && item.overallStatus !== 'ACTIVE') return false;
+      }
+
+      // 2. Search
+      if (searchTerm && !item.itemTitle.toLowerCase().includes(searchTerm.toLowerCase())) {
+        return false;
+      }
+
+      // 3. Quantity
+      if (minQty && item.quantity < Number(minQty)) return false;
+      if (maxQty && item.quantity > Number(maxQty)) return false;
+
+      // 4. Date Range
+      if (startDate) {
+        if (new Date(item.createdAt) < new Date(startDate)) return false;
+      }
+      if (endDate) {
+        // Add 1 day to endDate to make it inclusive for the selected day
+        const end = new Date(endDate);
+        end.setDate(end.getDate() + 1);
+        if (new Date(item.createdAt) >= end) return false;
+      }
+
+      return true;
+    });
+  }, [history, statusTab, searchTerm, minQty, maxQty, startDate, endDate]);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Loader2 className="h-8 w-8 text-green-600 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-lg text-center">
-        {error}
+        <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-8">
-      <div className="flex items-center space-x-3 mb-8">
-        <Activity className="h-8 w-8 text-green-600 dark:text-green-400" />
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Activity History</h1>
+    <div className="max-w-5xl mx-auto py-8 px-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+        <div className="flex items-center space-x-3 mb-4 md:mb-0">
+          <Activity className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Donation & Fulfilment History</h1>
+        </div>
       </div>
 
-      {activities.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-8 text-center border border-slate-200 dark:border-slate-700">
-          <p className="text-slate-500 dark:text-slate-400">No recent activity found.</p>
+      {error ? (
+        <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-4 rounded-lg text-center mb-6">
+          {error}
         </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
-            {activities.map((activity) => (
-              <div key={activity._id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors flex items-start space-x-4">
-                <div className="bg-green-100 dark:bg-green-900/40 p-2 rounded-full flex-shrink-0 mt-1">
-                  <Clock className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-slate-800 dark:text-slate-200 font-medium text-lg">
-                    {activity.action}
-                  </p>
-                  <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-                    {new Date(activity.timestamp).toLocaleString(undefined, {
-                      dateStyle: 'medium',
-                      timeStyle: 'short'
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
+      ) : null}
+
+      {/* Filter / Sort Bar */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6 space-y-4">
+        
+        {/* Status Tabs */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'ALL', label: 'All' },
+            { key: 'SENT', label: 'Requests Sent' },
+            { key: 'ACCEPTED', label: 'Accepted' },
+            { key: 'PENDING', label: 'Unchecked / Pending' },
+            { key: 'DECLINED', label: 'Declined' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setStatusTab(tab.key)}
+              className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors cursor-pointer ${
+                statusTab === tab.key
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search & Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input 
+              type="text"
+              placeholder="Search items..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input 
+              type="number"
+              placeholder="Min Qty"
+              value={minQty}
+              onChange={(e) => setMinQty(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+            />
+            <span className="text-slate-400">-</span>
+            <input 
+              type="number"
+              placeholder="Max Qty"
+              value={maxQty}
+              onChange={(e) => setMaxQty(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+            />
+          </div>
+          <div className="flex items-center space-x-2 md:col-span-2">
+            <Calendar className="h-4 w-4 text-slate-400 flex-shrink-0" />
+            <input 
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+            />
+            <span className="text-slate-400">to</span>
+            <input 
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+            />
           </div>
         </div>
-      )}
+      </div>
+
+      {/* List */}
+      <div className="space-y-4">
+        {filteredHistory.length === 0 ? (
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-12 text-center border border-slate-200 dark:border-slate-700">
+            <Package className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-500 dark:text-slate-400 font-medium">No records match your filters.</p>
+          </div>
+        ) : (
+          filteredHistory.map((item) => (
+            <div 
+              key={item._id} 
+              onClick={() => setSelectedRecord(item)}
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-5 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+            >
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider">
+                    {new Date(item.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-lg">{item.itemTitle}</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                  <span className="font-medium">{item.quantity} {item.unit}</span> • {item.otherPartyName}
+                </p>
+              </div>
+              <div>
+                <StatusBadge status={item.overallStatus} />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <HistoryDetailDrawer
+        isOpen={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        record={selectedRecord}
+      />
     </div>
   );
 };

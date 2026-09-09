@@ -4,6 +4,7 @@ const auth = require('../middleware/auth');
 const Food = require('../models/Food');
 const Claim = require('../models/Claim');
 const Notification = require('../models/Notification');
+const Activity = require('../models/Activity');
 
 const User = require('../models/User');
 
@@ -113,9 +114,11 @@ router.get('/my-listings', auth, async (req, res) => {
       const expiryDate = new Date(food.expiryTime || food.overallExpiry || food.createdAt);
       const isExpired = expiryDate <= now;
 
-      if (food.status === 'CLAIMED' || food.status === 'ACCEPTED' || food.status === 'COMPLETED' || acceptedClaim) {
+      if (food.status === 'COMPLETED') {
+        food.computedStatus = 'COMPLETED';
+      } else if (food.status === 'CLAIMED' || food.status === 'ACCEPTED' || acceptedClaim) {
         food.computedStatus = 'ACCEPTED';
-      } else if (food.status === 'REJECTED' || food.status === 'DECLINED' || (foodClaims.length > 0 && foodClaims.length === declinedClaims.length)) {
+      } else if (food.status === 'CANCELLED' || food.status === 'REJECTED' || food.status === 'DECLINED' || (foodClaims.length > 0 && foodClaims.length === declinedClaims.length)) {
         food.computedStatus = 'REJECTED';
       } else if (isExpired && foodClaims.length === 0) {
         food.computedStatus = 'NON_CLAIMED';
@@ -211,6 +214,13 @@ router.post('/:id/claim', auth, async (req, res) => {
     });
     await newClaim.save();
 
+    // Log Activity for NGO
+    const activity = new Activity({
+      userId: req.user.id,
+      action: `Requested to claim donation: "${food.title}"`
+    });
+    await activity.save();
+
     // Fetch NGO details for real-time notification
     const ngoUser = await User.findById(req.user.id).select('orgName fullName phone email address city');
     const ngoName = ngoUser?.orgName || ngoUser?.fullName || 'Organisation';
@@ -273,6 +283,70 @@ router.post('/:id/claim', auth, async (req, res) => {
     res.json(newClaim);
   } catch (err) {
     console.error('Error claiming food:', err);
+    res.status(500).json({ message: err.message || 'Server Error' });
+  }
+});
+
+// @route   PATCH /api/food/:id/reject
+// @desc    Reject a food listing (NGO only)
+// @access  Private
+router.patch('/:id/reject', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'ORGANISATION') {
+      return res.status(403).json({ message: 'Only organisations can reject food' });
+    }
+    const food = await Food.findById(req.params.id);
+    if (!food || (food.status !== 'AVAILABLE' && food.status !== 'ACTIVE')) {
+      return res.status(400).json({ message: 'Food not available' });
+    }
+
+    const { reason, notes } = req.body;
+    if (!reason) {
+      return res.status(400).json({ message: 'Rejection reason is required' });
+    }
+
+    const fullReason = notes ? `${reason} - ${notes}` : reason;
+
+    food.status = 'REJECTED';
+    food.rejectedBy = req.user.id;
+    food.rejectionReason = fullReason;
+    await food.save();
+
+    // Log Activity for NGO
+    const activity = new Activity({
+      userId: req.user.id,
+      action: `Rejected donation: "${food.title}" (Reason: ${fullReason})`
+    });
+    await activity.save();
+
+    // Notify Donor
+    const ngoUser = await User.findById(req.user.id).select('orgName fullName');
+    const ngoName = ngoUser?.orgName || ngoUser?.fullName || 'An NGO';
+    
+    const notification = new Notification({
+      userId: food.donorId,
+      type: 'INFO',
+      title: 'Donation Rejected',
+      relatedFoodId: food._id,
+      message: `${ngoName} rejected your donation "${food.title}". Reason: ${fullReason}`,
+      stage: 'Rejected'
+    });
+    await notification.save();
+
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      emitToUser(food.donorId, 'NEW_NOTIFICATION', {
+        ...notification.toObject(),
+        userId: food.donorId.toString(),
+        foodTitle: food.title
+      });
+      // Broadcast listing update so it disappears from other NGOs' feeds
+      req.app.get('io').emit('LISTING_UPDATED', food);
+    }
+
+    res.json(food);
+  } catch (err) {
+    console.error('Error rejecting food:', err);
     res.status(500).json({ message: err.message || 'Server Error' });
   }
 });
@@ -463,6 +537,65 @@ router.get('/active-pickups', auth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error');
+  }
+});
+
+// @route   PATCH /api/food/:id/cancel
+// @desc    Cancel a food listing (Donor only)
+// @access  Private
+router.patch('/:id/cancel', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'DONOR') {
+      return res.status(403).json({ message: 'Only donors can cancel food listings' });
+    }
+    const food = await Food.findById(req.params.id);
+    if (!food) {
+      return res.status(404).json({ message: 'Food not found' });
+    }
+    if (food.donorId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    food.status = 'CANCELLED';
+    await food.save();
+    
+    // Also cancel any pending/accepted claims
+    const Claim = require('../models/Claim');
+    await Claim.updateMany(
+      { foodId: food._id, status: { $in: ['PENDING', 'ACCEPTED'] } },
+      { $set: { status: 'DECLINED', declineReason: 'Donor cancelled the listing' } }
+    );
+
+    res.json({ message: 'Food listing cancelled successfully', food });
+  } catch (err) {
+    console.error('Error cancelling food:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   PATCH /api/food/:id/collected
+// @desc    Mark a food listing as collected (Donor only)
+// @access  Private
+router.patch('/:id/collected', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'DONOR') {
+      return res.status(403).json({ message: 'Only donors can update food status' });
+    }
+    const food = await Food.findById(req.params.id);
+    if (!food) {
+      return res.status(404).json({ message: 'Food not found' });
+    }
+    if (food.donorId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    food.status = 'COMPLETED';
+    await food.save();
+
+    res.json({ message: 'Food marked as collected', food });
+  } catch (err) {
+    console.error('Error marking collected:', err);
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Phone, Mail, Globe, MapPin, Check, Copy, X, Building2 } from 'lucide-react';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
 
 const ContactNgoModal = ({ ngo, onClose }) => {
   const [copiedField, setCopiedField] = useState(null);
@@ -18,36 +20,15 @@ const ContactNgoModal = ({ ngo, onClose }) => {
   const address = ngo.address || (ngo.area && ngo.city ? `${ngo.area}, ${ngo.city}` : 'Pune Hub');
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[120] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
-        
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Header */}
-        <div className="p-6 bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-blue-500/10 dark:from-teal-500/20 dark:to-blue-500/20 border-b border-slate-100 dark:border-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-teal-600 text-white rounded-2xl shadow-sm">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-700 dark:text-teal-400 block">
-                Verified Organisation Contact
-              </span>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                {ngo.name || ngo.ngoName}
-              </h3>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact Details List */}
-        <div className="p-6 space-y-4">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={ngo.name || ngo.ngoName}
+      subtitle="Verified Organisation Contact"
+      icon={Building2}
+      width="w-full max-w-md"
+    >
+      <div className="space-y-4 flex-1">
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Use these verified contact channels for direct inter-organisation logistics coordination and surplus redistribution.
           </p>
@@ -147,17 +128,16 @@ const ContactNgoModal = ({ ngo, onClose }) => {
           </div>
 
           <div className="pt-2">
-            <button
+            <Button
+              variant="secondary"
+              className="w-full"
               onClick={onClose}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
             >
               Done
-            </button>
+            </Button>
           </div>
-        </div>
-
       </div>
-    </div>
+    </Modal>
   );
 };
 

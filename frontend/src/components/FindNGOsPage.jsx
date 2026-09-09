@@ -13,6 +13,10 @@ import { useNavigate } from 'react-router-dom';
 import MapView from './MapView';
 import RedirectSurplusModal from './RedirectSurplusModal';
 import ContactNgoModal from './ContactNgoModal';
+import Avatar from './ui/Avatar';
+import Drawer from './ui/Drawer';
+import Button from './ui/Button';
+import EmptyState from './ui/EmptyState';
 
 const FindNGOsPage = ({ user }) => {
   const [ngos, setNgos] = useState([]);
@@ -186,10 +190,10 @@ const FindNGOsPage = ({ user }) => {
           Loading NGO directory...
         </div>
       ) : filteredNgos.length === 0 ? (
-        <div className="py-16 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500">
-          <Building2 className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-          <p className="font-bold text-sm">No organisations found matching your filters.</p>
-        </div>
+        <EmptyState
+          icon={Building2}
+          message="No organisations found matching your filters."
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredNgos.map(ngo => (
@@ -201,11 +205,7 @@ const FindNGOsPage = ({ user }) => {
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center space-x-3">
-                    <img
-                      src={ngo.logo || 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=100&auto=format&fit=crop&q=60'}
-                      alt={ngo.name}
-                      className="w-12 h-12 rounded-xl object-cover border border-slate-100 dark:border-slate-700 shrink-0"
-                    />
+                    <Avatar name={ngo.name} src={ngo.logo} />
                     <div>
                       <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
                         {ngo.name}
@@ -239,33 +239,37 @@ const FindNGOsPage = ({ user }) => {
                 </span>
 
                 {!isOrg ? (
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } });
                     }}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
                   >
                     Donate
-                  </button>
+                  </Button>
                 ) : (
                   <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => setRedirectNgo(ngo)}
-                      className="px-2.5 py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-bold text-[11px] transition-colors flex items-center space-x-1 cursor-pointer"
+                      className="bg-violet-600 hover:bg-violet-700 text-white"
                       title="Redirect Surplus Here"
+                      icon={ArrowRight}
                     >
-                      <ArrowRight className="w-3 h-3" />
-                      <span>Redirect</span>
-                    </button>
-                    <button
+                      Redirect
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => setContactNgo(ngo)}
-                      className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 rounded-lg font-bold text-[11px] transition-colors border border-teal-200 dark:border-teal-800 flex items-center space-x-1 cursor-pointer"
                       title="Contact NGO"
+                      icon={Phone}
                     >
-                      <Phone className="w-3 h-3" />
-                      <span>Contact</span>
-                    </button>
+                      Contact
+                    </Button>
                   </div>
                 )}
               </div>
@@ -275,23 +279,16 @@ const FindNGOsPage = ({ user }) => {
       )}
 
       {/* Selected NGO Detail Drawer / Modal */}
-      {selectedNgo && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100] flex justify-end animate-in fade-in duration-200" onClick={() => setSelectedNgo(null)}>
-          <div className="w-full max-w-md bg-white dark:bg-slate-800 h-full p-6 shadow-2xl overflow-y-auto space-y-6 flex flex-col justify-between animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
+      <Drawer
+        isOpen={!!selectedNgo}
+        onClose={() => setSelectedNgo(null)}
+        title="Organisation Details"
+      >
+        {selectedNgo && (
+          <div className="space-y-6 flex flex-col h-full justify-between">
             <div className="space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 className="font-extrabold text-lg text-slate-900 dark:text-white">Organisation Details</h3>
-                <button onClick={() => setSelectedNgo(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
               <div className="flex items-center space-x-4">
-                <img
-                  src={selectedNgo.logo || 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=100&auto=format&fit=crop&q=60'}
-                  alt={selectedNgo.name}
-                  className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-700"
-                />
+                <Avatar name={selectedNgo.name} src={selectedNgo.logo} className="w-16 h-16 rounded-2xl text-xl" />
                 <div>
                   <h4 className="font-extrabold text-base text-slate-900 dark:text-white">{selectedNgo.name}</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center mt-1">
@@ -332,37 +329,46 @@ const FindNGOsPage = ({ user }) => {
             </div>
 
             {/* Action Bar */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+            <div className="pt-4 mt-6 border-t border-slate-100 dark:border-slate-700 flex gap-2">
               {!isOrg ? (
-                <button
-                  onClick={() => navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name } } })}
-                  className="flex-1 py-3 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors flex items-center justify-center space-x-2 shadow-xs cursor-pointer"
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedNgo(null);
+                    navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name } } });
+                  }}
+                  icon={ArrowRight}
                 >
-                  <span>Donate Food</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                  Donate Food
+                </Button>
               ) : (
                 <div className="flex-1 flex gap-2">
-                  <button
-                    onClick={() => setRedirectNgo(selectedNgo)}
-                    className="flex-1 py-3 text-sm font-bold text-white bg-violet-600 hover:bg-violet-700 rounded-xl transition-colors flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer"
+                  <Button
+                    variant="primary"
+                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+                    onClick={() => {
+                      setRedirectNgo(selectedNgo);
+                    }}
+                    icon={ArrowRight}
                   >
-                    <ArrowRight className="w-4 h-4" />
-                    <span>Redirect Surplus Here</span>
-                  </button>
-                  <button
-                    onClick={() => setContactNgo(selectedNgo)}
-                    className="py-3 px-4 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-bold rounded-xl text-sm transition-colors border border-teal-200 dark:border-teal-800 flex items-center space-x-1 cursor-pointer"
+                    Redirect Surplus
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setContactNgo(selectedNgo);
+                    }}
+                    icon={Phone}
                   >
-                    <Phone className="w-4 h-4" />
-                    <span>Contact</span>
-                  </button>
+                    Contact
+                  </Button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Drawer>
 
       {/* Modals */}
       {contactNgo && <ContactNgoModal ngo={contactNgo} onClose={() => setContactNgo(null)} />}

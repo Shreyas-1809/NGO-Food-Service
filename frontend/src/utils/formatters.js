@@ -5,7 +5,20 @@ export const formatPickupTime = (pickupTime) => {
   const trimmed = pickupTime.trim();
   if (!trimmed) return 'Not provided';
 
-  // Check if it's a bare time like "14:00" or "03:41"
+  // 1. Try parsing full date/datetime (ISO, datetime-local, timestamp)
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime()) && !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(trimmed)) {
+    return d.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+
+  // 2. Check if it's a bare time like "14:00" or "03:41" (legacy claims)
   const timeRegex = /^(\d{1,2}):(\d{2})(?::\d{2})?$/;
   const match = trimmed.match(timeRegex);
   if (match) {
@@ -16,12 +29,6 @@ export const formatPickupTime = (pickupTime) => {
     return `${hours}:${minutes} ${ampm}`;
   }
 
-  // Try parsing standard Date
-  const d = new Date(trimmed);
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-  }
-
-  // Return raw string if it's readable e.g. "Flexible"
+  // 3. Return raw string if it's readable e.g. "Flexible"
   return trimmed;
 };

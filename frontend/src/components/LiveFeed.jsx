@@ -17,13 +17,18 @@ import {
   XCircle,
   Building2,
   Mail,
-  UserCheck
+  UserCheck,
+  QrCode,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
 import RejectDonationModal from './RejectDonationModal';
 import VolunteerAssignmentModal from './VolunteerAssignmentModal';
-import { getStoredRequests, addNotification, confirmDonationMatch, assignVolunteerToDonation } from '../services/donationService';
+import DeliveryConfirmationModal from './DeliveryConfirmationModal';
+import DirectContactButtons from './ui/DirectContactButtons';
+// donationService mock calls removed — all data now comes from real API endpoints
 import { calculateMatchScore } from '../services/matchingService';
 import { calculateListingUrgency } from '../utils/urgency';
 import { formatPickupTime } from '../utils/formatters';
@@ -49,13 +54,27 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Default clean time helper (30 mins from current time formatted as HH:mm)
+  // Local datetime-local helper (YYYY-MM-DDTHH:mm)
+  const formatDateTimeLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   const getDefaultPickupTime = () => {
     const d = new Date(Date.now() + 30 * 60 * 1000);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return formatDateTimeLocal(d);
+  };
+
+  const getMinPickupTime = () => {
+    return formatDateTimeLocal(new Date());
   };
 
   const [claimTime, setClaimTime] = useState(getDefaultPickupTime());
+  const [claimFormError, setClaimFormError] = useState('');
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
@@ -68,6 +87,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [volModalOpen, setVolModalOpen] = useState(false);
   const [volModalFoodId, setVolModalFoodId] = useState(null);
   const [volModalInitialVolunteers, setVolModalInitialVolunteers] = useState([]);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [deliveryModalFood, setDeliveryModalFood] = useState(null);
 
   // Modal states for Claims (Donors)
   const [rejectClaimModalOpen, setRejectClaimModalOpen] = useState(false);
@@ -95,7 +116,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
   const setPresetTime = (minutesToAdd) => {
     const d = new Date(Date.now() + minutesToAdd * 60 * 1000);
-    setClaimTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
+    setClaimTime(formatDateTimeLocal(d));
+    if (claimFormError) setClaimFormError('');
   };
 
   const fetchDonorClaims = async () => {
@@ -166,15 +188,6 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
       // Two-way sync notification
       const donorName = user?.orgName || user?.fullName || user?.name || 'Donor';
-      addNotification({
-        title: 'Claim Request Accepted! 🤝',
-        message: `${donorName} accepted your claim request. Volunteer assigned for pickup!`,
-        type: 'SUCCESS',
-        targetRole: 'ORGANISATION',
-        targetNgoId: ngoId,
-        donorName
-      });
-
       fetchDonorClaims();
       fetchDonorPostings();
     } catch (err) {
@@ -253,11 +266,6 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       if (isDonor && (data.donorId === user?.id || data.donorId === user?._id)) {
         fetchDonorClaims();
         fetchDonorPostings();
-        addNotification({
-          title: 'New NGO Claim Request! 🍽️',
-          message: `${data.ngoName || 'An NGO'} requested to claim "${data.foodTitle || 'your surplus food'}".`,
-          type: 'INFO'
-        });
       }
     };
 
@@ -275,9 +283,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       }
     };
 
+    const handleTaskUpdated = () => {
+      fetchListings();
+      if (isDonor) {
+        fetchDonorClaims();
+        fetchDonorPostings();
+      }
+    };
+
     if (socket && typeof socket.on === 'function') {
       socket.on('NEW_FOOD_LISTING', handleNewListing);
       socket.on('LISTING_UPDATED', handleUpdateListing);
+      socket.on('TASK_UPDATED', handleTaskUpdated);
+      socket.on('PICKUP_CONFIRMED', handleTaskUpdated);
+      socket.on('NGO_CONFIRMED', handleTaskUpdated);
       socket.on('CLAIM_REQUEST_RECEIVED', handleClaimRequestReceived);
       socket.on('CLAIM_ACCEPTED', handleClaimAccepted);
       socket.on('CLAIM_DECLINED', handleClaimDeclined);
@@ -287,6 +306,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       if (socket && typeof socket.off === 'function') {
         socket.off('NEW_FOOD_LISTING', handleNewListing);
         socket.off('LISTING_UPDATED', handleUpdateListing);
+        socket.off('TASK_UPDATED', handleTaskUpdated);
+        socket.off('PICKUP_CONFIRMED', handleTaskUpdated);
+        socket.off('NGO_CONFIRMED', handleTaskUpdated);
         socket.off('CLAIM_REQUEST_RECEIVED', handleClaimRequestReceived);
         socket.off('CLAIM_ACCEPTED', handleClaimAccepted);
         socket.off('CLAIM_DECLINED', handleClaimDeclined);
@@ -295,40 +317,63 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   }, [socket, token, selectedListing, isDonor, user]);
 
   const handleClaim = async (id) => {
-    if (user?.accountType !== 'ORGANISATION') return alert('Only organisations can claim food');
-    console.log('[DEBUG handleClaim] Initiating claim for food id:', id, {
-      message: claimMessage,
-      requestedPickupTime: claimTime,
-      user,
-      hasToken: Boolean(token)
-    });
+    if (user?.accountType !== 'ORGANISATION' && user?.accountType !== 'ORGANIZATION') {
+      setClaimFormError('Only verified organisations can claim food.');
+      return;
+    }
+
+    const trimmedMsg = (claimMessage || '').trim();
+    if (trimmedMsg.length < 10) {
+      setClaimFormError('Please enter a request message of at least 10 characters explaining your intent and pickup plan.');
+      return;
+    }
+
+    if (!claimTime) {
+      setClaimFormError('Please select an estimated pickup date and time.');
+      return;
+    }
+
+    setClaimFormError('');
+    const authToken = token || localStorage.getItem('token');
+
     try {
       const res = await axios.post(`${API_URL}/api/food/${id}/claim`, {
-        message: claimMessage,
+        message: trimmedMsg,
         requestedPickupTime: claimTime
       }, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
 
-      console.log('[DEBUG handleClaim] Claim response:', res.status, res.data);
       setClaimStatus('SUCCESS');
       
       // Immediately remove the claimed listing from the active feed
       setListings((prev) => prev.filter(l => l._id !== id));
       setTimeout(() => setSelectedListing(null), 2000); // Close modal after 2 seconds
     } catch (err) {
-      console.error('[DEBUG handleClaim ERROR]', {
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        data: err.response?.data,
-        headers: err.response?.headers,
-        message: err.message
-      });
-      alert(err.response?.data?.message || 'Failed to submit claim. Please try again.');
+      console.error('Claim submission error:', err);
+      const msg = err.response?.data?.message || 'Failed to submit claim. Please try again.';
+      setClaimFormError(msg);
     }
   };
 
-  const storedRequests = useMemo(() => getStoredRequests(), []);
+  // Fetch real needs from backend for match scoring
+  const [activeNeeds, setActiveNeeds] = useState([]);
+  useEffect(() => {
+    axios.get(`${API_URL}/api/needs`)
+      .then(res => setActiveNeeds(res.data || []))
+      .catch(() => {}); // Silently fail — match badges are non-critical
+  }, []);
+
+  // Keep a memoized normalized list for scoring
+  const storedRequests = useMemo(() => activeNeeds.map(n => ({
+    id: n._id,
+    ngoId: n.ngoId,
+    item: n.title,
+    category: n.category || 'Food',
+    quantity: n.quantity,
+    unit: n.unit || 'servings',
+    urgency: n.urgency
+  })), [activeNeeds]);
 
   // Compute matched shortage for a given listing
   const getListingMatch = (listing) => {
@@ -584,10 +629,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
 
                         <div>
-                          <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                            {claim.ngoId?.orgName || claim.ngoId?.fullName || 'Verified NGO'}
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                              {claim.ngoId?.orgName || claim.ngoId?.fullName || 'Verified NGO'}
+                            </h4>
+                            <DirectContactButtons
+                              phone={claim.ngoId?.phone}
+                              email={claim.ngoId?.email}
+                              name={claim.ngoId?.orgName || claim.ngoId?.fullName || 'NGO'}
+                              waMessage={`Hello ${claim.ngoId?.orgName || 'NGO Partner'}, contacting you regarding your request for "${claim.foodId?.title || 'Surplus Listing'}".`}
+                              emailSubject={`FoodBridge Request Coordination: ${claim.foodId?.title || 'Food Donation'}`}
+                              size="xs"
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                             Requesting: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || 'Surplus Listing'}</strong> ({claim.foodId?.quantity || 0} servings)
                           </p>
                         </div>
@@ -648,11 +703,21 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             </button>
                           </div>
                           {vols.length > 0 ? (
-                            <div className="space-y-1 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                            <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                               {vols.map((v, idx) => (
-                                <p key={idx}>
-                                  <strong className="text-slate-900 dark:text-white">Volunteer #{idx + 1}:</strong> {v.name} ({v.phone}){v.vehicleNumber ? ` - ${v.vehicleNumber}` : ''}
-                                </p>
+                                <div key={idx} className="flex flex-wrap items-center justify-between gap-1.5 py-1 border-b border-slate-200/50 dark:border-slate-700/50 last:border-none">
+                                  <div>
+                                    <strong className="text-slate-900 dark:text-white">Volunteer #{idx + 1}:</strong> {v.name}
+                                    {v.vehicleNumber ? ` (${v.vehicleNumber})` : ''}
+                                    {v.phone && <span className="text-slate-500 dark:text-slate-400 block text-[11px]">{v.phone}</span>}
+                                  </div>
+                                  <DirectContactButtons
+                                    phone={v.phone}
+                                    name={v.name}
+                                    waMessage={`Hello ${v.name}, contacting you regarding pickup for "${claim.foodId?.title || 'Food Donation'}".`}
+                                    size="xs"
+                                  />
+                                </div>
                               ))}
                             </div>
                           ) : (
@@ -660,6 +725,75 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               Volunteer not yet assigned
                             </div>
                           )}
+
+                          {/* Volunteer Status Indicator / Decline Alert */}
+                          {claim.foodId?.volunteerStatus === 'declined' ? (
+                            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                                  Volunteer Declined Task
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const fId = claim.foodId?._id || claim.foodId;
+                                    setVolModalFoodId(fId);
+                                    setVolModalInitialVolunteers(vols);
+                                    setVolModalOpen(true);
+                                  }}
+                                  className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                                >
+                                  Reassign Volunteer
+                                </button>
+                              </div>
+                              {claim.foodId?.volunteerDeclineReason && (
+                                <p className="text-[11px] text-rose-600 dark:text-rose-300 italic">
+                                  Reason: "{claim.foodId.volunteerDeclineReason}"
+                                </p>
+                              )}
+                            </div>
+                          ) : claim.foodId?.volunteerStatus === 'accepted' ? (
+                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Volunteer Accepted & En Route</span>
+                            </div>
+                          ) : vols.length > 0 && claim.foodId?.volunteerStatus === 'pending' ? (
+                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>Awaiting Volunteer Response</span>
+                            </div>
+                          ) : null}
+
+                          {/* Live Status indicator & Confirm Delivery Link */}
+                          {(claim.foodId?.status === 'IN_TRANSIT' || claim.foodId?.status === 'picked_up') ? (
+                            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                  <Truck className="w-3.5 h-3.5 text-amber-600" /> Food En Route
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setDeliveryModalFood(claim.foodId);
+                                    setDeliveryModalOpen(true);
+                                  }}
+                                  className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 shadow-xs"
+                                >
+                                  <QrCode className="w-3 h-3" />
+                                  <span>Delivery Link & QR</span>
+                                </button>
+                              </div>
+                              <p className="text-[10px] text-amber-700 dark:text-amber-300/80">
+                                Donor confirmed food handover. Share or open the delivery confirmation link once the volunteer reaches the drop-off location.
+                              </p>
+                            </div>
+                          ) : (claim.foodId?.status === 'COMPLETED' || claim.foodId?.status === 'delivered') ? (
+                            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              <span>Food Delivered & Verified ✓</span>
+                            </div>
+                          ) : null}
                         </div>
                       ) : (
                         <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
@@ -1253,20 +1387,41 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 </div>
               ) : claimStatus === 'FORM' ? (
                 <div className="space-y-4 animate-in fade-in">
-                  <h4 className="font-bold text-base text-slate-800 dark:text-white mb-2">Request Food as Verified NGO</h4>
+                  <h4 className="font-bold text-base text-slate-800 dark:text-white mb-1">Request Food as Verified NGO</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Coordinate your pickup time and state your intent so the donor can review and accept.
+                  </p>
+
+                  {claimFormError && (
+                    <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                      <span>{claimFormError}</span>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Message for Donor (Optional)</label>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Request Message / Intent <span className="text-red-500">*</span>
+                      </label>
+                      <span className={`text-[10px] font-bold ${claimMessage.trim().length < 10 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {claimMessage.trim().length}/10 chars min
+                      </span>
+                    </div>
                     <textarea
                       value={claimMessage}
-                      onChange={e => setClaimMessage(e.target.value)}
-                      placeholder="e.g. We will arrive in 30 mins with an insulated van..."
-                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs"
+                      onChange={e => {
+                        setClaimMessage(e.target.value);
+                        if (claimFormError) setClaimFormError('');
+                      }}
+                      placeholder="e.g. We will arrive with an insulated van at 2:30 PM to collect and distribute to 50 families at our shelter."
+                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                       rows="3"
                     ></textarea>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Estimated Pickup Time
+                      Estimated Pickup Date & Time <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2 mb-2">
                       <button
@@ -1292,17 +1447,21 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       </button>
                     </div>
                     <input
-                      type="time"
+                      type="datetime-local"
+                      min={getMinPickupTime()}
                       value={claimTime}
-                      onChange={e => setClaimTime(e.target.value)}
+                      onChange={e => {
+                        setClaimTime(e.target.value);
+                        if (claimFormError) setClaimFormError('');
+                      }}
                       className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition-colors text-xs">
+                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition-colors text-xs cursor-pointer shadow-xs">
                       Submit Request
                     </button>
-                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs">
+                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs cursor-pointer">
                       Cancel
                     </button>
                   </div>
@@ -1368,7 +1527,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       const email = donor.email || donor.businessDetails?.shopEmail || 'Not provided';
 
                       return (
-                        <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2 text-xs">
+                        <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5 text-xs">
                           <div className="flex items-center text-slate-800 dark:text-white font-bold">
                             <Building2 className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
                             <span>Name: {displayName}</span>
@@ -1377,13 +1536,31 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
                             <span>Address: {address}</span>
                           </div>
-                          <div className="flex items-center text-slate-600 dark:text-slate-300">
-                            <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                            <span>Phone: {phone}</span>
-                          </div>
-                          <div className="flex items-center text-slate-600 dark:text-slate-300">
-                            <Mail className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                            <span>Email: {email}</span>
+                          
+                          {/* Contact Actions for NGO -> Donor */}
+                          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-600/60 space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-1.5">
+                              <div className="flex items-center text-slate-600 dark:text-slate-300">
+                                <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                                <span>Phone: {phone}</span>
+                              </div>
+                              {phone !== 'Not provided' && (
+                                <DirectContactButtons
+                                  phone={phone}
+                                  email={email !== 'Not provided' ? email : null}
+                                  name={displayName}
+                                  waMessage={`Hello ${displayName}, I am contacting you regarding your donation "${selectedListing.title}" on FoodBridge.`}
+                                  emailSubject={`FoodBridge Surplus Inquiry: ${selectedListing.title}`}
+                                  size="xs"
+                                />
+                              )}
+                            </div>
+                            {email !== 'Not provided' && (
+                              <div className="flex items-center text-slate-600 dark:text-slate-300 text-[11px]">
+                                <Mail className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                                <span>Email: {email}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1429,6 +1606,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         setClaimStatus('FORM');
                         setClaimMessage('');
                         setClaimTime(getDefaultPickupTime());
+                        setClaimFormError('');
                       }}
                       className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
@@ -1508,13 +1686,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         }}
         donation={listingToReject}
         token={token}
-        onSuccess={() => {
-          addNotification({
-            title: 'Donation Rejected',
-            message: `Donation "${listingToReject?.title}" rejected successfully.`,
-            type: 'INFO'
-          });
-        }}
+        onSuccess={() => {}}
       />
 
       {/* Reject Claim Modal (For Donors) */}
@@ -1539,6 +1711,16 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         onSuccess={() => {
           if (fetchDonorClaims) fetchDonorClaims();
         }}
+      />
+
+      {/* NGO Delivery Confirmation Link & QR Modal */}
+      <DeliveryConfirmationModal
+        isOpen={deliveryModalOpen}
+        onClose={() => {
+          setDeliveryModalOpen(false);
+          setDeliveryModalFood(null);
+        }}
+        food={deliveryModalFood}
       />
     </div>
   );

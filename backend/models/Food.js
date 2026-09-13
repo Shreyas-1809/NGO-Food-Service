@@ -9,7 +9,7 @@ const FoodSchema = new mongoose.Schema({
   expiryTime: { type: Date, required: true },
   status: { 
     type: String, 
-    enum: ['AVAILABLE', 'ACTIVE', 'ACCEPTED', 'CLAIMED', 'REJECTED', 'DECLINED', 'NON_CLAIMED', 'COMPLETED'], 
+    enum: ['AVAILABLE', 'ACTIVE', 'ACCEPTED', 'CLAIMED', 'IN_TRANSIT', 'REJECTED', 'DECLINED', 'NON_CLAIMED', 'COMPLETED'], 
     default: 'AVAILABLE' 
   },
   claimantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -50,6 +50,19 @@ const FoodSchema = new mongoose.Schema({
     enum: ['Good', 'Acceptable', 'Issue Reported']
   },
   receiptNote: { type: String },
+  volunteerStatus: {
+    type: String,
+    enum: ['pending', 'accepted', 'declined'],
+    default: 'pending'
+  },
+  volunteerDeclineReason: { type: String },
+  confirmationTokens: {
+    pickupToken: { type: String },
+    pickupUsedAt: { type: Date },
+    deliveryToken: { type: String },
+    deliveryUsedAt: { type: Date },
+    volunteerToken: { type: String }
+  },
   location: {
     type: { type: String, default: 'Point' },
     coordinates: [Number] // [longitude, latitude]

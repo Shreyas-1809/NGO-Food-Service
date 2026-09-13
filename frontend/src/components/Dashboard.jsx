@@ -10,7 +10,7 @@ import OrgPostNeedModal from './OrgPostNeedModal';
 import ActivePickupsDrawer from './ActivePickupsDrawer';
 import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus, Edit } from 'lucide-react';
 
-import { getStoredNotifications, subscribeToDonationUpdates } from '../services/donationService';
+// donationService mock removed — notification count reads from real backend API
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -93,10 +93,6 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   useEffect(() => {
     fetchNotificationsCount();
 
-    // Pub/sub live listener
-    const unsubscribe = subscribeToDonationUpdates(fetchNotificationsCount);
-
-    // Socket real-time notification listeners
     if (socket) {
       const handleNewNotification = () => {
         fetchNotificationsCount();
@@ -114,7 +110,6 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
       socket.on('PICKUP_CONFIRMED', handleNewNotification);
 
       return () => {
-        unsubscribe();
         socket.off('NEW_NOTIFICATION', handleNewNotification);
         socket.off('CLAIM_REQUEST_RECEIVED', handleNewNotification);
         socket.off('CLAIM_ACCEPTED', handleNewNotification);

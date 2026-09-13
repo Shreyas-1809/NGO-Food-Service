@@ -12,6 +12,9 @@ import MapPage from './components/MapPage';
 import NGOProfilePage from './components/NGOProfilePage';
 import DonationTrackingPage from './components/DonationTrackingPage';
 import ErrorBoundary from './components/ErrorBoundary';
+import VolunteerTaskPage from './components/VolunteerTaskPage';
+import ConfirmPickupPage from './components/ConfirmPickupPage';
+import ConfirmDeliveryPage from './components/ConfirmDeliveryPage';
 import { io } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -133,6 +136,11 @@ function App() {
 
           <main className="flex-1 flex w-full relative">
             <Routes>
+              {/* Public no-login confirmation and task tracking routes */}
+              <Route path="/pickup/:taskId" element={<VolunteerTaskPage />} />
+              <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
+              <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
+
               {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
               {!user ? (
                 <>
@@ -144,7 +152,7 @@ function App() {
                   <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
 
                   {/* User Activity Log */}
-                  <Route path="/activity" element={<ActivityHistory token={token} />} />
+                  <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
 
                   {/* Verified NGOs Directory & Map */}
                   <Route path="/ngos" element={<FindNGOsPage user={user} />} />

@@ -5,8 +5,8 @@ const Food = require('../models/Food');
 const Claim = require('../models/Claim');
 const Notification = require('../models/Notification');
 const Activity = require('../models/Activity');
-
 const User = require('../models/User');
+const { generateTokensForFood, buildConfirmationUrls } = require('../utils/confirmationTokens');
 
 // @route   POST /api/food
 // @desc    Create a new food listing
@@ -186,6 +186,7 @@ router.get('/:id', auth, async (req, res) => {
       .sort({ createdAt: -1 });
     foodObj.claims = claims;
     foodObj.acceptedClaim = claims.find(c => c.status === 'ACCEPTED');
+    foodObj.confirmationLinks = buildConfirmationUrls(food);
     res.json(foodObj);
   } catch (err) {
     console.error('Error fetching food by id:', err.message);
@@ -214,10 +215,14 @@ router.post('/:id/claim', auth, async (req, res) => {
 
     const { message, requestedPickupTime } = req.body;
 
+    if (!message || message.trim().length < 10) {
+      return res.status(400).json({ message: 'Request message must be at least 10 characters long explaining your intent.' });
+    }
+
     const newClaim = new Claim({
       ngoId: req.user.id,
       foodId: food._id,
-      message,
+      message: message.trim(),
       requestedPickupTime
     });
     await newClaim.save();
@@ -232,16 +237,24 @@ router.post('/:id/claim', auth, async (req, res) => {
     // Fetch NGO details for real-time notification
     const ngoUser = await User.findById(req.user.id).select('orgName fullName phone email address city');
     const ngoName = ngoUser?.orgName || ngoUser?.fullName || 'Organisation';
-    // Format pickup time string safely whether it's HH:mm, ISO date, or text
+    
+    // Format pickup time string safely whether it's full ISO/datetime, text, or legacy time
     let pickupTimeStr = 'Flexible';
     if (requestedPickupTime) {
-      if (/^\d{1,2}:\d{2}/.test(requestedPickupTime)) {
-        pickupTimeStr = requestedPickupTime;
+      const parsedDate = new Date(requestedPickupTime);
+      if (!isNaN(parsedDate.getTime()) && !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(requestedPickupTime.trim())) {
+        pickupTimeStr = parsedDate.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        });
+      } else if (/^\d{1,2}:\d{2}/.test(requestedPickupTime.trim())) {
+        pickupTimeStr = requestedPickupTime.trim();
       } else {
-        const parsedDate = new Date(requestedPickupTime);
-        pickupTimeStr = !isNaN(parsedDate.getTime()) 
-          ? parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-          : requestedPickupTime;
+        pickupTimeStr = requestedPickupTime;
       }
     }
 
@@ -251,7 +264,7 @@ router.post('/:id/claim', auth, async (req, res) => {
       title: `New Claim Request from ${ngoName}`,
       relatedClaimId: newClaim._id,
       relatedFoodId: food._id,
-      message: message || '',
+      message: message.trim(),
       stage: 'Awaiting your decision'
     });
     await notification.save();
@@ -607,6 +620,60 @@ router.patch('/:id/collected', auth, async (req, res) => {
   }
 });
 
+// @route   PATCH /api/food/:id/status
+// @desc    Advance tracking status (ACCEPTED → IN_TRANSIT → COMPLETED)
+//          Called by the Donation Tracking Page to persist pickup progress.
+// @access  Private (donor or accepted-claim NGO)
+router.patch('/:id/status', auth, async (req, res) => {
+  try {
+    const food = await Food.findById(req.params.id);
+    if (!food) return res.status(404).json({ message: 'Food not found' });
+
+    const userId = req.user.id?.toString();
+    const userAccountType = (req.user.accountType || '').toUpperCase();
+    const isDonor = (food.donorId?._id || food.donorId)?.toString() === userId;
+    const isOrg = userAccountType === 'ORGANISATION' || userAccountType === 'ORGANIZATION';
+    const isDirectClaimant = (food.claimantId?._id || food.claimantId)?.toString() === userId;
+    const acceptedClaim = await Claim.findOne({ foodId: food._id, ngoId: userId, status: 'ACCEPTED' });
+    const isClaimantNgo = (acceptedClaim || isDirectClaimant) && isOrg;
+
+    if (!isDonor && !isClaimantNgo) {
+      return res.status(403).json({ message: 'Not authorized to update this donation status.' });
+    }
+
+    const { status } = req.body;
+    const ALLOWED = ['ACCEPTED', 'IN_TRANSIT', 'COMPLETED'];
+    if (!ALLOWED.includes(status)) {
+      return res.status(400).json({ message: `Status must be one of: ${ALLOWED.join(', ')}` });
+    }
+
+    // Only allow advancing forward (prevent rollback)
+    const ORDER = { ACCEPTED: 0, IN_TRANSIT: 1, COMPLETED: 2 };
+    const currentOrder = ORDER[food.status] ?? -1;
+    const newOrder = ORDER[status] ?? -1;
+    if (newOrder < currentOrder) {
+      return res.status(400).json({ message: `Cannot roll back status from ${food.status} to ${status}` });
+    }
+
+    food.status = status;
+    await food.save();
+
+    // Notify both parties via socket
+    const io = req.app.get('io');
+    const emitToUser = req.app.get('emitToUser');
+    if (io) io.emit('LISTING_UPDATED', food);
+    if (emitToUser) {
+      if (food.donorId) emitToUser(food.donorId.toString(), 'LISTING_UPDATED', food);
+      if (food.claimantId) emitToUser(food.claimantId.toString(), 'LISTING_UPDATED', food);
+    }
+
+    res.json({ message: `Status updated to ${status}`, food });
+  } catch (err) {
+    console.error('Error updating food status:', err);
+    res.status(500).json({ message: err.message || 'Server Error' });
+  }
+});
+
 // @route   PATCH /api/food/:id/assign-volunteer
 // @desc    Assign volunteer(s) for pickup (NGO or Donor)
 // @access  Private
@@ -616,12 +683,18 @@ router.patch('/:id/assign-volunteer', auth, async (req, res) => {
     if (!food) return res.status(404).json({ message: 'Food not found' });
     
     // Check authorization: must be either the donor of the food or the NGO claimant
-    const isDonor = food.donorId.toString() === req.user.id;
-    const claim = await Claim.findOne({ foodId: food._id, ngoId: req.user.id, status: 'ACCEPTED' });
-    const isClaimantNgo = (claim || food.claimantId?.toString() === req.user.id) && req.user.accountType === 'ORGANISATION';
+    const userId = req.user.id?.toString();
+    const userAccountType = (req.user.accountType || '').toUpperCase();
+    const isDonor = (food.donorId?._id || food.donorId)?.toString() === userId;
+    
+    // Check if user is the claimant NGO
+    const isOrg = userAccountType === 'ORGANISATION' || userAccountType === 'ORGANIZATION';
+    const isDirectClaimant = (food.claimantId?._id || food.claimantId)?.toString() === userId;
+    const acceptedClaim = await Claim.findOne({ foodId: food._id, ngoId: userId, status: 'ACCEPTED' });
+    const isClaimantNgo = (acceptedClaim || isDirectClaimant) && isOrg;
     
     if (!isDonor && !isClaimantNgo) {
-       return res.status(403).json({ message: 'Not authorized for this donation' });
+       return res.status(403).json({ message: 'Not authorized for this donation. Only the posting donor or claiming NGO may assign volunteers.' });
     }
 
     const { volunteers, name, phone, vehicleNumber, arrivalTime } = req.body;
@@ -650,7 +723,19 @@ router.patch('/:id/assign-volunteer', auth, async (req, res) => {
       };
     }
 
+    // Generate signed single-use confirmation tokens for Donor, NGO, and Volunteer
+    const tokens = generateTokensForFood(food._id);
+    food.confirmationTokens = {
+      pickupToken: tokens.pickupToken,
+      pickupUsedAt: null,
+      deliveryToken: tokens.deliveryToken,
+      deliveryUsedAt: null,
+      volunteerToken: tokens.volunteerToken
+    };
+
     await food.save();
+
+    const confirmationLinks = buildConfirmationUrls(food);
 
     const emitToUser = req.app.get('emitToUser');
     if (emitToUser) {
@@ -661,10 +746,14 @@ router.patch('/:id/assign-volunteer', auth, async (req, res) => {
     const io = req.app.get('io');
     if (io) io.emit('LISTING_UPDATED', food);
 
-    res.json({ message: 'Volunteer(s) assigned successfully', food });
+    res.json({
+      message: 'Volunteer(s) assigned successfully',
+      food,
+      confirmationLinks
+    });
   } catch (err) {
     console.error('Error assigning volunteer:', err);
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: err.message || 'Server Error' });
   }
 });
 

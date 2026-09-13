@@ -50,3 +50,23 @@ input:-webkit-autofill {
   -webkit-text-fill-color: var(--text-primary) !important;
   transition: background-color 5000s ease-in-out 0s;
 }
+
+/* Leaflet Custom Popup Override */
+.foodbridge-custom-popup .leaflet-popup-content-wrapper {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+.foodbridge-custom-popup .leaflet-popup-tip-container {
+  display: none;
+}
+.foodbridge-custom-popup .leaflet-popup-content {
+  margin: 0;
+  width: auto !important;
+}
+
+/* Dark filter for OSM tiles */
+html.dark .leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+

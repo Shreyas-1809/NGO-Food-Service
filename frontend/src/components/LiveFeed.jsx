@@ -6,24 +6,27 @@ import {
   Utensils,
   AlertCircle,
   Phone,
-  Mail,
   CheckCircle,
   Package,
   Search,
   Sparkles,
-  ArrowRight,
-  ChevronRight,
-  ExternalLink,
   Edit,
   Trash2,
   Truck,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Building2,
+  Mail,
+  UserCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import WorkflowNav from './WorkflowNav';
+import EmptyState from './ui/EmptyState';
+import RejectDonationModal from './RejectDonationModal';
+import VolunteerAssignmentModal from './VolunteerAssignmentModal';
 import { getStoredRequests, addNotification, confirmDonationMatch, assignVolunteerToDonation } from '../services/donationService';
 import { calculateMatchScore } from '../services/matchingService';
+import { calculateListingUrgency } from '../utils/urgency';
+import { formatPickupTime } from '../utils/formatters';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -37,6 +40,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [selectedListing, setSelectedListing] = useState(null);
   const [claimStatus, setClaimStatus] = useState('IDLE'); // 'IDLE', 'FORM', 'SUCCESS'
   const [claimMessage, setClaimMessage] = useState('');
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 60000); // Trigger re-render every minute for live countdowns
+    return () => clearInterval(timer);
+  }, []);
 
   // Default clean time helper (30 mins from current time formatted as HH:mm)
   const getDefaultPickupTime = () => {
@@ -47,6 +58,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [claimTime, setClaimTime] = useState(getDefaultPickupTime());
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+
+  // Rejection modal state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [listingToReject, setListingToReject] = useState(null);
+
+  // Donor claim status filter & Volunteer assignment modal state
+  const [donorClaimStatusFilter, setDonorClaimStatusFilter] = useState('ALL');
+  const [volModalOpen, setVolModalOpen] = useState(false);
+  const [volModalFoodId, setVolModalFoodId] = useState(null);
+  const [volModalInitialVolunteers, setVolModalInitialVolunteers] = useState([]);
+
+  // Modal states for Claims (Donors)
+  const [rejectClaimModalOpen, setRejectClaimModalOpen] = useState(false);
+  const [claimToReject, setClaimToReject] = useState(null);
 
   const isOrg = user?.accountType === 'ORGANISATION' || 
                 user?.accountType === 'ORGANIZATION' || 
@@ -139,21 +164,6 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       const code = res.data?.verificationCode;
       alert(`Claim request accepted successfully! Verification Code: ${code || 'Generated'}`);
 
-      // Trigger the existing further pickup workflow (assignVolunteerToDonation / tracking timeline)
-      const targetClaim = claimData || donorClaims.find(c => c._id === claimId) || res.data?.claim;
-      const ngoId = targetClaim?.ngoId?._id || targetClaim?.ngoId?.id || targetClaim?.ngoId;
-      const ngoName = targetClaim?.ngoId?.orgName || targetClaim?.ngoId?.fullName || 'Partner Organisation';
-      const foodId = targetClaim?.foodId?._id || targetClaim?.foodId || res.data?.food?._id;
-
-      if (foodId) {
-        confirmDonationMatch(foodId, ngoId, ngoName);
-        assignVolunteerToDonation(foodId, {
-          name: 'Rahul Verma (Rider)',
-          phone: '+91 98233 44112',
-          coords: { lat: 18.5240, lng: 73.8445 }
-        });
-      }
-
       // Two-way sync notification
       const donorName = user?.orgName || user?.fullName || user?.name || 'Donor';
       addNotification({
@@ -173,19 +183,21 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     }
   };
 
-  const handleDeclineClaim = async (claimId) => {
-    const reason = window.prompt('Reason for declining (optional):');
-    if (reason === null) return;
+  const handleDeclineClaim = async (reason, notes) => {
+    if (!claimToReject) return;
     try {
-      await axios.patch(`${API_URL}/api/claims/${claimId}/decline`, { reason }, {
+      const fullReason = notes ? `${reason} - ${notes}` : reason;
+      await axios.patch(`${API_URL}/api/claims/${claimToReject._id}/decline`, { reason: fullReason }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       alert('Claim request declined.');
+      setClaimToReject(null);
+      setRejectClaimModalOpen(false);
       fetchDonorClaims();
       fetchDonorPostings();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || 'Failed to decline claim');
+      throw err; // So the modal catches it
     }
   };
 
@@ -300,6 +312,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
       console.log('[DEBUG handleClaim] Claim response:', res.status, res.data);
       setClaimStatus('SUCCESS');
+      
+      // Immediately remove the claimed listing from the active feed
+      setListings((prev) => prev.filter(l => l._id !== id));
+      setTimeout(() => setSelectedListing(null), 2000); // Close modal after 2 seconds
     } catch (err) {
       console.error('[DEBUG handleClaim ERROR]', {
         status: err.response?.status,
@@ -381,9 +397,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     // Sort
     if (sortBy === 'Expiring Soonest') {
       result.sort((a, b) => {
-        const aExpiry = a.overallExpiry || a.expiryTime;
-        const bExpiry = b.overallExpiry || b.expiryTime;
-        return new Date(aExpiry) - new Date(bExpiry);
+        const uA = calculateListingUrgency(a);
+        const uB = calculateListingUrgency(b);
+        const tA = uA.earliestDeadline ? new Date(uA.earliestDeadline).getTime() : Infinity;
+        const tB = uB.earliestDeadline ? new Date(uB.earliestDeadline).getTime() : Infinity;
+        return tA - tB;
       });
     } else if (sortBy === 'Recently Added') {
       result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -469,11 +487,16 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {isDonor && !showMyUploads ? (
         /* VIEW 1: NGO Claim Requests View for Donors */
         <div className="space-y-4">
-          <div className="flex justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center">
-              <Package className="w-5 h-5 mr-2 text-emerald-600" />
-              NGO Claim Requests ({donorClaims.length})
-            </h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center">
+                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+                NGO Claim Requests ({donorClaims.length})
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Review and manage incoming claim requests from verified NGOs.
+              </p>
+            </div>
             <button
               onClick={fetchDonorClaims}
               className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
@@ -482,85 +505,173 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             </button>
           </div>
 
+          {/* Status Filter Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit text-xs font-bold">
+            {[
+              { id: 'ALL', label: `All (${donorClaims.length})` },
+              { id: 'PENDING', label: `Pending (${donorClaims.filter(c => c.status === 'PENDING').length})` },
+              { id: 'ACCEPTED', label: `Accepted (${donorClaims.filter(c => c.status === 'ACCEPTED').length})` },
+              { id: 'REJECTED', label: `Rejected (${donorClaims.filter(c => c.status === 'DECLINED' || c.status === 'REJECTED').length})` }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setDonorClaimStatusFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  donorClaimStatusFilter === tab.id
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
           {loadingDonorClaims ? (
             <div className="text-center py-12 text-slate-500">Loading claim requests...</div>
-          ) : donorClaims.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-2">
-              <AlertCircle className="w-10 h-10 text-slate-400 mx-auto" />
-              <h4 className="font-bold text-slate-700 dark:text-slate-300">No Claim Requests Yet</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">When verified NGOs request to claim your surplus food listings, their requests will appear here for your direct review.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {donorClaims.map((claim) => (
-                <div key={claim._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-                        NGO Request
-                      </span>
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                        claim.status === 'ACCEPTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
-                        claim.status === 'DECLINED' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' :
-                        'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                      }`}>
-                        {claim.status}
-                      </span>
-                    </div>
+          ) : (() => {
+            const filteredDonorClaims = donorClaims.filter((claim) => {
+              if (donorClaimStatusFilter === 'ALL') return true;
+              if (donorClaimStatusFilter === 'PENDING') return claim.status === 'PENDING';
+              if (donorClaimStatusFilter === 'ACCEPTED') return claim.status === 'ACCEPTED';
+              if (donorClaimStatusFilter === 'REJECTED') return claim.status === 'DECLINED' || claim.status === 'REJECTED';
+              return true;
+            });
 
-                    <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                        {claim.ngoId?.orgName || claim.ngoId?.fullName || 'Verified NGO'}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Requesting: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || 'Surplus Listing'}</strong> ({claim.foodId?.quantity || 0} servings)
-                      </p>
-                    </div>
+            if (filteredDonorClaims.length === 0) {
+              return (
+                <EmptyState
+                  icon={AlertCircle}
+                  message="No Matching Claim Requests"
+                  description={donorClaimStatusFilter === 'ALL'
+                    ? "When verified NGOs request to claim your surplus food listings, their requests will appear here for your direct review."
+                    : `No claim requests with status "${donorClaimStatusFilter.toLowerCase()}" were found.`
+                  }
+                />
+              );
+            }
 
-                    {claim.message && (
-                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs italic text-slate-600 dark:text-slate-300">
-                        "{claim.message}"
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredDonorClaims.map((claim) => {
+                  const cleanMsg = (() => {
+                    const msg = claim.message;
+                    if (!msg || !msg.trim()) return 'No message provided';
+                    if (msg.includes('requested to claim')) {
+                      const match = msg.match(/"([^"]+)"\s*$/);
+                      if (match && match[1]) return `"${match[1]}"`;
+                      return 'No message provided';
+                    }
+                    return `"${msg}"`;
+                  })();
+
+                  const vols = claim.foodId?.volunteerAssignments || (claim.foodId?.volunteerAssignment?.name ? [claim.foodId.volunteerAssignment] : []);
+
+                  return (
+                    <div key={claim._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
+                            NGO Request
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                            claim.status === 'ACCEPTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
+                            claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' :
+                            'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                          }`}>
+                            {claim.status}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                            {claim.ngoId?.orgName || claim.ngoId?.fullName || 'Verified NGO'}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Requesting: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || 'Surplus Listing'}</strong> ({claim.foodId?.quantity || 0} servings)
+                          </p>
+                        </div>
+
+                        {/* Request Message Box */}
+                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                          <span className="font-bold text-[10px] uppercase text-slate-400 block">Request Message / Intent</span>
+                          <p className="italic">{cleanMsg}</p>
+                        </div>
+
+                        {/* Details Grid */}
+                        <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          {claim.requestedPickupTime && (
+                            <div className="flex items-center text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-100 dark:border-emerald-800 font-semibold">
+                              <Clock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
+                              <span>Requested Pickup: <strong>{formatPickupTime(claim.requestedPickupTime)}</strong></span>
+                            </div>
+                          )}
+                          <div className="flex items-center pt-1">
+                            <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
+                            <span>Address: {claim.ngoId?.address || claim.ngoId?.city || 'Pune'}</span>
+                          </div>
+                        </div>
                       </div>
-                    )}
 
-                    <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                      {claim.requestedPickupTime && (
-                        <div className="flex items-center">
-                          <Clock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
-                          <span>Requested Pickup: <strong>{new Date(claim.requestedPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>
+                      {claim.status === 'PENDING' ? (
+                        <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                          <button
+                            onClick={() => handleAcceptClaim(claim._id)}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
+                          >
+                            Accept Request
+                          </button>
+                          <button
+                            onClick={() => {
+                              setClaimToReject(claim);
+                              setRejectClaimModalOpen(true);
+                            }}
+                            className="flex-1 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400 font-bold rounded-xl text-xs transition-colors"
+                          >
+                            Decline
+                          </button>
+                        </div>
+                      ) : claim.status === 'ACCEPTED' ? (
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">✓ Accepted Request</span>
+                            <button
+                              onClick={() => {
+                                const fId = claim.foodId?._id || claim.foodId;
+                                setVolModalFoodId(fId);
+                                setVolModalInitialVolunteers(vols);
+                                setVolModalOpen(true);
+                              }}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                            >
+                              {vols.length > 0 ? 'Edit Volunteers' : 'Arrange Pickup'}
+                            </button>
+                          </div>
+                          {vols.length > 0 ? (
+                            <div className="space-y-1 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                              {vols.map((v, idx) => (
+                                <p key={idx}>
+                                  <strong className="text-slate-900 dark:text-white">Volunteer #{idx + 1}:</strong> {v.name} ({v.phone}){v.vehicleNumber ? ` - ${v.vehicleNumber}` : ''}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700 text-center">
+                              Volunteer not yet assigned
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
+                          Decline Processed
                         </div>
                       )}
-                      <div className="flex items-center">
-                        <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                        <span>Address: {claim.ngoId?.address || claim.ngoId?.city || 'Pune'}</span>
-                      </div>
                     </div>
-                  </div>
-
-                  {claim.status === 'PENDING' ? (
-                    <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                      <button
-                        onClick={() => handleAcceptClaim(claim._id)}
-                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
-                      >
-                        Accept Request
-                      </button>
-                      <button
-                        onClick={() => handleDeclineClaim(claim._id)}
-                        className="flex-1 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400 font-bold rounded-xl text-xs transition-colors"
-                      >
-                        Decline
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
-                      {claim.status === 'ACCEPTED' ? '✓ Accepted — Arranging Pickup' : 'Decline Processed'}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       ) : isDonor && showMyUploads ? (
         /* VIEW 2: INLINE DONOR POSTINGS & UPLOADS VIEW */
@@ -570,52 +681,41 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
                 <Package className="w-5 h-5 mr-2 text-emerald-600" />
-                My Food Postings & Uploads ({donorPostings.length})
+                My Active Listings ({donorPostings.length})
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Manage your active surplus listings, edit postings within the 12-hour window, or remove completed items.
+                Manage your posted surplus listings, edit postings within the 12-hour window, or track their statuses.
               </p>
             </div>
 
             {/* Filter Tabs with Counts */}
             {(() => {
-              const now = new Date();
               const counts = {
                 ALL: donorPostings.length,
                 ACTIVE: 0,
-                ACCEPTED: 0,
-                REJECTED: 0,
-                NON_CLAIMED: 0
+                RESERVED: 0,
+                COLLECTED: 0,
+                EXPIRED: 0,
+                CANCELLED: 0
               };
 
               donorPostings.forEach(p => {
-                const expiryDate = new Date(p.expiryTime || p.overallExpiry || p.createdAt);
-                const isExpired = expiryDate <= now;
-                const hasAcceptedClaim = Boolean(p.acceptedClaim) || p.status === 'ACCEPTED' || p.status === 'CLAIMED' || p.status === 'COMPLETED';
-                const allClaimsDeclined = p.claims && p.claims.length > 0 && p.claims.every(c => c.status === 'DECLINED');
-                const isRejected = p.status === 'REJECTED' || p.status === 'DECLINED' || allClaimsDeclined;
-
-                if (hasAcceptedClaim) {
-                  counts.ACCEPTED++;
-                } else if (isRejected) {
-                  counts.REJECTED++;
-                } else if (isExpired && (!p.claims || p.claims.length === 0)) {
-                  counts.NON_CLAIMED++;
-                } else if (!isExpired) {
-                  counts.ACTIVE++;
-                } else {
-                  counts.NON_CLAIMED++;
-                }
+                if (p.computedStatus === 'ACTIVE') counts.ACTIVE++;
+                else if (p.computedStatus === 'ACCEPTED') counts.RESERVED++;
+                else if (p.computedStatus === 'COMPLETED') counts.COLLECTED++;
+                else if (p.computedStatus === 'NON_CLAIMED') counts.EXPIRED++;
+                else if (p.computedStatus === 'REJECTED') counts.CANCELLED++;
               });
 
               return (
                 <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto overflow-x-auto gap-1">
                   {[
-                    { key: 'ALL', label: 'All Postings', count: counts.ALL },
+                    { key: 'ALL', label: 'All', count: counts.ALL },
                     { key: 'ACTIVE', label: 'Active', count: counts.ACTIVE },
-                    { key: 'ACCEPTED', label: 'Accepted', count: counts.ACCEPTED },
-                    { key: 'REJECTED', label: 'Rejected', count: counts.REJECTED },
-                    { key: 'NON_CLAIMED', label: 'Non-Claimed', count: counts.NON_CLAIMED }
+                    { key: 'RESERVED', label: 'Reserved', count: counts.RESERVED },
+                    { key: 'COLLECTED', label: 'Collected', count: counts.COLLECTED },
+                    { key: 'EXPIRED', label: 'Expired', count: counts.EXPIRED },
+                    { key: 'CANCELLED', label: 'Cancelled', count: counts.CANCELLED }
                   ].map(tab => (
                     <button
                       key={tab.key}
@@ -643,37 +743,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
           {/* Postings Grid */}
           {(() => {
-            const now = new Date();
             const filteredPostings = donorPostings.filter(post => {
-              const expiryDate = new Date(post.expiryTime || post.overallExpiry || post.createdAt);
-              const isExpired = expiryDate <= now;
-              const hasAcceptedClaim = Boolean(post.acceptedClaim) || post.status === 'ACCEPTED' || post.status === 'CLAIMED' || post.status === 'COMPLETED';
-              const allClaimsDeclined = post.claims && post.claims.length > 0 && post.claims.every(c => c.status === 'DECLINED');
-              const isRejected = post.status === 'REJECTED' || post.status === 'DECLINED' || allClaimsDeclined;
-
-              // 1. All Postings — show every surplus item the logged-in donor has posted, regardless of status
               if (donorPostingsTab === 'ALL') return true;
-
-              // 2. Active — show the logged-in donor's postings that are still within their valid window (not expired) and have NOT yet been claimed/accepted by any NGO
-              if (donorPostingsTab === 'ACTIVE') {
-                return !isExpired && !hasAcceptedClaim && !isRejected;
-              }
-
-              // 3. Accepted — show the logged-in donor's postings where an NGO has claimed/requested the item and the donor (or system) has accepted that claim
-              if (donorPostingsTab === 'ACCEPTED') {
-                return hasAcceptedClaim;
-              }
-
-              // 4. Rejected — show the logged-in donor's postings where an NGO's claim request was explicitly rejected/declined by the donor, OR the donor rejected all incoming requests for that item
-              if (donorPostingsTab === 'REJECTED') {
-                return isRejected && !hasAcceptedClaim;
-              }
-
-              // 5. Non-Claimed — show the logged-in donor's postings that have expired (past their expiry time) without any NGO ever claiming/requesting them
-              if (donorPostingsTab === 'NON_CLAIMED') {
-                return isExpired && !hasAcceptedClaim && (!post.claims || post.claims.length === 0);
-              }
-
+              if (donorPostingsTab === 'ACTIVE') return post.computedStatus === 'ACTIVE';
+              if (donorPostingsTab === 'RESERVED') return post.computedStatus === 'ACCEPTED';
+              if (donorPostingsTab === 'COLLECTED') return post.computedStatus === 'COMPLETED';
+              if (donorPostingsTab === 'EXPIRED') return post.computedStatus === 'NON_CLAIMED';
+              if (donorPostingsTab === 'CANCELLED') return post.computedStatus === 'REJECTED';
               return true;
             });
 
@@ -683,47 +759,81 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
             if (filteredPostings.length === 0) {
               return (
-                <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-2">
-                  <Package className="w-10 h-10 text-slate-400 mx-auto opacity-50" />
-                  <h4 className="font-bold text-slate-700 dark:text-slate-300">No Postings Found</h4>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    {donorPostingsTab === 'ALL'
+                <EmptyState
+                  icon={Package}
+                  message="No Postings Found"
+                  description={
+                    donorPostingsTab === 'ALL'
                       ? 'You have not uploaded any surplus food listings yet.'
-                      : `No postings currently under "${donorPostingsTab}" status.`}
-                  </p>
-                </div>
+                      : `No postings currently under "${donorPostingsTab}" status.`
+                  }
+                  action={donorPostingsTab === 'ALL' ? (
+                      <button
+                        onClick={() => {
+                          if (onEdit) onEdit({ isNewPostSignal: true });
+                        }}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                      >
+                        Post a Surplus
+                      </button>
+                    ) : null}
+                />
               );
             }
 
             const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
+            const handleCancelListing = async (id, isReserved) => {
+              if (isReserved) {
+                if (!window.confirm('An NGO has already claimed this listing. Are you sure you want to cancel it?')) return;
+              } else {
+                if (!window.confirm('Are you sure you want to cancel this listing?')) return;
+              }
+              try {
+                await axios.patch(`${API_URL}/api/food/${id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                fetchDonorPostings();
+              } catch (e) {
+                alert('Failed to cancel listing');
+              }
+            };
+
+            const handleMarkCollected = async (id) => {
+              try {
+                await axios.patch(`${API_URL}/api/food/${id}/collected`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                fetchDonorPostings();
+              } catch (e) {
+                alert('Failed to mark collected');
+              }
+            };
+
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredPostings.map(post => {
                   const isEditable = (Date.now() - new Date(post.createdAt).getTime()) <= TWELVE_HOURS_MS;
-                  const expiryDate = new Date(post.expiryTime || post.overallExpiry || post.createdAt);
-                  const isExpired = expiryDate <= now;
-                  const hasAcceptedClaim = Boolean(post.acceptedClaim) || post.status === 'ACCEPTED' || post.status === 'CLAIMED' || post.status === 'COMPLETED';
-                  const allClaimsDeclined = post.claims && post.claims.length > 0 && post.claims.every(c => c.status === 'DECLINED');
-                  const isRejected = post.status === 'REJECTED' || post.status === 'DECLINED' || allClaimsDeclined;
-                  const isNonClaimed = isExpired && !hasAcceptedClaim && (!post.claims || post.claims.length === 0);
-
-                  // Derived label & color
+                  
                   let statusLabel = 'ACTIVE';
                   let statusBadgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
 
-                  if (hasAcceptedClaim) {
-                    statusLabel = 'ACCEPTED';
+                  if (post.computedStatus === 'ACCEPTED') {
+                    statusLabel = 'RESERVED';
                     statusBadgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-                  } else if (isRejected) {
-                    statusLabel = 'REJECTED';
+                  } else if (post.computedStatus === 'COMPLETED') {
+                    statusLabel = 'COLLECTED';
+                    statusBadgeClass = 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+                  } else if (post.computedStatus === 'REJECTED') {
+                    statusLabel = 'CANCELLED';
                     statusBadgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 border-rose-200 dark:border-rose-800';
-                  } else if (isNonClaimed || isExpired) {
-                    statusLabel = 'NON-CLAIMED';
+                  } else if (post.computedStatus === 'NON_CLAIMED') {
+                    statusLabel = 'EXPIRED';
                     statusBadgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600';
                   }
 
-                  const claimingNgo = post.acceptedClaim?.ngoId || post.claimantId;
+                  const isReserved = post.computedStatus === 'ACCEPTED';
+                  const isExpired = post.computedStatus === 'NON_CLAIMED';
+                  const isCancelled = post.computedStatus === 'REJECTED';
+                  const isCollected = post.computedStatus === 'COMPLETED';
+                  const isActive = post.computedStatus === 'ACTIVE';
+                  const urgency = calculateListingUrgency(post);
 
                   return (
                     <div key={post._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -743,117 +853,89 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             Servings: <strong className="text-slate-800 dark:text-slate-200">{post.quantity} Portions</strong>
                           </p>
                         </div>
-
-                        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
-                          <div className="flex items-center">
-                            <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                            <span>
-                              {isExpired ? 'Expired: ' : 'Expires: '}
-                              <strong>{new Date(post.expiryTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</strong>
-                            </span>
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                            <span>Pickup: {post.pickupAddress || 'Address on file'}</span>
-                          </div>
+                        
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          Posted: {new Date(post.createdAt).toLocaleDateString()}
                         </div>
 
-                        {/* Incoming Pending Claim Request Callout */}
-                        {post.pendingClaim && (
-                          <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-900/60 space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center">
-                                🔔 Incoming Request
-                              </span>
-                              <span className="text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-900 dark:text-amber-100 font-bold px-2 py-0.5 rounded-full">
-                                Pending Review
-                              </span>
-                            </div>
-                            <p className="text-xs text-slate-700 dark:text-slate-300">
-                              <strong>{post.pendingClaim.ngoId?.orgName || post.pendingClaim.ngoId?.fullName || 'Verified NGO'}</strong> requested this item.
-                              {post.pendingClaim.requestedPickupTime && (
-                                <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                  Pickup: {new Date(post.pendingClaim.requestedPickupTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              )}
-                            </p>
-                            {post.pendingClaim.message && (
-                              <p className="text-[11px] italic text-slate-600 dark:text-slate-400 bg-white/60 dark:bg-slate-900/60 p-2 rounded-lg">
-                                "{post.pendingClaim.message}"
-                              </p>
-                            )}
-                            <div className="flex gap-2 pt-1">
-                              <button
-                                onClick={() => handleAcceptClaim(post.pendingClaim._id, post.pendingClaim)}
-                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Accept
-                              </button>
-                              <button
-                                onClick={() => handleDeclineClaim(post.pendingClaim._id)}
-                                className="flex-1 py-1.5 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
-                              >
-                                <XCircle className="w-3.5 h-3.5" /> Decline
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Accepted Claim Details & Tracking Link */}
-                        {hasAcceptedClaim && (
-                          <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-xl border border-blue-200 dark:border-blue-900/60 space-y-2">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="font-bold text-blue-800 dark:text-blue-300 flex items-center">
-                                🤝 Matched Receiver
-                              </span>
-                              {post.verificationCode && (
-                                <span className="font-mono font-bold text-[11px] bg-blue-200 dark:bg-blue-800 text-blue-900 dark:text-blue-100 px-2 py-0.5 rounded">
-                                  Code: {post.verificationCode}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-slate-700 dark:text-slate-300">
-                              Claimed by: <strong>{claimingNgo?.orgName || claimingNgo?.fullName || 'Verified NGO Partner'}</strong>
-                            </p>
-                            <button
-                              onClick={() => navigate(`/track/${post._id || post.id}`)}
-                              className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <Truck className="w-3.5 h-3.5" /> View Delivery Tracking
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Items breakdown if present */}
-                        {post.items && post.items.length > 0 && (
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Itemized Details</span>
-                            {post.items.map((item, idx) => (
-                              <div key={idx} className="flex justify-between text-[11px] text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-lg">
-                                <span>{item.itemName}</span>
-                                <span className="font-semibold">{item.quantity} {item.unit}</span>
-                              </div>
-                            ))}
+                        {urgency.level !== 'EXPIRED' && isActive && (
+                          <div className="pt-1">
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold ${
+                              urgency.level === 'HIGH' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900/50' :
+                              urgency.level === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50' :
+                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
+                            }`}>
+                              <Clock className="w-3.5 h-3.5" />
+                              {urgency.text}
+                            </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Card Bottom Actions */}
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center gap-2">
-                        {isEditable && (
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex flex-wrap gap-2">
+                        {isActive && (
+                          <>
+                            <button
+                              onClick={() => onEdit && onEdit(post)}
+                              className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Edit className="w-3.5 h-3.5" /> Edit Listing
+                            </button>
+                            <button
+                              onClick={() => handleCancelListing(post._id, false)}
+                              className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Cancel
+                            </button>
+                          </>
+                        )}
+
+                        {isReserved && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedListing(post);
+                                setIsLightboxOpen(true);
+                              }}
+                              className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <Search className="w-3.5 h-3.5" /> View Details
+                            </button>
+                            <button
+                              onClick={() => handleMarkCollected(post._id)}
+                              className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Mark Collected
+                            </button>
+                            <button
+                              onClick={() => handleCancelListing(post._id, true)}
+                              className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            >
+                              <XCircle className="w-3.5 h-3.5" /> Cancel
+                            </button>
+                          </>
+                        )}
+
+                        {isExpired && (
                           <button
-                            onClick={() => onEdit && onEdit(post)}
-                            className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            onClick={() => onEdit && onEdit({ ...post, _id: undefined, isRepost: true })}
+                            className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                           >
-                            <Edit className="w-3.5 h-3.5" /> Edit
+                            <Package className="w-3.5 h-3.5" /> Repost
                           </button>
                         )}
-                        <button
-                          onClick={() => handleDeletePosting(post._id)}
-                          className={`${isEditable ? 'flex-1' : 'w-full'} py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
+
+                        {(isCancelled || isCollected) && (
+                          <button
+                            onClick={() => {
+                              setSelectedListing(post);
+                              setIsLightboxOpen(true);
+                            }}
+                            className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                          >
+                            <Search className="w-3.5 h-3.5" /> View Details
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
@@ -886,11 +968,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           {loadingMyNeeds ? (
             <div className="text-center py-12 text-slate-500">Loading shortages...</div>
           ) : myNeeds.length === 0 ? (
-            <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 space-y-2">
-              <Package className="w-10 h-10 text-slate-400 mx-auto opacity-50" />
-              <h4 className="font-bold text-slate-700 dark:text-slate-300">No Shortage Requests Found</h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">Use the "+ Post Shortage" button in the right sidebar to publish your food and ration needs.</p>
-            </div>
+            <EmptyState
+              icon={Package}
+              message="No Shortage Requests Found"
+              description='Use the "+ Post Shortage" button in the right sidebar to publish your food and ration needs.'
+            />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {myNeeds.map(need => (
@@ -1015,7 +1097,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {/* Grid of Surplus Listings — visible to NGOs and unauthenticated users only.
            Donors have their own scoped "My Postings" view (donorPostings) from /api/food/my-listings
            which is already filtered server-side by donorId, so they must NOT see this all-donors grid. */}
-      {(!user || user.accountType !== 'DONOR') && (
+      {(!user || (user.accountType !== 'DONOR' && !showMyShortages)) && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {sortedAndFilteredListings.map((listing) => {
             const title = listing.title || 'Untitled';
@@ -1060,10 +1142,29 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
                         <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
                       </div>
-                      <div className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
-                        <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
-                        <span>Expires: {new Date(expiry).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      </div>
+                      {(() => {
+                        const urgency = calculateListingUrgency(listing);
+                        if (urgency.level === 'EXPIRED') {
+                          return (
+                            <div className="flex items-center text-slate-500 dark:text-slate-500 font-medium">
+                              <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
+                              <span>Expired</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="pt-0.5">
+                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold ${
+                              urgency.level === 'HIGH' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900/50' :
+                              urgency.level === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50' :
+                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
+                            }`}>
+                              <Clock className="w-3.5 h-3.5" />
+                              {urgency.text}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Matched shortage pill */}
@@ -1079,21 +1180,34 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       </div>
                     ) : null}
 
-                    {/* Claim / Request Pickup Button for Org accounts */}
+                    {/* Accept and Reject Buttons for Org accounts */}
                     {user?.accountType === 'ORGANISATION' && listing.status !== 'CLAIMED' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedListing(listing);
-                          setClaimStatus('FORM');
-                          setClaimMessage('');
-                          setClaimTime(getDefaultPickupTime());
-                        }}
-                        className="w-full mt-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-                      >
-                        <Utensils className="w-3.5 h-3.5" />
-                        <span>Claim / Request Pickup</span>
-                      </button>
+                      <div className="w-full mt-3 flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setListingToReject(listing);
+                            setRejectModalOpen(true);
+                          }}
+                          className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Reject Donation</span>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedListing(listing);
+                            setClaimStatus('FORM');
+                            setClaimMessage('');
+                            setClaimTime(getDefaultPickupTime());
+                          }}
+                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                        >
+                          <Utensils className="w-3.5 h-3.5" />
+                          <span>Send Claim Request</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1101,10 +1215,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             );
           })}
           {sortedAndFilteredListings.length === 0 && (
-            <div className="col-span-full text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
-              <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-              <p className="font-bold text-sm text-slate-700 dark:text-slate-200">No surplus food available right now</p>
-              <p className="text-xs mt-1">Check back soon for new food listings.</p>
+            <div className="col-span-full">
+              <EmptyState
+                icon={Package}
+                message="No surplus food available right now"
+                description="Check back soon for new food listings."
+              />
             </div>
           )}
         </div>
@@ -1193,62 +1309,6 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* SURFACED SHORTAGE CONNECTION BOX */}
-                  {(() => {
-                    const matches = getAllListingMatches(selectedListing);
-                    if (matches.length === 0) return null;
-                    return (
-                      <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-300 flex items-center">
-                            <Sparkles className="w-4 h-4 mr-1.5 text-emerald-600" />
-                            Connected NGO Shortages
-                          </span>
-                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
-                            {matches.length} Matches Found
-                          </span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {matches.slice(0, 2).map((m) => (
-                            <div key={m.id || m.ngoId} className="bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-slate-700 flex justify-between items-center text-xs">
-                              <div>
-                                <div className="font-bold text-slate-900 dark:text-white">{m.ngoName}</div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                                  Needs: <strong className="text-emerald-600 dark:text-emerald-400">{m.quantity} {m.unit} {m.item}</strong>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-1.5">
-                                <button
-                                  onClick={() => {
-                                    setSelectedListing(null);
-                                    navigate('/map', { state: { selectedNgoId: m.ngoId, selectedNgoName: m.ngoName } });
-                                  }}
-                                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] flex items-center space-x-1 transition-colors"
-                                  title="View on Logistics Map"
-                                >
-                                  <MapPin className="w-3 h-3" />
-                                  <span>Map</span>
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedListing(null);
-                                    navigate('/requirements');
-                                  }}
-                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] flex items-center space-x-1 transition-colors"
-                                  title="View Shortage Requirements"
-                                >
-                                  <AlertCircle className="w-3 h-3" />
-                                  <span>Shortage</span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   {/* Food Breakdown */}
                   <div>
                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
@@ -1275,6 +1335,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     )}
                   </div>
 
+
                   {/* Food Images Lightbox Trigger */}
                   {selectedListing.photos && selectedListing.photos.length > 0 && (
                     <div>
@@ -1286,7 +1347,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           setCurrentPhotoIndex(0);
                           setIsLightboxOpen(true);
                         }}
-                        className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 px-4 rounded-xl transition-colors border border-slate-200 dark:border-slate-600 flex items-center justify-center space-x-2 text-sm shadow-sm"
+                        className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 px-4 rounded-xl transition-colors border border-slate-200 dark:border-slate-600 flex items-center justify-center space-x-2 text-sm shadow-sm cursor-pointer"
                       >
                         <Search className="w-4 h-4" />
                         <span>View {selectedListing.photos.length} Image{selectedListing.photos.length !== 1 ? 's' : ''}</span>
@@ -1296,22 +1357,37 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                   {/* Donor Info */}
                   <div>
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Donor Information</h4>
-                    <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2 text-xs">
-                      <p className="font-bold text-slate-800 dark:text-white">
-                        {selectedListing.donorId?.orgName || selectedListing.donorId?.businessName || selectedListing.donorId?.fullName}
-                      </p>
-                      <div className="flex items-center text-slate-600 dark:text-slate-300">
-                        <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                        {selectedListing.pickupAddress || [selectedListing.donorId?.address, selectedListing.donorId?.city].filter(Boolean).join(', ') || 'Pune City'}
-                      </div>
-                      {selectedListing.donorId?.phone && (
-                        <div className="flex items-center text-slate-600 dark:text-slate-300">
-                          <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                          {selectedListing.donorId?.phone}
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                      <Building2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Donor Information
+                    </h4>
+                    {(() => {
+                      const donor = (typeof selectedListing.donorId === 'object' && selectedListing.donorId !== null) ? selectedListing.donorId : {};
+                      const displayName = donor.businessName || donor.orgName || donor.fullName || 'Not provided';
+                      const address = selectedListing.pickupAddress || [donor.address, donor.city].filter(Boolean).join(', ') || 'Not provided';
+                      const phone = donor.phone || 'Not provided';
+                      const email = donor.email || donor.businessDetails?.shopEmail || 'Not provided';
+
+                      return (
+                        <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2 text-xs">
+                          <div className="flex items-center text-slate-800 dark:text-white font-bold">
+                            <Building2 className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
+                            <span>Name: {displayName}</span>
+                          </div>
+                          <div className="flex items-center text-slate-600 dark:text-slate-300">
+                            <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                            <span>Address: {address}</span>
+                          </div>
+                          <div className="flex items-center text-slate-600 dark:text-slate-300">
+                            <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                            <span>Phone: {phone}</span>
+                          </div>
+                          <div className="flex items-center text-slate-600 dark:text-slate-300">
+                            <Mail className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
+                            <span>Email: {email}</span>
+                          </div>
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Timings */}
@@ -1337,12 +1413,29 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             {claimStatus === 'IDLE' && (
               <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-2">
                 {user?.accountType === 'ORGANISATION' && selectedListing.status === 'AVAILABLE' ? (
-                  <button
-                    onClick={() => setClaimStatus('FORM')}
-                    className="w-full bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs cursor-pointer"
-                  >
-                    Request Food
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        setListingToReject(selectedListing);
+                        setRejectModalOpen(true);
+                      }}
+                      className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 font-bold py-2.5 px-4 rounded-xl transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Reject Donation
+                    </button>
+                    <button
+                      onClick={() => {
+                        setClaimStatus('FORM');
+                        setClaimMessage('');
+                        setClaimTime(getDefaultPickupTime());
+                      }}
+                      className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Utensils className="w-4 h-4" />
+                      Send Claim Request
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={() => setSelectedListing(null)}
@@ -1405,6 +1498,48 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           </button>
         </div>
       )}
+
+      {/* Reject Donation Modal */}
+      <RejectDonationModal
+        isOpen={rejectModalOpen}
+        onClose={() => {
+          setRejectModalOpen(false);
+          setListingToReject(null);
+        }}
+        donation={listingToReject}
+        token={token}
+        onSuccess={() => {
+          addNotification({
+            title: 'Donation Rejected',
+            message: `Donation "${listingToReject?.title}" rejected successfully.`,
+            type: 'INFO'
+          });
+        }}
+      />
+
+      {/* Reject Claim Modal (For Donors) */}
+      <RejectDonationModal
+        isOpen={rejectClaimModalOpen}
+        onClose={() => {
+          setRejectClaimModalOpen(false);
+          setClaimToReject(null);
+        }}
+        donation={{ _id: claimToReject?.foodId?._id || 'temp' }}
+        token={token}
+        onSubmit={handleDeclineClaim}
+      />
+
+      {/* Volunteer Assignment Modal */}
+      <VolunteerAssignmentModal
+        isOpen={volModalOpen}
+        onClose={() => setVolModalOpen(false)}
+        foodId={volModalFoodId}
+        initialVolunteers={volModalInitialVolunteers}
+        token={token}
+        onSuccess={() => {
+          if (fetchDonorClaims) fetchDonorClaims();
+        }}
+      />
     </div>
   );
 };

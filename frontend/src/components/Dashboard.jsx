@@ -7,6 +7,7 @@ import MyPostingsDrawer from './MyPostingsDrawer';
 import MyShortagesDrawer from './MyShortagesDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
 import OrgPostNeedModal from './OrgPostNeedModal';
+import ActivePickupsDrawer from './ActivePickupsDrawer';
 import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus, Edit } from 'lucide-react';
 
 import { getStoredNotifications, subscribeToDonationUpdates } from '../services/donationService';
@@ -37,6 +38,14 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
     }
   }, [autoOpenDonate, location.pathname, location.state]);
 
+  useEffect(() => {
+    const handleOpenDrawer = (e) => {
+      if (e.detail) setActiveDrawer(e.detail);
+    };
+    window.addEventListener('OPEN_DRAWER', handleOpenDrawer);
+    return () => window.removeEventListener('OPEN_DRAWER', handleOpenDrawer);
+  }, []);
+
   const handleClosePostForm = () => {
     setShowPostForm(false);
     setPrefillData(null); // Clear prefill on close to avoid sticky edit state
@@ -46,7 +55,20 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   };
 
   const handleEditPosting = (post) => {
-    setPrefillData({ ...post, isEdit: true });
+    if (post.isNewPostSignal) {
+      setPrefillData(null);
+      setShowPostForm(true);
+      setActiveDrawer(null);
+      return;
+    }
+    
+    // For reposts, we don't want isEdit to be true because it's a new post creation, just with prefilled data
+    if (post.isRepost) {
+      setPrefillData({ ...post, isEdit: false });
+    } else {
+      setPrefillData({ ...post, isEdit: true });
+    }
+    
     setShowPostForm(true);
     setActiveDrawer(null);
   };
@@ -81,7 +103,12 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
       };
       socket.on('NEW_NOTIFICATION', handleNewNotification);
       socket.on('CLAIM_REQUEST_RECEIVED', handleNewNotification);
-      socket.on('CLAIM_ACCEPTED', handleNewNotification);
+      socket.on('CLAIM_ACCEPTED', (data) => {
+        handleNewNotification();
+        if (isOrg) {
+          setActiveDrawer('PICKUPS');
+        }
+      });
       socket.on('CLAIM_DECLINED', handleNewNotification);
       socket.on('NGO_CONFIRMED', handleNewNotification);
       socket.on('PICKUP_CONFIRMED', handleNewNotification);
@@ -116,6 +143,8 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
           {/* Welcome & Impact Metrics Bar */}
           {/* Top Spacing / Content Start */}
           <div className="pt-2"></div>
+
+
 
           {/* Post Food Modal Overlay (Donor) */}
           {showPostForm && (
@@ -153,12 +182,17 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
         </div>
       </main>
 
-      {/* Drawers Container (Slide-over) */}
-      <div className={`w-96 shrink-0 bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-2xl transition-all duration-300 ease-in-out z-40 ${activeDrawer ? 'translate-x-0 ml-0' : 'translate-x-full absolute right-20 top-0 bottom-0'}`} style={{ position: activeDrawer ? 'relative' : 'absolute' }}>
-        {activeDrawer === 'POSTINGS' && <MyPostingsDrawer user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />}
-        {activeDrawer === 'SHORTAGES' && <MyShortagesDrawer token={token} onClose={closeDrawer} />}
-        {activeDrawer === 'NOTIFICATIONS' && <NotificationsDrawer user={user} token={token} socket={socket} onClose={closeDrawer} onNotificationChange={fetchNotificationsCount} />}
-      </div>
+      {/* Drawers Container - Using Shared Drawer Component */}
+      <>
+        <MyPostingsDrawer isOpen={activeDrawer === 'POSTINGS'} user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />
+        <MyShortagesDrawer isOpen={activeDrawer === 'SHORTAGES'} token={token} onClose={closeDrawer} />
+        <NotificationsDrawer isOpen={activeDrawer === 'NOTIFICATIONS'} user={user} token={token} socket={socket} onClose={closeDrawer} onNotificationChange={fetchNotificationsCount} />
+        {activeDrawer === 'PICKUPS' && (
+          <div className="absolute top-0 right-20 w-96 h-full bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 z-[100] animate-in slide-in-from-right duration-300">
+            <ActivePickupsDrawer user={user} token={token} onClose={closeDrawer} />
+          </div>
+        )}
+      </>
 
       {/* Right-Hand Icon Navigation Bar */}
       <aside className="w-20 bg-slate-900 border-l border-slate-800 flex flex-col items-center py-6 gap-6 shrink-0 z-50">
@@ -182,6 +216,14 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               <Edit className="w-6 h-6" />
               <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Edit Postings</span>
             </button>
+            <button
+              onClick={() => setActiveDrawer(activeDrawer === 'PICKUPS' ? null : 'PICKUPS')}
+              className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative cursor-pointer ${activeDrawer === 'PICKUPS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
+              title="Active Pickups"
+            >
+              <Truck className="w-6 h-6" />
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Active Pickups</span>
+            </button>
           </>
         )}
 
@@ -204,6 +246,14 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
             >
               <Package className="w-6 h-6" />
               <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">My Shortages</span>
+            </button>
+            <button
+              onClick={() => setActiveDrawer(activeDrawer === 'PICKUPS' ? null : 'PICKUPS')}
+              className={`w-12 h-12 rounded-xl flex justify-center items-center transition-colors group relative cursor-pointer ${activeDrawer === 'PICKUPS' ? 'bg-slate-800 text-emerald-400' : 'text-slate-300 hover:bg-slate-800 hover:text-emerald-400'}`}
+              title="Active Pickups"
+            >
+              <Truck className="w-6 h-6" />
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Active Pickups</span>
             </button>
           </>
         )}

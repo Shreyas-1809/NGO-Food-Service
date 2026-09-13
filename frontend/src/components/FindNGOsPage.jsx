@@ -17,6 +17,8 @@ import Avatar from './ui/Avatar';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
+import IconCircleBadge from './ui/IconCircleBadge';
+import EmptyStateNoResults from './illustrations/EmptyStateNoResults';
 
 const FindNGOsPage = ({ user }) => {
   const [ngos, setNgos] = useState([]);
@@ -191,8 +193,9 @@ const FindNGOsPage = ({ user }) => {
         </div>
       ) : filteredNgos.length === 0 ? (
         <EmptyState
-          icon={Building2}
+          illustration={EmptyStateNoResults}
           message="No organisations found matching your filters."
+          description="Try adjusting your search terms, cause filter, or locality to discover nearby verified food relief partners."
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -200,32 +203,36 @@ const FindNGOsPage = ({ user }) => {
             <div
               key={ngo.id}
               onClick={() => setSelectedNgo(ngo)}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+              className="bg-white dark:bg-[#23201d] rounded-2xl p-5 border border-[#e8dfd2]/80 dark:border-[#38322c] hover:border-[#E8873A]/60 shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center space-x-3">
-                    <Avatar name={ngo.name} src={ngo.logo} />
+                    {ngo.logo && !ngo.logo.includes('images.unsplash.com') ? (
+                      <Avatar name={ngo.name} src={ngo.logo} className="w-12 h-12 rounded-full" />
+                    ) : (
+                      <IconCircleBadge icon={Building2} color="green" size="lg" className="shadow-xs" />
+                    )}
                     <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-white line-clamp-1">
+                      <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 line-clamp-1">
                         {ngo.name}
                       </h3>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-0.5">
-                        <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400 flex items-center mt-0.5">
+                        <MapPin className="w-3 h-3 mr-1 text-stone-400 shrink-0" />
                         {ngo.area || ngo.city} • ~{ngo.distanceKm || 4.2} km
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2 leading-relaxed">
                   {ngo.description}
                 </p>
 
                 {/* Causes Badges */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {(ngo.causes || []).slice(0, 3).map((cause, idx) => (
-                    <span key={idx} className="bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                    <span key={idx} className="bg-[#2F7A4D]/10 text-[#2F7A4D] dark:bg-[#2F7A4D]/25 dark:text-[#86efac] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                       {cause}
                     </span>
                   ))}
@@ -233,22 +240,21 @@ const FindNGOsPage = ({ user }) => {
               </div>
 
               {/* Card Footer Actions */}
-              <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center">
+              <div className="pt-4 mt-4 border-t border-[#e8dfd2]/60 dark:border-[#38322c] flex items-center justify-between">
+                <span className="text-xs font-bold text-[#2F7A4D] dark:text-[#86efac] hover:text-[#E8873A] transition-colors flex items-center">
                   View Profile <ArrowRight className="w-3 h-3 ml-1" />
                 </span>
 
                 {!isOrg ? (
-                  <Button
-                    variant="primary"
-                    size="sm"
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } });
                     }}
+                    className="bg-[#E8873A] hover:bg-[#d57328] text-white font-bold text-xs px-3.5 py-1.5 rounded-[10px] shadow-sm shadow-[#E8873A]/20 transition-all cursor-pointer"
                   >
                     Donate
-                  </Button>
+                  </button>
                 ) : (
                   <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                     <Button

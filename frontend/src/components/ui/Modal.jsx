@@ -45,7 +45,7 @@ const Modal = ({
       onClick={handleBackdropClick}
     >
       <div
-        className={`w-full ${maxWidth} bg-white dark:bg-slate-800 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]`}
+        className={`w-full ${maxWidth} bg-[var(--card-bg)] rounded-[12px] shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]`}
       >
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-700/60 shrink-0">
           <div>

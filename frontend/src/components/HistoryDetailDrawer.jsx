@@ -4,6 +4,7 @@ import { Package, Download, User as UserIcon, Building2, MapPin, X, FileText } f
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
+import DirectContactButtons from './ui/DirectContactButtons';
 
 const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
   if (!record) return null;
@@ -125,9 +126,24 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Other Party Involved
           </h4>
-          <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center">
-            <Building2 className="w-5 h-5 text-slate-400 mr-2" />
-            <span className="font-semibold text-slate-800 dark:text-slate-200">{record.otherPartyName}</span>
+          <div className="bg-slate-50 dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+            <div className="flex items-center">
+              <Building2 className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{record.otherPartyName}</span>
+            </div>
+            {(record.otherPartyPhone || record.otherPartyEmail) && (
+              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Direct Contact</span>
+                <DirectContactButtons
+                  phone={record.otherPartyPhone}
+                  email={record.otherPartyEmail}
+                  name={record.otherPartyName}
+                  waMessage={`Hello ${record.otherPartyName}, contacting you regarding the FoodBridge donation "${record.itemTitle}".`}
+                  emailSubject={`FoodBridge Record: ${record.itemTitle}`}
+                  size="xs"
+                />
+              </div>
+            )}
           </div>
         </div>
 

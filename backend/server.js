@@ -36,6 +36,7 @@ const claimRoutes = require('./routes/claims');
 const needRoutes = require('./routes/needs');
 const recurringNeedsRoutes = require('./routes/recurringNeeds');
 const historyRoutes = require('./routes/history');
+const confirmationRoutes = require('./routes/confirmation');
 app.use('/api/auth', authRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
@@ -44,6 +45,7 @@ app.use('/api/claims', claimRoutes);
 app.use('/api/needs', needRoutes);
 app.use('/api/recurring-needs', recurringNeedsRoutes);
 app.use('/api/history', historyRoutes);
+app.use('/api/confirm', confirmationRoutes);
 
 // ---------------------------------------------------------------------------
 // Socket.io — User rooms for targeted (private) notifications
@@ -73,6 +75,12 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+  });
+
+  // Relay volunteer location to all connected clients (NGO map view)
+  socket.on('VOLUNTEER_LOCATION', (payload) => {
+    // Broadcast to all OTHER clients so the NGO map can display the marker
+    socket.broadcast.emit('VOLUNTEER_LOCATION', payload);
   });
 });
 

@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   Send,
   Truck,
-  CheckCheck
+  CheckCheck,
+  AlertTriangle
 } from 'lucide-react';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
@@ -525,6 +526,46 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     Volunteer not yet assigned
                   </div>
                 )}
+
+                {/* Volunteer Status Indicator / Decline Alert */}
+                {selectedClaim.foodId?.volunteerStatus === 'declined' ? (
+                  <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        Volunteer Declined Task
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fId = selectedClaim.foodId?._id || selectedClaim.foodId;
+                          setVolModalFoodId(fId);
+                          const vols = selectedClaim.foodId?.volunteerAssignments || (selectedClaim.foodId?.volunteerAssignment?.name ? [selectedClaim.foodId.volunteerAssignment] : []);
+                          setVolModalInitialVolunteers(vols);
+                          setVolModalOpen(true);
+                        }}
+                        className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
+                      >
+                        Reassign Volunteer
+                      </button>
+                    </div>
+                    {selectedClaim.foodId?.volunteerDeclineReason && (
+                      <p className="text-[11px] text-rose-600 dark:text-rose-300 italic">
+                        Reason: "{selectedClaim.foodId.volunteerDeclineReason}"
+                      </p>
+                    )}
+                  </div>
+                ) : selectedClaim.foodId?.volunteerStatus === 'accepted' ? (
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Volunteer Accepted & En Route</span>
+                  </div>
+                ) : selectedClaim.foodId?.volunteerStatus === 'pending' && (selectedClaim.foodId?.volunteerAssignments?.length > 0 || selectedClaim.foodId?.volunteerAssignment?.name) ? (
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Awaiting Volunteer Response</span>
+                  </div>
+                ) : null}
               </div>
             )}
 

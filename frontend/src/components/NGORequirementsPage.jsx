@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { getStoredRequests, getStoredNgos, subscribeToDonationUpdates, updateReceiverRequest, markRequestFulfilled, deleteReceiverRequest } from '../services/donationService';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 import {
   MapPin,
   Users,
@@ -24,7 +26,8 @@ import WorkflowNav from './WorkflowNav';
 import ContactNgoModal from './ContactNgoModal';
 import RedirectSurplusModal from './RedirectSurplusModal';
 
-const NGORequirementsPage = ({ user }) => {
+const NGORequirementsPage = ({ user, token: tokenProp }) => {
+  const token = tokenProp || localStorage.getItem('token');
   const [requests, setRequests] = useState([]);
   const [ngos, setNgos] = useState([]);
   const [contactNgo, setContactNgo] = useState(null);
@@ -48,15 +51,62 @@ const NGORequirementsPage = ({ user }) => {
   const orgId = user?.id || user?._id;
   const orgName = user?.orgName || user?.name || user?.fullName;
 
-  const syncData = () => {
-    setRequests(getStoredRequests());
-    setNgos(getStoredNgos());
-  };
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [requestsError, setRequestsError] = useState(null);
+
+  const syncData = useCallback(async () => {
+    setLoadingRequests(true);
+    setRequestsError(null);
+    try {
+      // Fetch all active needs (ALL tab) and org's own needs (MY tab) in parallel
+      const [allRes, myRes] = await Promise.all([
+        axios.get(`${API_URL}/api/needs`, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+        isOrg && token
+          ? axios.get(`${API_URL}/api/needs/my-needs`, { headers: { Authorization: `Bearer ${token}` } })
+          : Promise.resolve({ data: [] })
+      ]);
+
+      // Normalize backend Need objects to the shape the UI expects
+      const normalize = (n) => ({
+        id: n._id,
+        _id: n._id,
+        ngoId: n.ngoId?._id || n.ngoId,
+        ngoName: n.ngoId?.orgName || n.ngoId?.fullName || orgName || 'NGO',
+        item: n.title,
+        category: n.category || 'Food',
+        quantity: n.quantity,
+        unit: n.unit || 'servings',
+        urgency: n.urgency || 'HIGH',
+        requiredBy: n.neededByDate,
+        description: n.description || '',
+        status: n.status || 'ACTIVE',
+        createdAt: n.createdAt
+      });
+
+      // For MY tab, use the my-needs endpoint for precision
+      const myNeeds = (isOrg ? myRes.data : []).map(normalize);
+      const allNeeds = allRes.data.map(normalize);
+
+      // Merge: for MY tab we'll use myNeeds, for ALL tab use allNeeds
+      // We combine both so we have a single state array and filter
+      const combined = [...allNeeds];
+      // Ensure own needs are present (may overlap with allNeeds)
+      myNeeds.forEach(my => {
+        if (!combined.find(r => r.id === my.id)) combined.push(my);
+      });
+
+      setRequests(combined);
+    } catch (err) {
+      console.error('Failed to load shortage requests:', err);
+      setRequestsError('Failed to load shortage requests. Please try again.');
+    } finally {
+      setLoadingRequests(false);
+    }
+  }, [token, isOrg, orgId, orgName]);
 
   useEffect(() => {
     syncData();
-    return subscribeToDonationUpdates(syncData);
-  }, []);
+  }, [syncData]);
 
   const handleDonateForRequirement = (req) => {
     navigate('/donate', {
@@ -86,13 +136,23 @@ const NGORequirementsPage = ({ user }) => {
     setEditValues({ quantity: req.quantity, urgency: req.urgency });
   };
 
-  const handleSaveEdit = (req) => {
-    updateReceiverRequest(req.id, {
-      quantity: Number(editValues.quantity) || req.quantity,
-      urgency: editValues.urgency
-    });
-    setEditingId(null);
-    setEditValues({});
+  const handleSaveEdit = async (req) => {
+    try {
+      await axios.patch(
+        `${API_URL}/api/needs/${req.id}`,
+        {
+          quantity: Number(editValues.quantity) || req.quantity,
+          urgency: editValues.urgency
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setEditingId(null);
+      setEditValues({});
+      syncData();
+    } catch (err) {
+      console.error('Failed to save edit:', err);
+      alert(err.response?.data?.message || 'Failed to save changes.');
+    }
   };
 
   const handleCancelEdit = () => {
@@ -100,14 +160,33 @@ const NGORequirementsPage = ({ user }) => {
     setEditValues({});
   };
 
-  const handleMarkFulfilled = (req) => {
+  const handleMarkFulfilled = async (req) => {
     if (!window.confirm(`Mark "${req.item}" as fulfilled? This cannot be undone.`)) return;
-    markRequestFulfilled(req.id);
+    try {
+      await axios.patch(
+        `${API_URL}/api/needs/${req.id}`,
+        { status: 'FULFILLED' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      syncData();
+    } catch (err) {
+      console.error('Failed to mark fulfilled:', err);
+      alert(err.response?.data?.message || 'Failed to mark as fulfilled.');
+    }
   };
 
-  const handleDelete = (req) => {
+  const handleDelete = async (req) => {
     if (!window.confirm(`Remove this posting for "${req.item}"?`)) return;
-    deleteReceiverRequest(req.id);
+    try {
+      await axios.delete(
+        `${API_URL}/api/needs/${req.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      syncData();
+    } catch (err) {
+      console.error('Failed to delete need:', err);
+      alert(err.response?.data?.message || 'Failed to delete posting.');
+    }
   };
 
   // Split requests: org's own vs others

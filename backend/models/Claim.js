@@ -13,7 +13,7 @@ const ClaimSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['PENDING', 'ACCEPTED', 'DECLINED'],
+    enum: ['PENDING', 'ACCEPTED', 'DECLINED', 'IN_TRANSIT', 'COMPLETED'],
     default: 'PENDING'
   },
   message: {

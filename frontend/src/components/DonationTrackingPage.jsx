@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import {
-  getStoredDonations,
-  updateDonationStatus,
-  subscribeToDonationUpdates,
-  markFoodPickedUp,
-  markFoodDelivered
-} from '../services/donationService';
 import TrackingMapView from './TrackingMapView';
 import DonationCertificateModal from './DonationCertificateModal';
+import DirectContactButtons from './ui/DirectContactButtons';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   CheckCircle2,
   Clock,
@@ -21,7 +16,12 @@ import {
   Building2,
   Package,
   Key,
-  Check
+  Check,
+  UserCheck,
+  Copy,
+  MessageCircle,
+  QrCode,
+  ExternalLink
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -32,6 +32,16 @@ const DonationTrackingPage = () => {
   const [donation, setDonation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCertificate, setShowCertificate] = useState(false);
+
+  const [showDeliveryQr, setShowDeliveryQr] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
+
+  const handleCopy = (text, key) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2500);
+  };
 
   const token = localStorage.getItem('token');
 
@@ -92,6 +102,8 @@ const DonationTrackingPage = () => {
             unit: food.items?.[0]?.unit || 'Portions',
             status: food.status === 'COMPLETED' ? 'DELIVERED' : (food.status === 'ACCEPTED' ? 'ACCEPTED' : food.status),
             donorName: donorObj?.orgName || donorObj?.fullName || 'Food Donor',
+            donorPhone: donorObj?.phone || food.donorPhone || '',
+            donorEmail: donorObj?.email || food.donorEmail || '',
             donorAddress: donorObj?.address || 'Donor Address, Pune',
             pickupLocation: food.pickupAddress || donorObj?.address || 'Pickup Point, Pune',
             pickupCoords: donorCoords,
@@ -99,7 +111,12 @@ const DonationTrackingPage = () => {
             matchedNgoName: claimingNgo?.orgName || claimingNgo?.fullName || 'Verified NGO Partner',
             matchedNgoAddress: claimingNgo?.address ? [claimingNgo.address, claimingNgo.city].filter(Boolean).join(', ') : 'Registered NGO Distribution Center, Pune',
             matchedNgoPhone: claimingNgo?.phone || '',
+            matchedNgoEmail: claimingNgo?.email || '',
+            assignedVolunteer: food.volunteerAssignment || (food.volunteerAssignments?.[0] || null),
+            volunteerAssignments: food.volunteerAssignments || (food.volunteerAssignment ? [food.volunteerAssignment] : []),
             verificationCode: food.verificationCode,
+            confirmationLinks: food.confirmationLinks,
+            confirmationTokens: food.confirmationTokens,
             createdAt: food.createdAt
           };
 
@@ -108,21 +125,19 @@ const DonationTrackingPage = () => {
           return;
         }
       } catch (err) {
-        console.warn('Backend food fetch failed or not found by ID, checking local store:', err.message);
+        console.warn('Backend food fetch failed:', err.message);
+        setDonation(null);
+        setLoading(false);
       }
+    } else {
+      // No id or token — nothing to fetch
+      setDonation(null);
+      setLoading(false);
     }
-
-    // 2. Fallback to local stored donations
-    const all = getStoredDonations();
-    const target = all.find(d => d.id === id) || all[0];
-    setDonation(target);
-    setLoading(false);
   }, [id, token]);
 
   useEffect(() => {
     fetchDonation();
-    const unsubscribe = subscribeToDonationUpdates(fetchDonation);
-    return () => unsubscribe();
   }, [fetchDonation]);
 
   if (loading) {
@@ -146,20 +161,37 @@ const DonationTrackingPage = () => {
     );
   }
 
-  const handleAdvanceStatus = (nextStatus) => {
-    let updated;
-    if (nextStatus === 'FOOD_PICKED_UP' || nextStatus === 'IN_TRANSIT') {
-      updated = markFoodPickedUp(donation.id);
-    } else if (nextStatus === 'DELIVERED' || nextStatus === 'COMPLETED') {
-      updated = markFoodDelivered(donation.id);
-      setShowCertificate(true);
-    } else {
-      updated = updateDonationStatus(donation.id, nextStatus);
-    }
-    if (updated) {
-      setDonation(updated);
-    } else {
-      setDonation(prev => ({ ...prev, status: nextStatus }));
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  const handleAdvanceStatus = async (nextStatus) => {
+    if (!donation?.id || !token) return;
+    // Map legacy/mock status names to the canonical backend statuses
+    const backendStatus =
+      nextStatus === 'FOOD_PICKED_UP' ? 'IN_TRANSIT' :
+      nextStatus === 'DELIVERED' ? 'COMPLETED' :
+      nextStatus;
+
+    setStatusLoading(true);
+    // Optimistic UI update
+    setDonation(prev => ({ ...prev, status: backendStatus === 'COMPLETED' ? 'DELIVERED' : backendStatus }));
+    if (backendStatus === 'COMPLETED') setShowCertificate(true);
+
+    try {
+      await axios.patch(
+        `${API_URL}/api/food/${donation.id}/status`,
+        { status: backendStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Re-fetch to get authoritative persisted state
+      fetchDonation();
+    } catch (err) {
+      console.error('Failed to update status:', err);
+      const msg = err.response?.data?.message || 'Failed to update status. Please try again.';
+      alert(msg);
+      // Revert optimistic update on error
+      fetchDonation();
+    } finally {
+      setStatusLoading(false);
     }
   };
 
@@ -268,12 +300,25 @@ const DonationTrackingPage = () => {
             </div>
 
             {/* Donor */}
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1">
-              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 block uppercase tracking-wider">
-                🟢 Donor Location (Pickup Point)
-              </span>
-              <p className="font-bold text-slate-900 dark:text-white">{donation.donorName}</p>
-              <p className="text-slate-500 dark:text-slate-400">{donation.pickupLocation}</p>
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div>
+                <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-400 block uppercase tracking-wider">
+                  🟢 Donor Location (Pickup Point)
+                </span>
+                <p className="font-bold text-slate-900 dark:text-white">{donation.donorName}</p>
+                <p className="text-slate-500 dark:text-slate-400">{donation.pickupLocation}</p>
+              </div>
+              <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase mb-1">Direct Donor Contact</span>
+                <DirectContactButtons
+                  phone={donation.donorPhone}
+                  email={donation.donorEmail}
+                  name={donation.donorName}
+                  waMessage={`Hello ${donation.donorName}, I am coordinating pickup of "${donation.title}".`}
+                  emailSubject={`FoodBridge Pickup: ${donation.title}`}
+                  size="xs"
+                />
+              </div>
             </div>
 
             {/* Food */}
@@ -291,20 +336,193 @@ const DonationTrackingPage = () => {
             </div>
 
             {/* Receiver NGO */}
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-1">
-              <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400 block uppercase tracking-wider">
-                🟠 Receiver NGO (Delivery Hub)
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div>
+                <span className="text-[10px] font-extrabold text-amber-700 dark:text-amber-400 block uppercase tracking-wider">
+                  🟠 Receiver NGO (Delivery Hub)
+                </span>
+                <p className="font-bold text-slate-900 dark:text-white">
+                  {donation.matchedNgoName || 'Helping Hands Foundation'}
+                </p>
+                <p className="text-slate-500 dark:text-slate-400">
+                  {donation.matchedNgoAddress || 'Shivajinagar Community Kitchen, Pune'}
+                </p>
+              </div>
+              <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase mb-1">Direct NGO Contact</span>
+                <DirectContactButtons
+                  phone={donation.matchedNgoPhone}
+                  email={donation.matchedNgoEmail}
+                  name={donation.matchedNgoName}
+                  waMessage={`Hello ${donation.matchedNgoName}, I am coordinating delivery of "${donation.title}".`}
+                  emailSubject={`FoodBridge Delivery Coordination: ${donation.title}`}
+                  size="xs"
+                />
+              </div>
+            </div>
+
+            {/* Assigned Volunteer */}
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400 block uppercase tracking-wider flex items-center gap-1">
+                <UserCheck className="w-3 h-3" /> Pickup Volunteer
               </span>
-              <p className="font-bold text-slate-900 dark:text-white">
-                {donation.matchedNgoName || 'Helping Hands Foundation'}
-              </p>
-              <p className="text-slate-500 dark:text-slate-400">
-                {donation.matchedNgoAddress || 'Shivajinagar Community Kitchen, Pune'}
-              </p>
-              {donation.matchedNgoPhone && (
-                <p className="text-slate-400 text-[11px]">Phone: {donation.matchedNgoPhone}</p>
+              {donation.assignedVolunteer?.name ? (
+                <div className="space-y-1.5">
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white">
+                      {donation.assignedVolunteer.name}
+                    </p>
+                    {donation.assignedVolunteer.vehicleNumber && (
+                      <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                        Vehicle: <strong className="text-slate-700 dark:text-slate-300">{donation.assignedVolunteer.vehicleNumber}</strong>
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="text-[10px] font-bold text-slate-400 block uppercase mb-1">Direct Volunteer Contact</span>
+                    <DirectContactButtons
+                      phone={donation.assignedVolunteer.phone}
+                      name={donation.assignedVolunteer.name}
+                      waMessage={`Hello ${donation.assignedVolunteer.name}, contacting you regarding pickup for "${donation.title}".`}
+                      size="xs"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-slate-400 italic text-[11px]">Volunteer not yet assigned</p>
               )}
             </div>
+
+            {/* CONFIRM DELIVERY LINK SECTION (When En Route / IN_TRANSIT) */}
+            {(donation.status === 'IN_TRANSIT' || donation.status === 'FOOD_PICKED_UP') && (
+              <div className="p-3.5 bg-sky-50/80 dark:bg-sky-950/40 rounded-2xl border border-sky-200 dark:border-sky-800 space-y-2.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-700 dark:text-sky-300 flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" /> NGO Delivery Confirmation
+                  </span>
+                  <span className="text-[9px] font-bold text-sky-600 dark:text-sky-400 uppercase bg-sky-100 dark:bg-sky-900/60 px-1.5 py-0.5 rounded">
+                    En Route
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                  When the volunteer arrives at the drop-off center, the NGO confirms receipt using this link:
+                </p>
+
+                {(() => {
+                  const deliveryUrl = donation.confirmationLinks?.confirmDeliveryUrl || 
+                    (donation.confirmationTokens?.deliveryToken 
+                      ? `${window.location.origin}/confirm-delivery/${donation.id}?token=${donation.confirmationTokens.deliveryToken}` 
+                      : `${window.location.origin}/confirm-delivery/${donation.id}`);
+                  const waDeliveryMsg = `Hello! Please confirm receipt of "${donation.title}" from volunteer (${donation.assignedVolunteer?.name || 'Volunteer'}): ${deliveryUrl}`;
+
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-mono select-all">
+                        <span className="truncate flex-1 text-slate-700 dark:text-slate-300">{deliveryUrl}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(deliveryUrl, 'tracking-delivery-link')}
+                          className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 font-sans font-semibold text-[10px] shrink-0 flex items-center gap-1"
+                        >
+                          {copiedKey === 'tracking-delivery-link' ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" />
+                              <span className="text-emerald-600 font-bold">Copied</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <a
+                          href={`https://wa.me/?text=${encodeURIComponent(waDeliveryMsg)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition-colors"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </a>
+
+                        <a
+                          href={deliveryUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="py-1.5 px-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Open</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowDeliveryQr(prev => !prev)}
+                          className="py-1.5 px-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1"
+                        >
+                          <QrCode className="w-3 h-3 text-sky-600 dark:text-sky-400" />
+                          <span>{showDeliveryQr ? 'Hide QR' : 'Show QR'}</span>
+                        </button>
+                      </div>
+
+                      {showDeliveryQr && (
+                        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center space-y-1 text-center animate-in fade-in zoom-in-95">
+                          <div className="p-2 bg-white rounded border border-slate-200">
+                            <QRCodeSVG value={deliveryUrl} size={120} level="M" />
+                          </div>
+                          <p className="text-[10px] text-slate-500">Scan with phone camera</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* CONFIRM PICKUP LINK (When Accepted, prior to pickup) */}
+            {donation.status === 'ACCEPTED' && (
+              <div className="p-3 bg-emerald-50/80 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Donor Handover Link
+                </span>
+                <p className="text-[11px] text-slate-600 dark:text-slate-300">
+                  Donor will confirm food handover when volunteer arrives for pickup.
+                </p>
+                {(() => {
+                  const pickupUrl = donation.confirmationLinks?.confirmPickupUrl || 
+                    (donation.confirmationTokens?.pickupToken 
+                      ? `${window.location.origin}/confirm-pickup/${donation.id}?token=${donation.confirmationTokens.pickupToken}` 
+                      : `${window.location.origin}/confirm-pickup/${donation.id}`);
+                  return (
+                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-mono select-all">
+                      <span className="truncate flex-1 text-slate-700 dark:text-slate-300">{pickupUrl}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(pickupUrl, 'tracking-pickup-link')}
+                        className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-700 dark:text-slate-200 font-sans font-semibold text-[10px] shrink-0 flex items-center gap-1"
+                      >
+                        {copiedKey === 'tracking-pickup-link' ? (
+                          <>
+                            <Check className="w-3 h-3 text-emerald-500" />
+                            <span className="text-emerald-600 font-bold">Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            <span>Copy</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
           </div>
 

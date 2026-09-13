@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { io } from 'socket.io-client';
 import { getStoredDonations, getStoredNgos } from '../services/donationService';
 import { calculateDistanceKm } from '../services/mapsService';
 import { calculateListingUrgency } from '../utils/urgency';
-import { Map as MapIcon, List as ListIcon, MapPin, X, ArrowRight, ShieldCheck, Navigation, Crosshair, AlertCircle } from 'lucide-react';
+import { Map as MapIcon, List as ListIcon, MapPin, X, ArrowRight, ShieldCheck, Navigation, Crosshair, AlertCircle, Truck } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Fix Leaflet's default marker icon paths in Vite
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -97,6 +100,30 @@ const createMarkerIcon = (item, type) => {
   }
 };
 
+// Volunteer location marker (truck icon)
+const createVolunteerIcon = () => {
+  const markerHtml = `
+    <div style="
+      background-color: #f97316;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    "><span style="font-size: 14px;">🚚</span></div>
+  `;
+  return L.divIcon({
+    html: markerHtml,
+    className: 'custom-leaflet-marker volunteer-marker',
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14]
+  });
+};
+
 const MapPage = ({ user }) => {
   const isOrg = user?.accountType === 'ORGANISATION' || 
                 user?.accountType === 'ORGANIZATION' || 
@@ -106,8 +133,13 @@ const MapPage = ({ user }) => {
 
   const [showSurplus, setShowSurplus] = useState(true);
   const [showNgos, setShowNgos] = useState(true);
+  const [showVolunteers, setShowVolunteers] = useState(true);
   const [view, setView] = useState('map'); // 'map' | 'list'
   
+  // Live volunteer locations: { [taskId]: { lat, lng, volunteerName, timestamp } }
+  const [volunteerLocations, setVolunteerLocations] = useState({});
+  const socketRef = useRef(null);
+
   const [donations, setDonations] = useState([]);
   const [ngos, setNgos] = useState([]);
   
@@ -148,6 +180,27 @@ const MapPage = ({ user }) => {
     } else {
       setLocationError("Geolocation is not supported by this browser.");
     }
+  }, []);
+
+  // Socket listener for live volunteer locations
+  useEffect(() => {
+    const socket = io(API_URL, { transports: ['websocket', 'polling'] });
+    socketRef.current = socket;
+
+    socket.on('VOLUNTEER_LOCATION', (payload) => {
+      if (!payload?.taskId || !payload?.lat || !payload?.lng) return;
+      setVolunteerLocations(prev => ({
+        ...prev,
+        [payload.taskId]: {
+          lat: payload.lat,
+          lng: payload.lng,
+          volunteerName: payload.volunteerName || 'Volunteer',
+          timestamp: payload.timestamp || Date.now()
+        }
+      }));
+    });
+
+    return () => socket.disconnect();
   }, []);
 
   useEffect(() => {
@@ -328,6 +381,13 @@ const MapPage = ({ user }) => {
               <div className="w-2.5 h-2.5 rounded-full bg-violet-500 mr-1.5 border border-violet-600" style={{ transform: 'rotate(-45deg)', borderRadius: '50% 50% 50% 0' }}></div>
               Show NGOs
             </label>
+            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center ${
+                showVolunteers ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}>
+              <input type="checkbox" checked={showVolunteers} onChange={e => setShowVolunteers(e.target.checked)} className="hidden" />
+              <div className="w-2.5 h-2.5 rounded-full bg-orange-500 mr-1.5 border border-orange-600"></div>
+              Show Volunteers
+            </label>
           </div>
 
           <div className="flex bg-slate-200 dark:bg-slate-800 p-1 rounded-xl">
@@ -467,6 +527,24 @@ const MapPage = ({ user }) => {
                 </Popup>
               </Marker>
             ))}
+            {/* Live Volunteer Location Markers */}
+            {showVolunteers && Object.entries(volunteerLocations).map(([taskId, loc]) => (
+              <Marker
+                key={`volunteer-${taskId}`}
+                position={[loc.lat, loc.lng]}
+                icon={createVolunteerIcon()}
+              >
+                <Popup>
+                  <div className="text-xs space-y-1">
+                    <p className="font-bold text-orange-600">🚚 {loc.volunteerName}</p>
+                    <p className="text-slate-500">Live location — in transit</p>
+                    <p className="text-[11px] text-slate-400">
+                      Updated: {new Date(loc.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
             {/* Current Location Marker */}
             {!locationError && userLocation.lat !== 18.5204 && (
               <Marker
@@ -521,6 +599,18 @@ const MapPage = ({ user }) => {
                     </li>
                     <li className="flex items-center">
                       <div className="w-3 h-3 bg-purple-500 mr-2 border border-slate-200" style={{ borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)' }}></div> Unverified
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {showVolunteers && Object.keys(volunteerLocations).length > 0 && (
+                <div>
+                  <h5 className="font-bold text-[10px] uppercase text-orange-600 dark:text-orange-400 mb-1.5">Live Volunteers (🚚)</h5>
+                  <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+                    <li className="flex items-center">
+                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2 border border-slate-200"></div>
+                      In Transit
                     </li>
                   </ul>
                 </div>

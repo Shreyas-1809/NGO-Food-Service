@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Truck, Phone, MessageCircle, X, CheckCircle, Navigation } from 'lucide-react';
+import { Truck, Phone, MessageCircle, Mail, X, CheckCircle, Navigation, QrCode, ShieldCheck } from 'lucide-react';
+import DirectContactButtons from './ui/DirectContactButtons';
+import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -13,6 +15,8 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
   const [editingVolunteer, setEditingVolunteer] = useState({});
   const [volunteerForm, setVolunteerForm] = useState({});
   const [receiptForm, setReceiptForm] = useState({});
+  const [deliveryModalFood, setDeliveryModalFood] = useState(null);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
 
   const fetchPickups = async () => {
     try {
@@ -69,6 +73,7 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
             const counterpart = isDonor ? pickup.claimantId : pickup.donorId;
             const counterpartName = counterpart?.orgName || counterpart?.fullName || 'Unknown';
             const counterpartPhone = counterpart?.phone || '';
+            const counterpartEmail = counterpart?.email || '';
             const vol = pickup.volunteerAssignment || {};
             const isEditingVol = editingVolunteer[pickup._id];
             const volForm = volunteerForm[pickup._id] || { name: vol.name || '', phone: vol.phone || '', notes: vol.notes || '' };
@@ -116,13 +121,18 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
                 </div>
 
                 {/* Quick Actions */}
-                <div className="flex divide-x divide-slate-200 dark:divide-slate-600 border-b border-slate-200 dark:border-slate-600">
-                  <a href={`tel:${counterpartPhone}`} className="flex-1 flex justify-center items-center py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 font-medium transition-colors">
-                    <Phone className="w-4 h-4 mr-2" /> Call
-                  </a>
-                  <a href={`https://wa.me/${counterpartPhone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex-1 flex justify-center items-center py-2 text-sm text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 font-medium transition-colors">
-                    <MessageCircle className="w-4 h-4 mr-2" /> Message
-                  </a>
+                <div className="p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-600 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    Contact {isDonor ? 'NGO' : 'Donor'}:
+                  </span>
+                  <DirectContactButtons
+                    phone={counterpartPhone}
+                    email={counterpartEmail}
+                    name={counterpartName}
+                    waMessage={`Hello ${counterpartName}, I am coordinating pickup of "${pickup.title}".`}
+                    emailSubject={`FoodBridge Coordination: ${pickup.title}`}
+                    size="xs"
+                  />
                 </div>
 
                 {/* Volunteer Assignment Section (For NGO) */}
@@ -171,12 +181,46 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
-                        <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {vol.name}</p>
-                        <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {vol.phone}</p>
-                        {vol.notes && <p className="mt-1 italic">"{vol.notes}"</p>}
+                      <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 space-y-2">
+                        <div>
+                          <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {vol.name}</p>
+                          <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {vol.phone || 'Not provided'}</p>
+                          {vol.notes && <p className="mt-1 italic">"{vol.notes}"</p>}
+                        </div>
+                        {vol.phone && (
+                          <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Contact Volunteer</span>
+                            <DirectContactButtons
+                              phone={vol.phone}
+                              name={vol.name}
+                              waMessage={`Hello ${vol.name}, coordinating pickup for "${pickup.title}".`}
+                              size="xs"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* En route status and delivery confirmation link for NGO */}
+                {!isDonor && (pickup.status === 'IN_TRANSIT' || pickup.status === 'picked_up' || pickup.confirmationTokens?.deliveryToken) && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border-b border-slate-200 dark:border-slate-600 flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <Truck className="w-3.5 h-3.5 text-amber-600" />
+                      {pickup.status === 'COMPLETED' ? 'Delivered' : 'Delivery Link & QR Ready'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDeliveryModalFood(pickup);
+                        setDeliveryModalOpen(true);
+                      }}
+                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-xs"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Confirm Delivery & QR</span>
+                    </button>
                   </div>
                 )}
                 
@@ -185,10 +229,23 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
                   <div className="p-4 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800">
                     <h5 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">NGO Volunteer Assignment</h5>
                     {vol.name ? (
-                      <div className="bg-white dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
-                        <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {vol.name}</p>
-                        <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {vol.phone}</p>
-                        {vol.notes && <p className="mt-1 italic">"{vol.notes}"</p>}
+                      <div className="bg-white dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 space-y-2">
+                        <div>
+                          <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {vol.name}</p>
+                          <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {vol.phone || 'Not provided'}</p>
+                          {vol.notes && <p className="mt-1 italic">"{vol.notes}"</p>}
+                        </div>
+                        {vol.phone && (
+                          <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Contact Assigned Volunteer</span>
+                            <DirectContactButtons
+                              phone={vol.phone}
+                              name={vol.name}
+                              waMessage={`Hello ${vol.name}, coordinating pickup for "${pickup.title}".`}
+                              size="xs"
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="bg-white dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 italic text-center">
@@ -265,6 +322,16 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
           })
         )}
       </div>
+
+      {/* Delivery Confirmation Modal */}
+      <DeliveryConfirmationModal
+        isOpen={deliveryModalOpen}
+        onClose={() => {
+          setDeliveryModalOpen(false);
+          setDeliveryModalFood(null);
+        }}
+        food={deliveryModalFood}
+      />
     </div>
   );
 };

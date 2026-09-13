@@ -22,14 +22,24 @@ const mapStatus = (status, declineReason) => {
 router.get('/', auth, async (req, res) => {
   try {
     const userId = req.user.id;
-    const accountType = req.user.accountType;
+    let accountType = (req.user.accountType || '').toUpperCase();
+    
+    // Fallback: If accountType is missing from JWT payload, lookup user in DB
+    if (!accountType) {
+      const dbUser = await User.findById(userId).select('accountType');
+      accountType = (dbUser?.accountType || '').toUpperCase();
+    }
+
+    const isOrg = accountType === 'ORGANISATION' || accountType === 'ORGANIZATION';
+    const isDonor = accountType === 'DONOR';
+
     let history = [];
 
-    if (accountType === 'ORGANISATION') {
+    if (isOrg) {
       // 1. Claims made by this NGO
       const claims = await Claim.find({ ngoId: userId })
         .populate('foodId')
-        .populate({ path: 'foodId', populate: { path: 'donorId', select: 'orgName fullName' } })
+        .populate({ path: 'foodId', populate: { path: 'donorId', select: 'orgName fullName phone email address city' } })
         .sort({ createdAt: -1 });
 
       claims.forEach(claim => {
@@ -45,15 +55,17 @@ router.get('/', auth, async (req, res) => {
           direction: 'SENT',
           itemTitle: food.title || 'Surplus Food',
           category: 'Food',
-          quantity: food.quantity,
+          quantity: food.quantity || 0,
           unit: food.items?.[0]?.unit || 'kg',
           otherPartyName: donorName,
+          otherPartyPhone: food.donorId?.phone || '',
+          otherPartyEmail: food.donorId?.email || '',
           ngoStatus: `Requested (${claim.status})`,
           donorStatus: claim.status === 'PENDING' ? 'Awaiting Response' : claim.status,
           overallStatus,
           rejectionReason: claim.declineReason || food.rejectionReason,
           createdAt: claim.createdAt,
-          pickupDetails: food.pickupAddress,
+          pickupDetails: food.pickupAddress || 'Not specified',
           rawClaim: claim,
           rawFood: food
         });
@@ -72,6 +84,8 @@ router.get('/', auth, async (req, res) => {
           quantity: need.quantity,
           unit: need.unit,
           otherPartyName: 'N/A (Open Request)',
+          otherPartyPhone: '',
+          otherPartyEmail: '',
           ngoStatus: need.status,
           donorStatus: need.status === 'FULFILLED' ? 'Fulfilled by Donor' : 'No Donor Assigned',
           overallStatus,
@@ -82,13 +96,13 @@ router.get('/', auth, async (req, res) => {
         });
       });
 
-    } else if (accountType === 'DONOR') {
+    } else if (isDonor) {
       // 1. Food posted by this Donor
       const foods = await Food.find({ donorId: userId }).sort({ createdAt: -1 });
       
       for (const food of foods) {
         // Fetch claims for this food
-        const claims = await Claim.find({ foodId: food._id }).populate('ngoId', 'orgName fullName');
+        const claims = await Claim.find({ foodId: food._id }).populate('ngoId', 'orgName fullName phone email address city');
         
         if (claims.length > 0) {
           claims.forEach(claim => {
@@ -101,15 +115,17 @@ router.get('/', auth, async (req, res) => {
               direction: 'RECEIVED',
               itemTitle: food.title || 'Surplus Food',
               category: 'Food',
-              quantity: food.quantity,
+              quantity: food.quantity || 0,
               unit: food.items?.[0]?.unit || 'kg',
               otherPartyName: ngoName,
+              otherPartyPhone: claim.ngoId?.phone || '',
+              otherPartyEmail: claim.ngoId?.email || '',
               ngoStatus: `Requested (${claim.status})`,
               donorStatus: claim.status === 'PENDING' ? 'Awaiting Response' : claim.status,
               overallStatus,
               rejectionReason: claim.declineReason || food.rejectionReason,
               createdAt: claim.createdAt,
-              pickupDetails: food.pickupAddress,
+              pickupDetails: food.pickupAddress || 'Not specified',
               rawClaim: claim,
               rawFood: food
             });
@@ -123,7 +139,7 @@ router.get('/', auth, async (req, res) => {
             direction: 'POSTED',
             itemTitle: food.title || 'Surplus Food',
             category: 'Food',
-            quantity: food.quantity,
+            quantity: food.quantity || 0,
             unit: food.items?.[0]?.unit || 'kg',
             otherPartyName: 'N/A (No claims yet)',
             ngoStatus: 'None',
@@ -131,7 +147,7 @@ router.get('/', auth, async (req, res) => {
             overallStatus,
             rejectionReason: food.rejectionReason,
             createdAt: food.createdAt,
-            pickupDetails: food.pickupAddress,
+            pickupDetails: food.pickupAddress || 'Not specified',
             rawFood: food
           });
         }
@@ -144,7 +160,7 @@ router.get('/', auth, async (req, res) => {
     res.json(history);
   } catch (err) {
     console.error('Error fetching history:', err.message);
-    res.status(500).send('Server Error');
+    res.status(500).json({ message: err.message || 'Server Error' });
   }
 });
 

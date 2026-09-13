@@ -13,7 +13,7 @@ import {
   Sparkles,
   Phone
 } from 'lucide-react';
-import { createReceiverRequest, addNotification, getStoredDonations } from '../services/donationService';
+// Note: donationService mock imports removed — needs are now fully persisted via /api/needs
 import { useNavigate } from 'react-router-dom';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
@@ -131,14 +131,12 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
           headers: { Authorization: `Bearer ${token}` }
         });
 
-        // Local fallback sync
-        const newReq = createReceiverRequest(formData, user);
-        
+        // Build success state directly from API response
         setCreatedRequest({
-          ...newReq,
           _id: res.data._id,
           item: res.data.title || formData.item,
-          quantity: res.data.quantity || formData.quantity,
+          category: res.data.category || formData.category,
+          quantity: res.data.quantity ?? formData.quantity,
           unit: res.data.unit || formData.unit,
           urgency: res.data.urgency || formData.urgency
         });

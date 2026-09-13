@@ -125,7 +125,8 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
           quantity: Number(formData.quantity),
           unit: formData.unit,
           urgency: formData.urgency,
-          description: formData.description
+          description: formData.description,
+          neededByDate: formData.requiredBy
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -152,7 +153,8 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
           unit: formData.unit,
           urgency: formData.urgency,
           description: formData.description,
-          frequency: formData.frequency
+          frequency: formData.frequency,
+          neededByDate: formData.requiredBy
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });

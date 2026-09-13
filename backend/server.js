@@ -34,12 +34,16 @@ const foodRoutes = require('./routes/food');
 const notificationRoutes = require('./routes/notifications');
 const claimRoutes = require('./routes/claims');
 const needRoutes = require('./routes/needs');
+const recurringNeedsRoutes = require('./routes/recurringNeeds');
+const historyRoutes = require('./routes/history');
 app.use('/api/auth', authRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/claims', claimRoutes);
 app.use('/api/needs', needRoutes);
+app.use('/api/recurring-needs', recurringNeedsRoutes);
+app.use('/api/history', historyRoutes);
 
 // ---------------------------------------------------------------------------
 // Socket.io — User rooms for targeted (private) notifications
@@ -101,6 +105,10 @@ const connectDB = async () => {
     // Start background auto-delete job (runs every 5 minutes)
     const { startAutoDeleteJob } = require('./services/autoDeleteService');
     startAutoDeleteJob(5 * 60 * 1000);
+
+    // Start recurring needs job
+    const startRecurringJob = require('./jobs/recurringJob');
+    startRecurringJob(app.get('io'));
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

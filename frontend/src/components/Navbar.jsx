@@ -3,12 +3,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   HeartHandshake, 
   UserCircle, 
+  Menu, 
+  X, 
   LogOut, 
-  Sun, 
-  Moon, 
+  Settings, 
+  MapPin, 
+  Home, 
+  ClipboardList, 
+  User, 
+  Moon,
+  Sun,
+  Bell,
   Activity, 
   Building2, 
-  MapPin, 
   AlertCircle,
   Key,
   LayoutDashboard
@@ -54,6 +61,18 @@ const Navbar = ({ user, token, onLogout, isDarkMode, toggleTheme, onUserUpdated 
               <Building2 className="w-3.5 h-3.5" />
               <span>Find NGOs</span>
             </Link>
+
+            <Link
+              to="/map"
+              className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 transition-colors ${
+                location.pathname === '/map' 
+                  ? 'bg-green-50 dark:bg-slate-800 text-green-700 dark:text-green-400 font-bold' 
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <MapPin className="w-3.5 h-3.5" />
+              <span>Map</span>
+            </Link>
           </div>
         )}
       </div>
@@ -73,13 +92,13 @@ const Navbar = ({ user, token, onLogout, isDarkMode, toggleTheme, onUserUpdated 
           <div className="flex items-center space-x-4 border-l pl-4 border-slate-200 dark:border-slate-700">
             <Link 
               to="/activity" 
-              className={`flex items-center text-sm font-medium transition-colors ${
+              className={`flex items-center px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
                 location.pathname === '/activity' 
-                  ? 'text-green-600 dark:text-green-400 font-bold' 
-                  : 'text-slate-600 hover:text-green-600 dark:text-slate-300 dark:hover:text-green-400'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20' 
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
-              <Activity className="h-4 w-4 mr-1" /> History
+              <ClipboardList className="h-4 w-4 mr-1" /> History
             </Link>
             <button
               onClick={() => setShowProfileModal(true)}

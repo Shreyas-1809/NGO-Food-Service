@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { getStoredDonations, confirmDonationMatch, addNotification } from '../services/donationService';
 import { calculateDistanceKm } from '../services/mapsService';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import EmptyState from './ui/EmptyState';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -188,38 +191,18 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[120] flex justify-center items-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-      <div className="w-full max-w-xl bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden relative animate-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]" onClick={e => e.stopPropagation()}>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={`Redirect Surplus to ${targetNgoName}`}
+      subtitle="Inter-Organisation Surplus Matching"
+      icon={ArrowRight}
+      confirmClose={!isSuccess}
+      width="w-full max-w-xl"
+    >
+      <div className="flex-1 space-y-5">
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-full bg-white/80 dark:bg-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer z-10"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Header */}
-        <div className="p-6 bg-gradient-to-r from-violet-600/10 via-emerald-600/10 to-teal-600/10 dark:from-violet-500/20 dark:to-teal-500/20 border-b border-slate-100 dark:border-slate-700">
-          <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-violet-600 text-white rounded-2xl shadow-sm">
-              <ArrowRight className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-violet-700 dark:text-violet-400 block">
-                Inter-Organisation Surplus Matching
-              </span>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                Redirect Surplus to {targetNgoName}
-              </h3>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-6 space-y-5 overflow-y-auto flex-1">
-          
-          {/* TWO-POINT LOCATION & ROUTE SUMMARY CARD */}
+        {/* TWO-POINT LOCATION & ROUTE SUMMARY CARD */}
           <div className="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-700/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center">
@@ -302,13 +285,16 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
                       Loading your active surplus inventory...
                     </div>
                   ) : myDonations.length === 0 ? (
-                    <div className="p-6 text-center bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-500">
-                      <Package className="w-8 h-8 mx-auto text-slate-400 mb-1.5" />
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">No active surplus inventory available</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs mx-auto">
-                        Please log a surplus food batch from your Dashboard first to redirect it directly to {targetNgoName}.
-                      </p>
-                    </div>
+                    <EmptyState
+                      icon={Package}
+                      message="No active surplus inventory available"
+                      className="py-6"
+                      action={
+                        <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs mx-auto">
+                          Please log a surplus food batch from your Dashboard first to redirect it directly to {targetNgoName}.
+                        </p>
+                      }
+                    />
                   ) : (
                     myDonations.map(donation => {
                       const isSelected = selectedDonationId === donation.id;
@@ -370,29 +356,27 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
 
               {/* Action Buttons */}
               <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex gap-2.5">
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  className="flex-1"
                   onClick={onClose}
-                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                 >
                   Cancel
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1 bg-violet-600 hover:bg-violet-700"
                   disabled={!selectedDonationId || myDonations.length === 0}
                   onClick={handleConfirmRedirect}
-                  className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer"
+                  icon={ArrowRight}
                 >
-                  <ArrowRight className="w-4 h-4" />
-                  <span>Confirm Redirection</span>
-                </button>
+                  Confirm Redirection
+                </Button>
               </div>
             </>
           )}
-        </div>
-
       </div>
-    </div>
+    </Modal>
   );
 };
 

@@ -10,6 +10,9 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyingId, setVerifyingId] = useState(null);
   const [error, setError] = useState('');
+  const [editingVolunteer, setEditingVolunteer] = useState({});
+  const [volunteerForm, setVolunteerForm] = useState({});
+  const [receiptForm, setReceiptForm] = useState({});
 
   const fetchPickups = async () => {
     try {
@@ -66,6 +69,34 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
             const counterpart = isDonor ? pickup.claimantId : pickup.donorId;
             const counterpartName = counterpart?.orgName || counterpart?.fullName || 'Unknown';
             const counterpartPhone = counterpart?.phone || '';
+            const vol = pickup.volunteerAssignment || {};
+            const isEditingVol = editingVolunteer[pickup._id];
+            const volForm = volunteerForm[pickup._id] || { name: vol.name || '', phone: vol.phone || '', notes: vol.notes || '' };
+
+            const handleAssignVol = async (id) => {
+              try {
+                await axios.patch(`${API_URL}/api/food/${id}/assign-volunteer`, volForm, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                setEditingVolunteer(prev => ({ ...prev, [id]: false }));
+                fetchPickups();
+              } catch (err) {
+                alert('Failed to assign volunteer');
+              }
+            };
+
+            const rcptForm = receiptForm[pickup._id] || { condition: pickup.receiptCondition || 'Good', note: pickup.receiptNote || '' };
+            const handleReceiptCondition = async (id) => {
+              try {
+                await axios.patch(`${API_URL}/api/food/${id}/receipt-condition`, { condition: rcptForm.condition, note: rcptForm.note }, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                fetchPickups();
+                alert('Receipt condition updated!');
+              } catch (err) {
+                alert('Failed to update receipt condition');
+              }
+            };
 
             return (
               <div key={pickup._id} className="bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden shadow-sm">
@@ -94,7 +125,109 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
                   </a>
                 </div>
 
+                {/* Volunteer Assignment Section (For NGO) */}
+                {!isDonor && (
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800">
+                    <div className="flex justify-between items-center mb-2">
+                      <h5 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Pickup Assignment</h5>
+                      {(!isEditingVol && vol.name) && (
+                        <button onClick={() => setEditingVolunteer(prev => ({ ...prev, [pickup._id]: true }))} className="text-blue-600 text-xs font-bold hover:underline">
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                    {(!vol.name || isEditingVol) ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          placeholder="Volunteer Name"
+                          className="w-full px-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                          value={volForm.name}
+                          onChange={e => setVolunteerForm(prev => ({ ...prev, [pickup._id]: { ...volForm, name: e.target.value } }))}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Volunteer Phone"
+                          className="w-full px-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                          value={volForm.phone}
+                          onChange={e => setVolunteerForm(prev => ({ ...prev, [pickup._id]: { ...volForm, phone: e.target.value } }))}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Instructions / Arrival Time (e.g. ETA 30 mins)"
+                          className="w-full px-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                          value={volForm.notes}
+                          onChange={e => setVolunteerForm(prev => ({ ...prev, [pickup._id]: { ...volForm, notes: e.target.value } }))}
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={() => handleAssignVol(pickup._id)} className="flex-1 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700">
+                            Save Assignment
+                          </button>
+                          {isEditingVol && (
+                             <button onClick={() => setEditingVolunteer(prev => ({ ...prev, [pickup._id]: false }))} className="px-3 py-1.5 bg-slate-200 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-300">
+                               Cancel
+                             </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
+                        <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {vol.name}</p>
+                        <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {vol.phone}</p>
+                        {vol.notes && <p className="mt-1 italic">"{vol.notes}"</p>}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Volunteer Info (For Donor) */}
+                {isDonor && (
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800">
+                    <h5 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">NGO Volunteer Assignment</h5>
+                    {vol.name ? (
+                      <div className="bg-white dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300">
+                        <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {vol.name}</p>
+                        <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {vol.phone}</p>
+                        {vol.notes && <p className="mt-1 italic">"{vol.notes}"</p>}
+                      </div>
+                    ) : (
+                      <div className="bg-white dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 italic text-center">
+                        Volunteer not yet assigned
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Receipt Condition Section (For NGO) */}
+                {!isDonor && pickup.status === 'COMPLETED' && (
+                   <div className="p-4 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/30">
+                     <h5 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Report Receipt Condition</h5>
+                     <div className="flex gap-2 mb-2">
+                       <select
+                         className="flex-1 px-2 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white"
+                         value={rcptForm.condition}
+                         onChange={e => setReceiptForm(prev => ({ ...prev, [pickup._id]: { ...rcptForm, condition: e.target.value } }))}
+                       >
+                         <option value="Good">Good</option>
+                         <option value="Acceptable">Acceptable</option>
+                         <option value="Issue Reported">Poor (Spoiled/Issues)</option>
+                       </select>
+                     </div>
+                     <input
+                       type="text"
+                       placeholder="Add a note (optional)..."
+                       className="w-full px-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white mb-2"
+                       value={rcptForm.note}
+                       onChange={e => setReceiptForm(prev => ({ ...prev, [pickup._id]: { ...rcptForm, note: e.target.value } }))}
+                     />
+                     <button onClick={() => handleReceiptCondition(pickup._id)} className="w-full py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700">
+                       Submit Report
+                     </button>
+                   </div>
+                )}
+
                 {/* Verification Flow */}
+                {pickup.status !== 'COMPLETED' && (
                 <div className="p-4 bg-white dark:bg-slate-800">
                   {!isDonor ? (
                     <div className="text-center">
@@ -126,6 +259,7 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
                     </div>
                   )}
                 </div>
+                )}
               </div>
             );
           })

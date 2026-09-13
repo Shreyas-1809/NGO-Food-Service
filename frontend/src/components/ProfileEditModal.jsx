@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { X, User, Phone, MapPin, Building, FileText, CheckCircle, Save } from 'lucide-react';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -55,28 +57,14 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100] flex justify-center items-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg relative animate-in zoom-in-95 duration-300 overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
-          <div>
-            <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">
-              User Profile Settings
-            </span>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-white">
-              {isDonor ? 'Edit Donor Profile' : 'Edit Organisation Profile'}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg text-xl font-bold leading-none cursor-pointer"
-          >
-            &times;
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-4 flex-1">
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={isDonor ? 'Edit Donor Profile' : 'Edit Organisation Profile'}
+      subtitle="User Profile Settings"
+      confirmClose={true}
+    >
+      <form onSubmit={handleSubmit} className="space-y-4 flex-1">
           {error && (
             <div className="p-3 bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 text-xs font-semibold rounded-xl border border-red-200 dark:border-red-800">
               {error}
@@ -185,25 +173,27 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              className="flex-1"
               disabled={saving}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl transition-colors text-xs flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer disabled:opacity-50"
+              loading={saving}
+              icon={Save}
             >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'Saving...' : 'Save Profile Changes'}</span>
-            </button>
-            <button
+              Save Profile Changes
+            </Button>
+            <Button
               type="button"
+              variant="secondary"
+              className="flex-1"
               onClick={onClose}
-              className="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs cursor-pointer"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 };
 

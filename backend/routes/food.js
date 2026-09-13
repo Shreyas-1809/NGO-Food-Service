@@ -69,6 +69,7 @@ router.get('/my-listings', auth, async (req, res) => {
 
     // STRICT QUERY-LEVEL SCOPING: Only fetch postings where donorId equals the logged-in user ID
     const foods = await Food.find({ donorId: req.user.id })
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
       .populate('claimantId', 'orgName fullName phone email address city')
       .lean()
       .sort({ createdAt: -1 });
@@ -154,6 +155,13 @@ router.get('/', auth, async (req, res) => {
     })
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
       .sort({ createdAt: -1 });
+
+    if (req.user.accountType === 'ORGANISATION' || req.user.accountType === 'ORGANIZATION') {
+      const claims = await Claim.find({ ngoId: req.user.id, status: { $in: ['PENDING', 'ACCEPTED'] } });
+      const claimedFoodIds = claims.map(c => c.foodId.toString());
+      return res.json(foods.filter(f => !claimedFoodIds.includes(f._id.toString())));
+    }
+
     res.json(foods);
   } catch (err) {
     console.error('Error fetching foods:', err.message);
@@ -243,7 +251,7 @@ router.post('/:id/claim', auth, async (req, res) => {
       title: `New Claim Request from ${ngoName}`,
       relatedClaimId: newClaim._id,
       relatedFoodId: food._id,
-      message: `${ngoName} requested to claim "${food.title}". Pickup: ${pickupTimeStr}.${message ? ` "${message}"` : ''}`,
+      message: message || '',
       stage: 'Awaiting your decision'
     });
     await notification.save();
@@ -523,7 +531,7 @@ router.patch('/verify-pickup/:id', auth, async (req, res) => {
 // @access  Private
 router.get('/active-pickups', auth, async (req, res) => {
   try {
-    let query = { status: 'CLAIMED' };
+    let query = { status: { $in: ['CLAIMED', 'ACCEPTED', 'COMPLETED'] } };
     if (req.user.accountType === 'DONOR') {
       query.donorId = req.user.id;
     } else {
@@ -595,6 +603,101 @@ router.patch('/:id/collected', auth, async (req, res) => {
     res.json({ message: 'Food marked as collected', food });
   } catch (err) {
     console.error('Error marking collected:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   PATCH /api/food/:id/assign-volunteer
+// @desc    Assign volunteer(s) for pickup (NGO or Donor)
+// @access  Private
+router.patch('/:id/assign-volunteer', auth, async (req, res) => {
+  try {
+    const food = await Food.findById(req.params.id);
+    if (!food) return res.status(404).json({ message: 'Food not found' });
+    
+    // Check authorization: must be either the donor of the food or the NGO claimant
+    const isDonor = food.donorId.toString() === req.user.id;
+    const claim = await Claim.findOne({ foodId: food._id, ngoId: req.user.id, status: 'ACCEPTED' });
+    const isClaimantNgo = (claim || food.claimantId?.toString() === req.user.id) && req.user.accountType === 'ORGANISATION';
+    
+    if (!isDonor && !isClaimantNgo) {
+       return res.status(403).json({ message: 'Not authorized for this donation' });
+    }
+
+    const { volunteers, name, phone, vehicleNumber, arrivalTime } = req.body;
+    let list = [];
+
+    if (Array.isArray(volunteers) && volunteers.length > 0) {
+      list = volunteers.map(v => ({
+        name: v.name || '',
+        phone: v.phone || '',
+        vehicleNumber: v.vehicleNumber || v.arrivalTime || ''
+      }));
+    } else if (name) {
+      list = [{
+        name,
+        phone: phone || '',
+        vehicleNumber: vehicleNumber || arrivalTime || ''
+      }];
+    }
+
+    food.volunteerAssignments = list;
+    if (list.length > 0) {
+      food.volunteerAssignment = {
+        name: list[0].name,
+        phone: list[0].phone,
+        arrivalTime: list[0].vehicleNumber
+      };
+    }
+
+    await food.save();
+
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      if (food.donorId) emitToUser(food.donorId.toString(), 'LISTING_UPDATED', food);
+      if (food.claimantId) emitToUser(food.claimantId.toString(), 'LISTING_UPDATED', food);
+    }
+
+    const io = req.app.get('io');
+    if (io) io.emit('LISTING_UPDATED', food);
+
+    res.json({ message: 'Volunteer(s) assigned successfully', food });
+  } catch (err) {
+    console.error('Error assigning volunteer:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   PATCH /api/food/:id/receipt-condition
+// @desc    Update receipt condition after completion (NGO only)
+// @access  Private
+router.patch('/:id/receipt-condition', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'ORGANISATION') {
+      return res.status(403).json({ message: 'Only organisations can mark receipt condition' });
+    }
+    const food = await Food.findById(req.params.id);
+    if (!food) return res.status(404).json({ message: 'Food not found' });
+    
+    if (food.status !== 'COMPLETED') {
+      return res.status(400).json({ message: 'Donation must be collected/completed first' });
+    }
+
+    const { condition, note } = req.body;
+    if (!['Good', 'Acceptable', 'Issue Reported'].includes(condition)) {
+      return res.status(400).json({ message: 'Invalid condition' });
+    }
+
+    food.receiptCondition = condition;
+    food.receiptNote = note || '';
+    await food.save();
+
+    const io = req.app.get('io');
+    if (io) io.emit('LISTING_UPDATED', food);
+
+    res.json({ message: 'Receipt condition updated', food });
+  } catch (err) {
+    console.error('Error updating receipt condition:', err);
     res.status(500).json({ message: 'Server Error' });
   }
 });

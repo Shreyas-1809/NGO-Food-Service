@@ -36,6 +36,9 @@ const NeedSchema = new mongoose.Schema({
     enum: ['ACTIVE', 'FULFILLED', 'CANCELLED'],
     default: 'ACTIVE'
   },
+  neededByDate: {
+    type: Date
+  },
   recurringTemplateId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'RecurringNeedTemplate'

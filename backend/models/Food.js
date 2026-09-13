@@ -34,6 +34,22 @@ const FoodSchema = new mongoose.Schema({
   photos: [String],
   overallExpiry: Date,
   autoDeleteAt: Date,
+  notes: { type: String },
+  volunteerAssignment: {
+    name: String,
+    phone: String,
+    arrivalTime: String
+  },
+  volunteerAssignments: [{
+    name: String,
+    phone: String,
+    vehicleNumber: String
+  }],
+  receiptCondition: {
+    type: String,
+    enum: ['Good', 'Acceptable', 'Issue Reported']
+  },
+  receiptNote: { type: String },
   location: {
     type: { type: String, default: 'Point' },
     coordinates: [Number] // [longitude, latitude]

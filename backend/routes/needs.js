@@ -13,7 +13,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only organisations can post shortage requests' });
     }
 
-    const { title, category, quantity, unit, urgency, description, location } = req.body;
+    const { title, category, quantity, unit, urgency, description, location, neededByDate } = req.body;
 
     if (!title || !quantity) {
       return res.status(400).json({ message: 'Title and quantity are required' });
@@ -27,7 +27,8 @@ router.post('/', auth, async (req, res) => {
       unit: unit || 'servings',
       urgency: urgency || 'HIGH',
       description,
-      status: 'ACTIVE'
+      status: 'ACTIVE',
+      neededByDate: neededByDate ? new Date(neededByDate) : undefined
     };
 
     if (location && location.coordinates && location.coordinates.length === 2) {
@@ -101,7 +102,7 @@ router.patch('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const { title, category, quantity, unit, urgency, description, status } = req.body;
+    const { title, category, quantity, unit, urgency, description, status, neededByDate } = req.body;
 
     if (title) need.title = title;
     if (category) need.category = category;
@@ -110,6 +111,7 @@ router.patch('/:id', auth, async (req, res) => {
     if (urgency) need.urgency = urgency;
     if (description !== undefined) need.description = description;
     if (status) need.status = status;
+    if (neededByDate) need.neededByDate = new Date(neededByDate);
 
     await need.save();
     res.json(need);

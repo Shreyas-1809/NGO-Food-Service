@@ -21,6 +21,10 @@ import {
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
+import Modal from './ui/Modal';
+import RejectDonationModal from './RejectDonationModal';
+import VolunteerAssignmentModal from './VolunteerAssignmentModal';
+import { formatPickupTime } from '../utils/formatters';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -81,8 +85,11 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 
   // Inline action state tracking
   const [actionInProgress, setActionInProgress] = useState({}); // notifId -> boolean
-  const [inlineDeclineId, setInlineDeclineId] = useState(null);
-  const [inlineDeclineReason, setInlineDeclineReason] = useState('');
+  const [claimError, setClaimError] = useState(null);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [volModalOpen, setVolModalOpen] = useState(false);
+  const [volModalFoodId, setVolModalFoodId] = useState(null);
+  const [volModalInitialVolunteers, setVolModalInitialVolunteers] = useState([]);
 
   const isOrg = user?.accountType === 'ORGANISATION' ||
                 user?.accountType === 'ORGANIZATION' ||
@@ -195,6 +202,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 
   const handleNotificationClick = async (notif) => {
     markAsRead(notif);
+    setClaimError(null);
 
     if (notif.relatedClaimId) {
       setLoadingClaim(true);
@@ -202,77 +210,97 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
         const res = await axios.get(`${API_URL}/api/claims/${notif.relatedClaimId}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        setSelectedClaim({ ...res.data, notificationId: notif._id, notifType: notif.type, stage: notif.stage });
+        const claimMsg = res.data.message && !res.data.message.includes('requested to claim') 
+          ? res.data.message 
+          : (notif.message && !notif.message.includes('requested to claim') ? notif.message : '');
+        setSelectedClaim({ ...res.data, notificationId: notif._id, notifType: notif.type, stage: notif.stage, message: claimMsg, createdAt: notif.createdAt });
         setShowDeclineInput(false);
         setDeclineReason('');
       } catch (err) {
         console.error('Failed to load claim details:', err);
+        // If 404 or similar, the claim is gone
+        if (err.response?.status === 404) {
+          setClaimError('This request is no longer available (it may have been deleted or resolved).');
+        } else {
+          setClaimError('Failed to load claim details.');
+        }
+        setSelectedClaim({
+          _id: notif.relatedClaimId,
+          notificationId: notif._id,
+          notifType: notif.type,
+          stage: notif.stage,
+          isError: true,
+          errorMsg: err.response?.status === 404 ? 'This request is no longer available.' : 'Failed to load details.'
+        });
       } finally {
         setLoadingClaim(false);
       }
     }
   };
 
-  // Inline Accept Action directly from Notification Card
-  const handleInlineAccept = async (notif, e) => {
-    if (e) e.stopPropagation();
-    const claimId = notif.relatedClaimId;
-    if (!claimId) return;
+  // Accept Action from Detail View
+  const handleAcceptClaim = async () => {
+    if (!selectedClaim || !selectedClaim._id) return;
+    const claimId = selectedClaim._id;
+    const notifId = selectedClaim.notificationId;
 
-    setActionInProgress(prev => ({ ...prev, [notif._id]: true }));
+    setActionInProgress(prev => ({ ...prev, [notifId]: true }));
+    setClaimError(null);
     try {
       await axios.patch(`${API_URL}/api/claims/${claimId}/accept`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       setNotifications(prev => prev.map(n =>
-        n._id === notif._id
+        n._id === notifId
           ? { ...n, stage: 'Accepted — awaiting NGO confirmation', read: true }
           : n
       ));
 
       fetchNotifications();
+      setSelectedClaim(null); // Close modal on success
     } catch (err) {
-      console.error('Error accepting claim inline:', err);
+      console.error('Error accepting claim:', err);
       const errMsg = err.response?.data?.message || 'Failed to accept claim';
-      if (err.response?.status === 400 || err.response?.status === 403) {
-        // Refresh notifications to show current actual state
+      if (err.response?.status === 400 || err.response?.status === 403 || err.response?.status === 404) {
         fetchNotifications();
       }
-      alert(errMsg);
+      setClaimError(errMsg);
     } finally {
-      setActionInProgress(prev => ({ ...prev, [notif._id]: false }));
+      setActionInProgress(prev => ({ ...prev, [notifId]: false }));
     }
   };
 
-  // Inline Decline Action directly from Notification Card
-  const handleInlineDecline = async (notif, e) => {
-    if (e) e.stopPropagation();
-    const claimId = notif.relatedClaimId;
-    if (!claimId) return;
+  // Decline Action from Detail View
+  const handleDeclineClaim = async (reason, notes) => {
+    if (!selectedClaim || !selectedClaim._id) return;
+    const claimId = selectedClaim._id;
+    const notifId = selectedClaim.notificationId;
 
-    setActionInProgress(prev => ({ ...prev, [notif._id]: true }));
+    setActionInProgress(prev => ({ ...prev, [notifId]: true }));
+    setClaimError(null);
     try {
-      await axios.patch(`${API_URL}/api/claims/${claimId}/decline`, { reason: inlineDeclineReason }, {
+      const fullReason = notes ? `${reason} - ${notes}` : reason;
+      await axios.patch(`${API_URL}/api/claims/${claimId}/decline`, { reason: fullReason }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       setNotifications(prev => prev.map(n =>
-        n._id === notif._id
+        n._id === notifId
           ? { ...n, stage: 'Declined', read: true }
           : n
       ));
 
-      setInlineDeclineId(null);
-      setInlineDeclineReason('');
       fetchNotifications();
+      setSelectedClaim(null); // Close modal on success
+      setRejectModalOpen(false);
     } catch (err) {
-      console.error('Error declining claim inline:', err);
+      console.error('Error declining claim:', err);
       const errMsg = err.response?.data?.message || 'Failed to decline claim';
-      fetchNotifications();
-      alert(errMsg);
+      setClaimError(errMsg);
+      throw err; // So RejectDonationModal can handle loading state correctly
     } finally {
-      setActionInProgress(prev => ({ ...prev, [notif._id]: false }));
+      setActionInProgress(prev => ({ ...prev, [notifId]: false }));
     }
   };
 
@@ -300,38 +328,6 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       alert(err.response?.data?.message || 'Failed to confirm pickup');
     } finally {
       setActionInProgress(prev => ({ ...prev, [notif._id]: false }));
-    }
-  };
-
-  // Expanded View Accept Handler
-  const handleAcceptBackendClaim = async () => {
-    if (!selectedClaim) return;
-    try {
-      await axios.patch(`${API_URL}/api/claims/${selectedClaim._id}/accept`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setSelectedClaim(prev => ({ ...prev, status: 'ACCEPTED' }));
-      fetchNotifications();
-    } catch (err) {
-      console.error('Error accepting claim:', err);
-      alert(err.response?.data?.message || 'Failed to accept claim');
-    }
-  };
-
-  // Expanded View Decline Handler
-  const handleDeclineBackendClaim = async () => {
-    if (!selectedClaim) return;
-    try {
-      await axios.patch(`${API_URL}/api/claims/${selectedClaim._id}/decline`, { reason: declineReason }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setSelectedClaim(prev => ({ ...prev, status: 'DECLINED' }));
-      fetchNotifications();
-    } catch (err) {
-      console.error('Error declining claim:', err);
-      alert(err.response?.data?.message || 'Failed to decline claim');
     }
   };
 
@@ -374,6 +370,13 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
         </div>
       )}
 
+      <RejectDonationModal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        onSubmit={handleDeclineClaim}
+        isClaim={true}
+      />
+
       {/* Main Notification Stream */}
       <div className="flex-1 space-y-3 relative">
         {selectedClaim ? (
@@ -394,6 +397,12 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                 {selectedClaim.status}
               </span>
             </div>
+
+            {selectedClaim.isError && (
+              <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg border border-red-200 dark:border-red-800 text-xs font-semibold">
+                {selectedClaim.errorMsg}
+              </div>
+            )}
 
             {/* NGO Information Box */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
@@ -424,18 +433,25 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             </div>
 
             {/* Request Description / Message Box */}
-            {selectedClaim.message && (
-              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
-                <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">
-                  Request Message / Intent
-                </span>
-                <p className="italic text-slate-700 dark:text-slate-200">
-                  "{selectedClaim.message}"
-                </p>
-              </div>
-            )}
+            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
+              <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">
+                Request Message / Intent
+              </span>
+              <p className="italic text-slate-700 dark:text-slate-200">
+                {(() => {
+                  const msg = selectedClaim.message;
+                  if (!msg || !msg.trim()) return 'No message provided';
+                  if (msg.includes('requested to claim')) {
+                    const match = msg.match(/"([^"]+)"\s*$/);
+                    if (match && match[1]) return `"${match[1]}"`;
+                    return 'No message provided';
+                  }
+                  return `"${msg}"`;
+                })()}
+              </p>
+            </div>
 
-            {/* Food Listing & Pickup Time Box */}
+            {/* Food Listing Details & Separate Requested Pickup Box */}
             <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
               <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">
                 Listing Details
@@ -446,65 +462,100 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
               <p className="text-slate-600 dark:text-slate-300">
                 {selectedClaim.foodId?.quantity || 0} Servings
               </p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10px]">
+                {selectedClaim.foodId?.foodType || 'Category not specified'}
+              </p>
+
+              {/* Separate small box for Requested Pickup */}
               {selectedClaim.requestedPickupTime && (
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-emerald-700 dark:text-emerald-400 font-semibold flex items-center">
+                <div className="mt-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold flex items-center">
                   <Sparkles className="w-3.5 h-3.5 mr-1.5 text-emerald-500 shrink-0" />
                   <span>
-                    Requested Pickup: {new Date(selectedClaim.requestedPickupTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    Requested Pickup: <strong>{formatPickupTime(selectedClaim.requestedPickupTime)}</strong>
                   </span>
                 </div>
               )}
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 flex items-center">
+                <Clock className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                <span>
+                  Requested on {new Date(selectedClaim.createdAt || Date.now()).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                </span>
+              </div>
             </div>
+            
+            {/* Volunteer Assignment Section for ACCEPTED claims */}
+            {selectedClaim.status === 'ACCEPTED' && (
+              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">
+                    Pickup Assignment
+                  </span>
+                  <button
+                    onClick={() => {
+                      const fId = selectedClaim.foodId?._id || selectedClaim.foodId;
+                      setVolModalFoodId(fId);
+                      const vols = selectedClaim.foodId?.volunteerAssignments || (selectedClaim.foodId?.volunteerAssignment?.name ? [selectedClaim.foodId.volunteerAssignment] : []);
+                      setVolModalInitialVolunteers(vols);
+                      setVolModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                  >
+                    {selectedClaim.foodId?.volunteerAssignments?.length || selectedClaim.foodId?.volunteerAssignment?.name ? 'Edit Volunteers' : 'Arrange Pickup'}
+                  </button>
+                </div>
+                {selectedClaim.foodId?.volunteerAssignments && selectedClaim.foodId.volunteerAssignments.length > 0 ? (
+                  <div className="space-y-2">
+                    {selectedClaim.foodId.volunteerAssignments.map((v, idx) => (
+                      <div key={idx} className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                        <p><strong className="text-slate-900 dark:text-white">Volunteer #{idx + 1}:</strong> {v.name}</p>
+                        <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {v.phone}</p>
+                        {v.vehicleNumber && <p><strong className="text-slate-900 dark:text-white">Vehicle:</strong> {v.vehicleNumber}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : selectedClaim.foodId?.volunteerAssignment?.name ? (
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                    <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {selectedClaim.foodId.volunteerAssignment.name}</p>
+                    <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {selectedClaim.foodId.volunteerAssignment.phone}</p>
+                    {selectedClaim.foodId.volunteerAssignment.arrivalTime && <p><strong className="text-slate-900 dark:text-white">Vehicle:</strong> {selectedClaim.foodId.volunteerAssignment.arrivalTime}</p>}
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-500 italic text-center">
+                    Volunteer not yet assigned
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Expanded Action Buttons */}
             {selectedClaim.status === 'PENDING' && user?.accountType === 'DONOR' ? (
               <div className="flex flex-col gap-2 pt-2">
-                {!showDeclineInput ? (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="primary"
-                      className="flex-1"
-                      onClick={handleAcceptBackendClaim}
-                      icon={Check}
-                    >
-                      Accept Request
-                    </Button>
-                    <Button
-                      variant="danger"
-                      className="flex-1"
-                      onClick={() => setShowDeclineInput(true)}
-                      icon={XCircle}
-                    >
-                      Decline Request
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2 animate-in fade-in">
-                    <input
-                      type="text"
-                      placeholder="Reason for declining (optional)"
-                      value={declineReason}
-                      onChange={e => setDeclineReason(e.target.value)}
-                      className="w-full p-2.5 text-xs border border-slate-200 dark:border-slate-600 rounded-xl dark:bg-slate-800 dark:text-white outline-none focus:border-red-500"
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        variant="danger"
-                        className="flex-1"
-                        onClick={handleDeclineBackendClaim}
-                      >
-                        Confirm Decline
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        className="flex-1"
-                        onClick={() => setShowDeclineInput(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
+                {claimError && (
+                  <div className="text-red-500 text-xs p-2 bg-red-50 dark:bg-red-900/30 rounded-lg font-medium text-center">
+                    {claimError}
                   </div>
                 )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="primary"
+                    className="flex-1"
+                    disabled={actionInProgress[selectedClaim.notificationId]}
+                    onClick={handleAcceptClaim}
+                    icon={Check}
+                  >
+                    {actionInProgress[selectedClaim.notificationId] ? 'Accepting...' : 'Accept Request'}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    className="flex-1"
+                    disabled={actionInProgress[selectedClaim.notificationId]}
+                    onClick={() => setRejectModalOpen(true)}
+                    icon={XCircle}
+                  >
+                    Decline Request
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="text-center p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-xs border border-emerald-200 dark:border-emerald-800">
@@ -540,12 +591,6 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                 note.type === 'NGO_CONFIRMED' ? 'NGO Confirmed' :
                 note.type === 'PICKUP_CONFIRMED' ? 'Delivered ✓' : null
               );
-
-              const isPendingDonorClaim =
-                user?.accountType === 'DONOR' &&
-                note.type === 'CLAIM_REQUEST' &&
-                note.relatedClaimId &&
-                (!note.stage || note.stage.toLowerCase().includes('awaiting'));
 
               const isAcceptedNgoNotification =
                 isOrg &&
@@ -596,70 +641,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     </button>
                   </div>
 
-                  {/* INLINE ACTIONS FOR DONOR: Accept / Decline directly from list */}
-                  {isPendingDonorClaim && (
-                    <div className="pt-1 border-t border-emerald-100 dark:border-emerald-900/40" onClick={e => e.stopPropagation()}>
-                      {inlineDeclineId !== note._id ? (
-                        <div className="flex gap-2">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="flex-1"
-                            disabled={isActing}
-                            onClick={(e) => handleInlineAccept(note, e)}
-                            icon={Check}
-                          >
-                            {isActing ? 'Accepting...' : 'Accept'}
-                          </Button>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            className="flex-1"
-                            disabled={isActing}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInlineDeclineId(note._id);
-                            }}
-                            icon={XCircle}
-                          >
-                            Decline
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 pt-1 animate-in fade-in">
-                          <input
-                            type="text"
-                            placeholder="Reason for declining (optional)"
-                            value={inlineDeclineReason}
-                            onChange={e => setInlineDeclineReason(e.target.value)}
-                            className="w-full p-2 text-xs border border-slate-200 dark:border-slate-600 rounded-xl dark:bg-slate-800 dark:text-white outline-none focus:border-red-500"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              variant="danger"
-                              size="sm"
-                              className="flex-1"
-                              disabled={isActing}
-                              onClick={(e) => handleInlineDecline(note, e)}
-                            >
-                              {isActing ? 'Declining...' : 'Confirm Decline'}
-                            </Button>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setInlineDeclineId(null);
-                                setInlineDeclineReason('');
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* We removed the inline Accept/Decline buttons to favor the Detail View modal */}
 
                   {/* INLINE ACTION FOR NGO: Confirm Collection after being accepted */}
                   {isAcceptedNgoNotification && (
@@ -695,6 +677,20 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
         )}
       </div>
       </div>
+      
+      <VolunteerAssignmentModal
+        isOpen={volModalOpen}
+        onClose={() => setVolModalOpen(false)}
+        foodId={volModalFoodId}
+        initialVolunteers={volModalInitialVolunteers}
+        token={token}
+        onSuccess={() => {
+          fetchNotifications();
+          if (selectedClaim && selectedClaim.relatedClaimId) {
+            handleNotificationClick({ relatedClaimId: selectedClaim.relatedClaimId });
+          }
+        }}
+      />
     </Drawer>
   );
 };

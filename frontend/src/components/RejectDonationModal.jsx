@@ -15,7 +15,7 @@ const REJECTION_REASONS = [
   'Other'
 ];
 
-const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess }) => {
+const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSubmit }) => {
   const [selectedReason, setSelectedReason] = useState('');
   const [otherReason, setOtherReason] = useState('');
   const [notes, setNotes] = useState('');
@@ -35,18 +35,23 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess }) =>
 
     try {
       const finalReason = isOther ? otherReason.trim() : selectedReason;
-      await axios.patch(`${API_URL}/api/food/${donation._id}/reject`, {
-        reason: finalReason,
-        notes: notes.trim()
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      
+      if (onSubmit) {
+        await onSubmit(finalReason, notes.trim());
+      } else {
+        await axios.patch(`${API_URL}/api/food/${donation._id}/reject`, {
+          reason: finalReason,
+          notes: notes.trim()
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
 
-      onSuccess();
+      onSuccess && onSuccess();
       onClose();
     } catch (err) {
-      console.error('Failed to reject donation:', err);
-      setError(err.response?.data?.message || 'Failed to reject donation');
+      console.error('Failed to reject:', err);
+      setError(err.response?.data?.message || 'Failed to complete rejection');
       setIsSubmitting(false);
     }
   };

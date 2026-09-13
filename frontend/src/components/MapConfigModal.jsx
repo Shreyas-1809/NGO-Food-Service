@@ -30,7 +30,7 @@ const MapConfigModal = ({ onClose, onSaved }) => {
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div className="bg-[var(--card-bg)] rounded-[12px] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-slate-700">
         
         {/* Header */}
         <div className="p-6 bg-blue-600 text-white flex justify-between items-center">

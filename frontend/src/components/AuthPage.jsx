@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { HeartHandshake, Building2, UserCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
+import HeroIllustration from './illustrations/HeroIllustration';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -25,7 +26,7 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
         placeholder={placeholder}
         maxLength={maxLength}
         autoComplete={type === 'password' ? 'new-password' : 'off'}
-        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
+        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-[#e8dfd2] dark:border-[#38322c] focus:ring-[#E8873A]'} rounded-[10px] focus:ring-2 outline-none text-stone-900 dark:text-stone-100 bg-white dark:bg-[#2a2622] placeholder-stone-400 dark:placeholder-stone-500 transition-colors text-sm`}
       />
       {suffix && (
         <div className="absolute right-0 pr-3 flex items-center cursor-pointer">
@@ -352,66 +353,104 @@ const AuthPage = ({ setToken, setUser }) => {
   const submitDisabled = !isFormSubmitEnabled();
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden transition-colors">
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 z-10 transition-all duration-300">
+    <div className="min-h-screen w-full bg-[#FBF8F3] dark:bg-[#181615] flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden transition-colors">
+      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 z-10">
         
-        {step !== 'ENTRY' && (
-          <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-white mb-4 flex items-center transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </button>
-        )}
-
-        <div className="text-center mb-6">
-          <HeartHandshake className="h-12 w-12 text-green-600 mx-auto mb-4" />
-          <h2 className="text-3xl font-bold text-slate-800 dark:text-white">
-            {step === 'ENTRY' ? 'Food Bridge' : isLogin ? 'Welcome Back' : 'Create Account'}
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-2">
-            {step === 'ENTRY' ? 'Connect surplus food with those in need.' : isLogin ? 'Login to continue.' : 'Join our network today.'}
+        {/* Left Side: Brand Pitch & Hero Illustration (Desktop) */}
+        <div className="hidden lg:flex flex-col items-start max-w-md space-y-4 animate-in fade-in slide-in-from-left-4 duration-500">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2F7A4D]/10 dark:bg-[#2F7A4D]/25 text-[#2F7A4D] dark:text-[#86efac] text-xs font-bold tracking-wide">
+            <span>🌱 Community Food Sharing Network</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight leading-snug">
+            Connecting surplus meals with local shelters
+          </h1>
+          <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed">
+            Join our verified ecosystem of caring restaurants, bakeries, caterers, and active NGOs making zero food waste a daily reality.
           </p>
+          <div className="pt-2 w-full flex justify-start">
+            <HeroIllustration className="w-full max-w-[420px] h-auto drop-shadow-sm" />
+          </div>
         </div>
 
-        {globalError && (
-          <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg mb-4 text-sm font-medium text-center border border-red-200 dark:border-red-800">
-            {globalError}
-          </div>
-        )}
+        {/* Right Side: Auth Card */}
+        <div className="w-full max-w-md bg-white dark:bg-[#23201d] p-7 sm:p-8 rounded-2xl shadow-xl shadow-stone-200/50 dark:shadow-none border border-[#e8dfd2]/80 dark:border-[#38322c] transition-all duration-300">
+          
+          {step !== 'ENTRY' && (
+            <button onClick={handleBack} className="text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 mb-4 flex items-center transition-colors text-xs font-bold cursor-pointer">
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </button>
+          )}
 
-        {step === 'ENTRY' && (
-          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-            <button
-              onClick={() => handleEntrySelection(true)}
-              className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-colors shadow-sm"
-            >
-              Login
-            </button>
-            <button
-              onClick={() => handleEntrySelection(false)}
-              className="w-full bg-white dark:bg-slate-800 text-green-600 dark:text-green-400 border border-green-600 font-bold py-3 rounded-lg hover:bg-green-50 dark:hover:bg-slate-700 transition-colors shadow-sm"
-            >
-              Sign Up
-            </button>
-          </div>
-        )}
+          {/* Mobile compact illustration for Entry step */}
+          {step === 'ENTRY' && (
+            <div className="lg:hidden flex justify-center mb-3">
+              <HeroIllustration className="w-48 h-auto" />
+            </div>
+          )}
 
-        {step === 'TYPE_SELECTION' && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            <button
-              onClick={() => handleTypeSelection('DONOR')}
-              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
-            >
-              <UserCircle2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
-              <span className="font-bold text-slate-700 dark:text-slate-200">Personal Donor</span>
-            </button>
-            <button
-              onClick={() => handleTypeSelection('ORGANISATION')}
-              className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-green-500 hover:bg-green-50 dark:hover:bg-slate-800 transition-all group"
-            >
-              <Building2 className="w-6 h-6 text-slate-500 group-hover:text-green-600 mr-3" />
-              <span className="font-bold text-slate-700 dark:text-slate-200">NGO / Organisation</span>
-            </button>
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center bg-[#E8873A]/15 dark:bg-[#E8873A]/25 text-[#E8873A] dark:text-[#FFAE70]">
+              <HeartHandshake className="h-6 w-6" />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2F7A4D] dark:text-[#86efac] tracking-tight">
+              {step === 'ENTRY' ? 'FoodBridge' : isLogin ? 'Welcome Back' : 'Create Account'}
+            </h2>
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1.5">
+              {step === 'ENTRY' ? 'Connect surplus food with those in need.' : isLogin ? 'Login to continue.' : 'Join our network today.'}
+            </p>
           </div>
-        )}
+
+          {globalError && (
+            <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-[10px] mb-4 text-xs font-semibold text-center border border-red-200 dark:border-red-800">
+              {globalError}
+            </div>
+          )}
+
+          {step === 'ENTRY' && (
+            <div className="space-y-3 animate-in fade-in zoom-in-95 duration-300">
+              <button
+                onClick={() => handleEntrySelection(true)}
+                className="w-full bg-[#E8873A] hover:bg-[#d57328] text-white font-bold py-3 rounded-[10px] transition-colors shadow-md shadow-[#E8873A]/20 cursor-pointer"
+              >
+                Login
+              </button>
+              <button
+                onClick={() => handleEntrySelection(false)}
+                className="w-full bg-white dark:bg-[#2a2622] text-[#2F7A4D] dark:text-[#86efac] border-2 border-[#2F7A4D]/50 hover:border-[#2F7A4D] font-bold py-3 rounded-[10px] hover:bg-[#2F7A4D]/10 transition-colors shadow-xs cursor-pointer"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
+
+          {step === 'TYPE_SELECTION' && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+              <button
+                onClick={() => handleTypeSelection('DONOR')}
+                className="w-full flex items-center justify-center p-4 border-2 border-[#e8dfd2] dark:border-[#38322c] rounded-xl hover:border-[#E8873A] hover:bg-[#E8873A]/10 dark:hover:bg-[#E8873A]/15 transition-all group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#E8873A]/15 text-[#E8873A] flex items-center justify-center mr-3 shrink-0">
+                  <UserCircle2 className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <span className="font-bold text-stone-800 dark:text-stone-100 block">Personal Donor</span>
+                  <span className="text-xs text-stone-500 dark:text-stone-400">Individuals, catering, or local restaurants</span>
+                </div>
+              </button>
+              <button
+                onClick={() => handleTypeSelection('ORGANISATION')}
+                className="w-full flex items-center justify-center p-4 border-2 border-[#e8dfd2] dark:border-[#38322c] rounded-xl hover:border-[#2F7A4D] hover:bg-[#2F7A4D]/10 dark:hover:bg-[#2F7A4D]/15 transition-all group cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#2F7A4D]/15 text-[#2F7A4D] flex items-center justify-center mr-3 shrink-0">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <span className="font-bold text-stone-800 dark:text-stone-100 block">NGO / Organisation</span>
+                  <span className="text-xs text-stone-500 dark:text-stone-400">Verified community charities & shelters</span>
+                </div>
+              </button>
+            </div>
+          )}
 
         {step === 'FORM' && (
           <form onSubmit={handleSubmit} className="space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -612,10 +651,10 @@ const AuthPage = ({ setToken, setUser }) => {
             <button 
               type="submit"
               disabled={submitDisabled || isSubmitting}
-              className={`w-full font-bold py-3 rounded-lg transition-colors shadow-sm mt-4 ${
+              className={`w-full font-bold py-3 rounded-[10px] transition-colors shadow-sm mt-4 cursor-pointer ${
                 submitDisabled || isSubmitting
-                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
-                  : 'bg-green-600 text-white hover:bg-green-700'
+                  ? 'bg-stone-300 dark:bg-stone-700 text-stone-500 cursor-not-allowed' 
+                  : 'bg-[#E8873A] hover:bg-[#d57328] text-white shadow-md shadow-[#E8873A]/20'
               }`}
             >
               {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
@@ -624,6 +663,7 @@ const AuthPage = ({ setToken, setUser }) => {
         )}
       </div>
     </div>
+  </div>
   );
 };
 

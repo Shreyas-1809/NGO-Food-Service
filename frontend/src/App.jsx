@@ -124,7 +124,7 @@ function App() {
   return (
     <ErrorBoundary>
       <Router>
-        <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-50 transition-colors duration-300">
+        <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-[#FBF8F3] dark:bg-[#181615] font-sans text-stone-900 dark:text-stone-100 transition-colors duration-300">
           <Navbar 
             user={user} 
             token={token}

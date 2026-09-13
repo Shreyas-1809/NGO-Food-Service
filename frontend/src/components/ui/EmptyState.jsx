@@ -2,22 +2,42 @@ import React from 'react';
 
 const EmptyState = ({
   icon: Icon,
+  illustration: Illustration,
+  title,
   message,
+  description,
   action,
   className = ''
 }) => {
+  const heading = title || message;
+
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 flex flex-col items-center justify-center text-center space-y-4 ${className}`}>
-      {Icon && (
-        <div className="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-full mb-2">
-          <Icon className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+    <div className={`bg-white dark:bg-[#23201d] rounded-2xl border border-dashed border-[#e8dfd2] dark:border-[#38322c] p-8 sm:p-10 flex flex-col items-center justify-center text-center space-y-3 shadow-xs ${className}`}>
+      {Illustration ? (
+        <div className="mb-1 flex justify-center">
+          {typeof Illustration === 'function' ? <Illustration className="w-36 h-36" /> : Illustration}
         </div>
-      )}
-      <div>
-        <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{message}</p>
+      ) : Icon ? (
+        <div className="w-14 h-14 rounded-full bg-[#E8873A]/10 dark:bg-[#E8873A]/20 text-[#E8873A] dark:text-[#FFAE70] flex items-center justify-center mb-1 shadow-xs">
+          <Icon className="w-7 h-7" />
+        </div>
+      ) : null}
+
+      <div className="max-w-md space-y-1.5">
+        {heading && (
+          <h3 className="text-base font-extrabold text-stone-800 dark:text-stone-100">
+            {heading}
+          </h3>
+        )}
+        {description && (
+          <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+            {description}
+          </p>
+        )}
       </div>
+
       {action && (
-        <div className="mt-2">
+        <div className="pt-2">
           {action}
         </div>
       )}

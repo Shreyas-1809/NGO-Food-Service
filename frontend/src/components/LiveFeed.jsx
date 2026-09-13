@@ -24,6 +24,9 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
+import EmptyStateNoRequests from './illustrations/EmptyStateNoRequests';
+import EmptyStateNoShortages from './illustrations/EmptyStateNoShortages';
+import DeliverySuccessIllustration from './illustrations/DeliverySuccessIllustration';
 import RejectDonationModal from './RejectDonationModal';
 import VolunteerAssignmentModal from './VolunteerAssignmentModal';
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
@@ -586,7 +589,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             if (filteredDonorClaims.length === 0) {
               return (
                 <EmptyState
-                  icon={AlertCircle}
+                  illustration={EmptyStateNoRequests}
                   message="No Matching Claim Requests"
                   description={donorClaimStatusFilter === 'ALL'
                     ? "When verified NGOs request to claim your surplus food listings, their requests will appear here for your direct review."
@@ -767,31 +770,50 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                           {/* Live Status indicator & Confirm Delivery Link */}
                           {(claim.foodId?.status === 'IN_TRANSIT' || claim.foodId?.status === 'picked_up') ? (
-                            <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                                  <Truck className="w-3.5 h-3.5 text-amber-600" /> Food En Route
+                            <div className="rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden">
+                              {/* Delivery photo banner */}
+                              <div className="relative h-20 overflow-hidden">
+                                <img
+                                  src="/images/food-delivery.jpg"
+                                  alt="Volunteer delivering food"
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-amber-900/60 via-amber-800/20 to-transparent" />
+                                <span className="absolute bottom-2 left-3 text-xs font-bold text-white flex items-center gap-1.5 drop-shadow-sm">
+                                  <Truck className="w-3.5 h-3.5" /> Food En Route
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setDeliveryModalFood(claim.foodId);
-                                    setDeliveryModalOpen(true);
-                                  }}
-                                  className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 shadow-xs"
-                                >
-                                  <QrCode className="w-3 h-3" />
-                                  <span>Delivery Link & QR</span>
-                                </button>
                               </div>
-                              <p className="text-[10px] text-amber-700 dark:text-amber-300/80">
-                                Donor confirmed food handover. Share or open the delivery confirmation link once the volunteer reaches the drop-off location.
-                              </p>
+                              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[10px] text-amber-700 dark:text-amber-300/80">
+                                    Donor confirmed food handover. Share or open the delivery confirmation link once the volunteer reaches the drop-off.
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDeliveryModalFood(claim.foodId);
+                                      setDeliveryModalOpen(true);
+                                    }}
+                                    className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 shadow-xs shrink-0 ml-2"
+                                  >
+                                    <QrCode className="w-3 h-3" />
+                                    <span>Delivery Link</span>
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           ) : (claim.foodId?.status === 'COMPLETED' || claim.foodId?.status === 'delivered') ? (
-                            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                              <span>Food Delivered & Verified ✓</span>
+                            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
+                              <DeliverySuccessIllustration size="sm" className="shrink-0" />
+                              <div>
+                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                  Food Delivered & Verified ✓
+                                </p>
+                                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                  This donation was successfully delivered and receipt confirmed.
+                                </p>
+                              </div>
                             </div>
                           ) : null}
                         </div>
@@ -1103,7 +1125,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div className="text-center py-12 text-slate-500">Loading shortages...</div>
           ) : myNeeds.length === 0 ? (
             <EmptyState
-              icon={Package}
+              illustration={EmptyStateNoShortages}
               message="No Shortage Requests Found"
               description='Use the "+ Post Shortage" button in the right sidebar to publish your food and ration needs.'
             />

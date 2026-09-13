@@ -13,7 +13,7 @@ const Button = ({
   icon: Icon,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-xl transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-[10px] transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed';
   
   const sizeStyles = {
     sm: 'py-1.5 px-3 text-xs gap-1.5',
@@ -22,7 +22,7 @@ const Button = ({
   };
 
   const variantStyles = {
-    primary: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    primary: 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white',
     secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700',
     danger: 'bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400',
   };

@@ -8,7 +8,8 @@ import MyShortagesDrawer from './MyShortagesDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
 import OrgPostNeedModal from './OrgPostNeedModal';
 import ActivePickupsDrawer from './ActivePickupsDrawer';
-import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus, Edit } from 'lucide-react';
+import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus, Edit, HeartHandshake, Building2, ArrowRight } from 'lucide-react';
+import IconCircleBadge from './ui/IconCircleBadge';
 
 // donationService mock removed — notification count reads from real backend API
 
@@ -135,9 +136,91 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto relative p-6">
         <div className="max-w-7xl mx-auto">
-          {/* Welcome & Impact Metrics Bar */}
           {/* Top Spacing / Content Start */}
-          <div className="pt-2"></div>
+          <div className="pt-1 mb-6">
+            {/* Quick Action Choices matching "choose an action" pattern */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                onClick={() => {
+                  if (isOrg) {
+                    setShowOrgNeedModal(true);
+                  } else {
+                    setShowPostForm(true);
+                  }
+                }}
+                className="bg-white dark:bg-[#23201d] rounded-2xl border border-[#e8dfd2]/80 dark:border-[#38322c] shadow-[0_4px_20px_rgba(232,135,58,0.06)] hover:shadow-md hover:border-[#E8873A]/50 transition-all cursor-pointer group overflow-hidden"
+              >
+                {/* Card Photo Banner */}
+                <div className="relative h-28 sm:h-32 overflow-hidden">
+                  <img
+                    src="/images/donate-surplus.jpg"
+                    alt="Surplus food donations ready for distribution"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                  <div className="absolute bottom-2.5 left-3">
+                    <IconCircleBadge
+                      icon={isOrg ? Plus : HeartHandshake}
+                      color="orange"
+                      size="lg"
+                      variant="solid"
+                      className="shadow-md"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-stone-900 dark:text-stone-100 group-hover:text-[#E8873A] transition-colors">
+                      {isOrg ? 'Post Shortage / Need' : 'Donate Surplus Food'}
+                    </h3>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                      {isOrg ? 'Broadcast ingredient or ration deficits' : 'Share untouched meal portions with verified shelters'}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-[#E8873A]/10 text-[#E8873A] flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => navigate('/ngos')}
+                className="bg-white dark:bg-[#23201d] rounded-2xl border border-[#e8dfd2]/80 dark:border-[#38322c] shadow-[0_4px_20px_rgba(47,122,77,0.06)] hover:shadow-md hover:border-[#2F7A4D]/50 transition-all cursor-pointer group overflow-hidden"
+              >
+                {/* Card Photo Banner */}
+                <div className="relative h-28 sm:h-32 overflow-hidden">
+                  <img
+                    src="/images/find-ngos.jpg"
+                    alt="Community shelter kitchen volunteers sorting donations"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
+                  <div className="absolute bottom-2.5 left-3">
+                    <IconCircleBadge
+                      icon={Building2}
+                      color="green"
+                      size="lg"
+                      variant="solid"
+                      className="shadow-md"
+                    />
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base text-stone-900 dark:text-stone-100 group-hover:text-[#2F7A4D] dark:group-hover:text-[#86efac] transition-colors">
+                      Find Verified NGOs
+                    </h3>
+                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                      Browse community kitchens, orphanages, and relief hubs
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-[#2F7A4D]/10 text-[#2F7A4D] dark:text-[#86efac] flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
 
 

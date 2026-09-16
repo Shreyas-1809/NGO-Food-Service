@@ -37,6 +37,7 @@ const needRoutes = require('./routes/needs');
 const recurringNeedsRoutes = require('./routes/recurringNeeds');
 const historyRoutes = require('./routes/history');
 const confirmationRoutes = require('./routes/confirmation');
+const translateRoutes = require('./routes/translate');
 app.use('/api/auth', authRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
@@ -46,6 +47,7 @@ app.use('/api/needs', needRoutes);
 app.use('/api/recurring-needs', recurringNeedsRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/confirm', confirmationRoutes);
+app.use('/api/translate', translateRoutes);
 
 // ---------------------------------------------------------------------------
 // Socket.io — User rooms for targeted (private) notifications

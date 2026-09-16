@@ -6,6 +6,7 @@ import { getStoredDonations, getStoredNgos } from '../services/donationService';
 import { calculateDistanceKm } from '../services/mapsService';
 import { calculateListingUrgency } from '../utils/urgency';
 import { Map as MapIcon, List as ListIcon, MapPin, X, ArrowRight, ShieldCheck, Navigation, Crosshair, AlertCircle, Truck } from 'lucide-react';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -164,6 +165,9 @@ const MapPage = ({ user }) => {
   // "Best Matches" layer for NGOs
   const [showBestMatches, setShowBestMatches] = useState(false);
 
+  // Placeholders & Translations
+  const minQtyPlaceholder = useTranslatedString('Min Qty');
+
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -290,8 +294,8 @@ const MapPage = ({ user }) => {
           )}
           {item.distanceKm !== undefined && (
             <p className="flex items-center font-medium">
-              <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
-              ~{item.distanceKm.toFixed(1)} km away
+              <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
+              ~{item.distanceKm.toFixed(1)} km <T text="away" />
             </p>
           )}
           
@@ -305,7 +309,7 @@ const MapPage = ({ user }) => {
                     urgencyInfo.level === 'MEDIUM' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800' :
                     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                   }`}>
-                    {urgencyInfo.level} URGENCY - {urgencyInfo.text}
+                    <T text={urgencyInfo.level} /> <T text="URGENCY" /> - <T text={urgencyInfo.text} />
                   </span>
                 );
               })()}
@@ -315,7 +319,7 @@ const MapPage = ({ user }) => {
           {!isSurplus && item.verified && (
             <div className="mt-2 pt-1">
               <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                <ShieldCheck className="w-3 h-3 mr-1" /> VERIFIED PARTNER
+                <ShieldCheck className="w-3 h-3 mr-1 shrink-0" /> <T text="VERIFIED PARTNER" />
               </span>
             </div>
           )}
@@ -332,15 +336,15 @@ const MapPage = ({ user }) => {
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white' 
                 : 'bg-violet-600 hover:bg-violet-700 text-white'
             }`}>
-              {isSurplus ? 'View Details' : 'View Profile'}
-              <ArrowRight className="w-3 h-3 ml-1.5" />
+              {isSurplus ? <T text="View Details" /> : <T text="View Profile" />}
+              <ArrowRight className="w-3 h-3 ml-1.5 shrink-0" />
             </button>
             <button 
               onClick={(e) => { e.stopPropagation(); handleNavigate(item); }}
               className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-colors flex justify-center items-center shadow-sm"
             >
-              <Navigation className="w-3 h-3 mr-1.5" />
-              Navigate
+              <Navigation className="w-3 h-3 mr-1.5 shrink-0" />
+              <T text="Navigate" />
             </button>
           </div>
         )}
@@ -357,36 +361,36 @@ const MapPage = ({ user }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-            Contextual Map
+            <T text="Contextual Map" />
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Discover local surplus and verified NGOs around you.
+            <T text="Discover local surplus and verified NGOs around you." />
           </p>
         </div>
         
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Layer Visibility Toggles */}
-          <div className="flex items-center space-x-2 bg-slate-200 dark:bg-slate-800 p-1 rounded-xl">
-            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center ${
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-200 dark:bg-slate-800 p-1.5 rounded-xl">
+            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center whitespace-nowrap ${
                 showSurplus ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               }`}>
               <input type="checkbox" checked={showSurplus} onChange={e => setShowSurplus(e.target.checked)} className="hidden" />
-              <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500 mr-1.5 border border-emerald-600"></div>
-              Show Surplus
+              <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500 mr-1.5 border border-emerald-600 shrink-0"></div>
+              <T text="Show Surplus" />
             </label>
-            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center ${
+            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center whitespace-nowrap ${
                 showNgos ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               }`}>
               <input type="checkbox" checked={showNgos} onChange={e => setShowNgos(e.target.checked)} className="hidden" />
-              <div className="w-2.5 h-2.5 rounded-full bg-violet-500 mr-1.5 border border-violet-600" style={{ transform: 'rotate(-45deg)', borderRadius: '50% 50% 50% 0' }}></div>
-              Show NGOs
+              <div className="w-2.5 h-2.5 rounded-full bg-violet-500 mr-1.5 border border-violet-600 shrink-0" style={{ transform: 'rotate(-45deg)', borderRadius: '50% 50% 50% 0' }}></div>
+              <T text="Show NGOs" />
             </label>
-            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center ${
+            <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center whitespace-nowrap ${
                 showVolunteers ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
               }`}>
               <input type="checkbox" checked={showVolunteers} onChange={e => setShowVolunteers(e.target.checked)} className="hidden" />
-              <div className="w-2.5 h-2.5 rounded-full bg-orange-500 mr-1.5 border border-orange-600"></div>
-              Show Volunteers
+              <div className="w-2.5 h-2.5 rounded-full bg-orange-500 mr-1.5 border border-orange-600 shrink-0"></div>
+              <T text="Show Volunteers" />
             </label>
           </div>
 
@@ -412,54 +416,54 @@ const MapPage = ({ user }) => {
       {/* Warning if no results */}
       {hasNoResults && (
         <div className="bg-yellow-50 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 px-4 py-2 rounded-xl flex items-center text-sm">
-          <AlertCircle className="w-4 h-4 mr-2" />
+          <AlertCircle className="w-4 h-4 mr-2 shrink-0" />
           {showSurplus && filteredDonations.length === 0 && showNgos && filteredNgos.length === 0 
-            ? "No surplus or NGOs match your current filters." 
+            ? <T text="No surplus or NGOs match your current filters." />
             : showSurplus && filteredDonations.length === 0 
-              ? "No surplus matches your filters." 
-              : "No NGOs match your filters."}
+              ? <T text="No surplus matches your filters." />
+              : <T text="No NGOs match your filters." />}
         </div>
       )}
 
       {/* Filters */}
       <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 space-y-4">
         
-        <div className="flex items-center mb-1 border-b border-slate-100 dark:border-slate-700 pb-2">
-           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mr-4">Global Filter</span>
-           <select value={radius} onChange={e => setRadius(e.target.value)} className="px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
-             <option value="All">Radius: All</option>
-             <option value="1">1 km</option>
-             <option value="5">5 km</option>
-             <option value="10">10 km</option>
-             <option value="25">25 km</option>
+        <div className="flex flex-wrap items-center gap-3 mb-1 border-b border-slate-100 dark:border-slate-700 pb-2">
+           <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"><T text="Global Filter" /></span>
+           <select value={radius} onChange={e => setRadius(e.target.value)} className="px-3 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer">
+             <option value="All" className="bg-white dark:bg-slate-800"><T text="Radius: All" /></option>
+             <option value="1" className="bg-white dark:bg-slate-800">1 km</option>
+             <option value="5" className="bg-white dark:bg-slate-800">5 km</option>
+             <option value="10" className="bg-white dark:bg-slate-800">10 km</option>
+             <option value="25" className="bg-white dark:bg-slate-800">25 km</option>
            </select>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Surplus Filters */}
           <div className="space-y-2">
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Surplus Filters</span>
-            <div className="grid grid-cols-2 gap-2">
-              <select value={category} onChange={e => setCategory(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none">
-                <option value="All">Category: All</option>
-                <option value="Cooked Food">Cooked Food</option>
-                <option value="Raw Produce">Raw Produce</option>
-                <option value="Packaged">Packaged</option>
+            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400"><T text="Surplus Filters" /></span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <select value={category} onChange={e => setCategory(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                <option value="All" className="bg-white dark:bg-slate-800"><T text="Category: All" /></option>
+                <option value="Cooked Food" className="bg-white dark:bg-slate-800"><T text="Cooked Food" /></option>
+                <option value="Raw Produce" className="bg-white dark:bg-slate-800"><T text="Raw Produce" /></option>
+                <option value="Packaged" className="bg-white dark:bg-slate-800"><T text="Packaged" /></option>
               </select>
-              <select value={urgency} onChange={e => setUrgency(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none">
-                <option value="All">Urgency: All</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
+              <select value={urgency} onChange={e => setUrgency(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                <option value="All" className="bg-white dark:bg-slate-800"><T text="Urgency: All" /></option>
+                <option value="HIGH" className="bg-white dark:bg-slate-800"><T text="High" /></option>
+                <option value="MEDIUM" className="bg-white dark:bg-slate-800"><T text="Medium" /></option>
+                <option value="LOW" className="bg-white dark:bg-slate-800"><T text="Low" /></option>
               </select>
-              <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none">
-                <option value="All">Status: All</option>
-                <option value="AVAILABLE">Available</option>
-                <option value="CLAIMED">Claimed</option>
+              <select value={status} onChange={e => setStatus(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                <option value="All" className="bg-white dark:bg-slate-800"><T text="Status: All" /></option>
+                <option value="AVAILABLE" className="bg-white dark:bg-slate-800"><T text="Available" /></option>
+                <option value="CLAIMED" className="bg-white dark:bg-slate-800"><T text="Claimed" /></option>
               </select>
               <input 
                 type="number" 
-                placeholder="Min Qty"
+                placeholder={minQtyPlaceholder}
                 value={minQty}
                 onChange={e => setMinQty(e.target.value)}
                 className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none"
@@ -468,24 +472,24 @@ const MapPage = ({ user }) => {
             {isOrg && (
                <label className="flex items-center space-x-2 text-xs font-bold text-slate-700 dark:text-slate-300 pt-1">
                  <input type="checkbox" checked={showBestMatches} onChange={e => setShowBestMatches(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500" />
-                 <span>Show Best Matches (Highlight)</span>
+                 <span><T text="Show Best Matches (Highlight)" /></span>
                </label>
             )}
           </div>
 
           {/* NGO Filters */}
           <div className="space-y-2">
-            <span className="text-xs font-bold text-violet-600 dark:text-violet-400">NGO Filters</span>
-            <div className="grid grid-cols-2 gap-2">
-              <select value={ngoCategory} onChange={e => setNgoCategory(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none">
-                <option value="All">Accepts: All</option>
-                <option value="Cooked Food">Accepts Cooked Food</option>
-                <option value="Raw Grains">Accepts Raw Grains</option>
+            <span className="text-xs font-bold text-violet-600 dark:text-violet-400"><T text="NGO Filters" /></span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <select value={ngoCategory} onChange={e => setNgoCategory(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                <option value="All" className="bg-white dark:bg-slate-800"><T text="Accepts: All" /></option>
+                <option value="Cooked Food" className="bg-white dark:bg-slate-800"><T text="Accepts Cooked Food" /></option>
+                <option value="Raw Grains" className="bg-white dark:bg-slate-800"><T text="Accepts Raw Grains" /></option>
               </select>
-              <select value={ngoStatus} onChange={e => setNgoStatus(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none">
-                <option value="All">Status: All</option>
-                <option value="Verified">Verified Partner</option>
-                <option value="Unverified">Unverified</option>
+              <select value={ngoStatus} onChange={e => setNgoStatus(e.target.value)} className="px-2 py-1.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg text-xs text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer">
+                <option value="All" className="bg-white dark:bg-slate-800"><T text="Status: All" /></option>
+                <option value="Verified" className="bg-white dark:bg-slate-800"><T text="Verified Partner" /></option>
+                <option value="Unverified" className="bg-white dark:bg-slate-800"><T text="Unverified" /></option>
               </select>
             </div>
           </div>

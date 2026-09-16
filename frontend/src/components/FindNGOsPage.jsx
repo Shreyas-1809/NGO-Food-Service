@@ -19,6 +19,7 @@ import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
 import IconCircleBadge from './ui/IconCircleBadge';
 import EmptyStateNoResults from './illustrations/EmptyStateNoResults';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const FindNGOsPage = ({ user }) => {
   const [ngos, setNgos] = useState([]);
@@ -42,6 +43,9 @@ const FindNGOsPage = ({ user }) => {
                 user?.role === 'ORGANISATION' || 
                 user?.role === 'ORGANIZATION' || 
                 Boolean(user?.orgName);
+
+  const searchNamePlaceholder = useTranslatedString('Search by NGO name...');
+  const searchAreaPlaceholder = useTranslatedString('Filter by locality (e.g. Kothrud)...');
 
   const TYPE_FILTERS = ['All Types', 'NGO / Food Rescue', 'Orphanage', 'Old Age Home'];
 
@@ -126,10 +130,10 @@ const FindNGOsPage = ({ user }) => {
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-          Verified NGO Directory
+          <T text="Verified NGO Directory" />
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Explore and connect with verified partner organizations, shelters, and food relief centers.
+          <T text="Explore and connect with verified partner organizations, shelters, and food relief centers." />
         </p>
       </div>
 
@@ -142,7 +146,7 @@ const FindNGOsPage = ({ user }) => {
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by NGO name..."
+              placeholder={searchNamePlaceholder}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -154,7 +158,7 @@ const FindNGOsPage = ({ user }) => {
             <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder="Filter by locality (e.g. Kothrud)..."
+              placeholder={searchAreaPlaceholder}
               value={areaSearch}
               onChange={e => setAreaSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -165,10 +169,12 @@ const FindNGOsPage = ({ user }) => {
           <select
             value={selectedType}
             onChange={e => setSelectedType(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
             {TYPE_FILTERS.map(t => (
-              <option key={t} value={t}>{t}</option>
+              <option key={t} value={t} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <T text={t} />
+              </option>
             ))}
           </select>
 
@@ -176,11 +182,11 @@ const FindNGOsPage = ({ user }) => {
           <select
             value={sortBy}
             onChange={e => setSortBy(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
-            <option value="Nearest First">Nearest First</option>
-            <option value="Highest Rated">Highest Rated</option>
-            <option value="Name A-Z">Name A-Z</option>
+            <option value="Nearest First" className="bg-white dark:bg-slate-800"><T text="Nearest First" /></option>
+            <option value="Highest Rated" className="bg-white dark:bg-slate-800"><T text="Highest Rated" /></option>
+            <option value="Name A-Z" className="bg-white dark:bg-slate-800"><T text="Name A-Z" /></option>
           </select>
         </div>
       </div>
@@ -189,13 +195,13 @@ const FindNGOsPage = ({ user }) => {
       {loading ? (
         <div className="py-16 text-center text-slate-400 text-sm">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
-          Loading NGO directory...
+          <T text="Loading NGO directory..." />
         </div>
       ) : filteredNgos.length === 0 ? (
         <EmptyState
           illustration={EmptyStateNoResults}
-          message="No organisations found matching your filters."
-          description="Try adjusting your search terms, cause filter, or locality to discover nearby verified food relief partners."
+          message={<T text="No organisations found matching your filters." />}
+          description={<T text="Try adjusting your search terms, cause filter, or locality to discover nearby verified food relief partners." />}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -203,7 +209,7 @@ const FindNGOsPage = ({ user }) => {
             <div
               key={ngo.id}
               onClick={() => setSelectedNgo(ngo)}
-              className="bg-white dark:bg-[#23201d] rounded-2xl p-5 border border-[#e8dfd2]/80 dark:border-[#38322c] hover:border-[#E8873A]/60 shadow-[0_4px_16px_rgba(0,0,0,0.03)] hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
@@ -214,35 +220,35 @@ const FindNGOsPage = ({ user }) => {
                       <IconCircleBadge icon={Building2} color="green" size="lg" className="shadow-xs" />
                     )}
                     <div>
-                      <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 line-clamp-1">
-                        {ngo.name}
+                      <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1">
+                        <T text={ngo.name} />
                       </h3>
-                      <span className="text-[11px] text-stone-500 dark:text-stone-400 flex items-center mt-0.5">
-                        <MapPin className="w-3 h-3 mr-1 text-stone-400 shrink-0" />
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-0.5">
+                        <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
                         {ngo.area || ngo.city} • ~{ngo.distanceKm || 4.2} km
                       </span>
                     </div>
                   </div>
                 </div>
 
-                <p className="text-xs text-stone-600 dark:text-stone-300 line-clamp-2 leading-relaxed">
-                  {ngo.description}
+                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                  <T text={ngo.description} />
                 </p>
 
                 {/* Causes Badges */}
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {(ngo.causes || []).slice(0, 3).map((cause, idx) => (
-                    <span key={idx} className="bg-[#2F7A4D]/10 text-[#2F7A4D] dark:bg-[#2F7A4D]/25 dark:text-[#86efac] text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                      {cause}
+                    <span key={idx} className="bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                      <T text={cause} />
                     </span>
                   ))}
                 </div>
               </div>
 
               {/* Card Footer Actions */}
-              <div className="pt-4 mt-4 border-t border-[#e8dfd2]/60 dark:border-[#38322c] flex items-center justify-between">
-                <span className="text-xs font-bold text-[#2F7A4D] dark:text-[#86efac] hover:text-[#E8873A] transition-colors flex items-center">
-                  View Profile <ArrowRight className="w-3 h-3 ml-1" />
+              <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors flex items-center whitespace-nowrap">
+                  <T text="View Profile" /> <ArrowRight className="w-3 h-3 ml-1 shrink-0" />
                 </span>
 
                 {!isOrg ? (
@@ -251,9 +257,9 @@ const FindNGOsPage = ({ user }) => {
                       e.stopPropagation();
                       navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } });
                     }}
-                    className="bg-[#E8873A] hover:bg-[#d57328] text-white font-bold text-xs px-3.5 py-1.5 rounded-[10px] shadow-sm shadow-[#E8873A]/20 transition-all cursor-pointer"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-[10px] shadow-sm shadow-emerald-600/20 transition-all cursor-pointer whitespace-nowrap"
                   >
-                    Donate
+                    <T text="Donate" />
                   </button>
                 ) : (
                   <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -265,7 +271,7 @@ const FindNGOsPage = ({ user }) => {
                       title="Redirect Surplus Here"
                       icon={ArrowRight}
                     >
-                      Redirect
+                      <T text="Redirect" />
                     </Button>
                     <Button
                       variant="secondary"
@@ -274,7 +280,7 @@ const FindNGOsPage = ({ user }) => {
                       title="Contact NGO"
                       icon={Phone}
                     >
-                      Contact
+                      <T text="Contact" />
                     </Button>
                   </div>
                 )}
@@ -288,7 +294,7 @@ const FindNGOsPage = ({ user }) => {
       <Drawer
         isOpen={!!selectedNgo}
         onClose={() => setSelectedNgo(null)}
-        title="Organisation Details"
+        title={<T text="Organisation Details" />}
       >
         {selectedNgo && (
           <div className="space-y-6 flex flex-col h-full justify-between">
@@ -296,7 +302,7 @@ const FindNGOsPage = ({ user }) => {
               <div className="flex items-center space-x-4">
                 <Avatar name={selectedNgo.name} src={selectedNgo.logo} className="w-16 h-16 rounded-2xl text-xl" />
                 <div>
-                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white">{selectedNgo.name}</h4>
+                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white"><T text={selectedNgo.name} /></h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center mt-1">
                     <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
                     {selectedNgo.address || `${selectedNgo.area}, ${selectedNgo.city}`}
@@ -305,29 +311,29 @@ const FindNGOsPage = ({ user }) => {
               </div>
 
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {selectedNgo.description}
+                <T text={selectedNgo.description} />
               </p>
 
               {/* Contact Information */}
               <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-2xl border border-slate-200/80 dark:border-slate-600 space-y-2.5 text-xs">
-                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">Contact Channels</h5>
+                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider"><T text="Contact Channels" /></h5>
                 {selectedNgo.phone && (
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 text-emerald-500" /> Phone</span>
+                    <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 text-emerald-500" /><T text="Phone" /></span>
                     <a href={`tel:${selectedNgo.phone}`} className="font-bold hover:underline">{selectedNgo.phone}</a>
                   </div>
                 )}
                 {selectedNgo.email && (
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 text-blue-500" /> Email</span>
+                    <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 text-blue-500" /><T text="Email" /></span>
                     <a href={`mailto:${selectedNgo.email}`} className="font-bold hover:underline">{selectedNgo.email}</a>
                   </div>
                 )}
                 {selectedNgo.website && (
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Globe className="w-3.5 h-3.5 mr-2 text-purple-500" /> Portal</span>
+                    <span className="flex items-center"><Globe className="w-3.5 h-3.5 mr-2 text-purple-500" /><T text="Portal" /></span>
                     <a href={selectedNgo.website} target="_blank" rel="noreferrer" className="font-bold text-emerald-600 hover:underline truncate max-w-[160px]">
-                      Visit ↗
+                      <T text="Visit" /> ↗
                     </a>
                   </div>
                 )}
@@ -346,7 +352,7 @@ const FindNGOsPage = ({ user }) => {
                   }}
                   icon={ArrowRight}
                 >
-                  Donate Food
+                  <T text="Donate Food" />
                 </Button>
               ) : (
                 <div className="flex-1 flex gap-2">
@@ -358,7 +364,7 @@ const FindNGOsPage = ({ user }) => {
                     }}
                     icon={ArrowRight}
                   >
-                    Redirect Surplus
+                    <T text="Redirect Surplus" />
                   </Button>
                   <Button
                     variant="secondary"
@@ -367,7 +373,7 @@ const FindNGOsPage = ({ user }) => {
                     }}
                     icon={Phone}
                   >
-                    Contact
+                    <T text="Contact" />
                   </Button>
                 </div>
               )}

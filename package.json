@@ -1,0 +1,13 @@
+{
+  "name": "ngo-food-service",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "code-check": "npx snyk code test || npx snyk test --all-projects",
+    "code-check:backend": "cd backend && npm run code-check",
+    "code-check:frontend": "cd frontend && npm run code-check"
+  },
+  "devDependencies": {
+    "snyk": "^1.1307.2"
+  }
+}

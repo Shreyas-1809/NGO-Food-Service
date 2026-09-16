@@ -5,6 +5,7 @@ import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
 import EmptyState from './ui/EmptyState';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -50,10 +51,10 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
       <Drawer
         isOpen={isOpen}
         onClose={onClose}
-        title="Edit Postings"
+        title={<T text="Edit Postings" />}
         icon={Package}
       >
-        <div className="p-6 text-center text-slate-500">Only donors have active postings.</div>
+        <div className="p-6 text-center text-slate-500"><T text="Only donors have active postings." /></div>
       </Drawer>
     );
   }
@@ -64,18 +65,18 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Edit Postings"
-      subtitle="Active surplus listings (Edit within 12h or Delete)"
+      title={<T text="Edit Postings" />}
+      subtitle={<T text="Active surplus listings (Edit within 12h or Delete)" />}
       icon={Package}
       width="w-full max-w-md"
     >
       <div className="flex-1 space-y-4">
         {loading ? (
-          <div className="text-center py-8 text-slate-500">Loading active postings...</div>
+          <div className="text-center py-8 text-slate-500"><T text="Loading active postings..." /></div>
         ) : activePostings.length === 0 ? (
           <EmptyState
             icon={Package}
-            message="No Active Postings Found"
+            message={<T text="No Active Postings Found" />}
             className="py-12"
           />
         ) : (
@@ -90,11 +91,11 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
                 
                 <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                   <div className="flex items-center">
-                    <Utensils className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" /> {post.quantity} servings • {post.foodType}
+                    <Utensils className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" /> {post.quantity} <T text="servings" /> • <T text={post.foodType} />
                   </div>
                   <div className="flex items-center">
                     <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" /> 
-                    {post.status === 'AVAILABLE' ? `Expires: ${new Date(post.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}` : `Updated: ${new Date(post.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}`}
+                    {post.status === 'AVAILABLE' ? `<T text="Expires:" /> ${new Date(post.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}` : `<T text="Updated:" /> ${new Date(post.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}`}
                   </div>
                 </div>
 
@@ -111,7 +112,7 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
                         }}
                         icon={Edit}
                       >
-                        Edit
+                        <T text="Edit" />
                       </Button>
                     )}
                     <Button
@@ -121,12 +122,12 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
                       onClick={() => handleDelete(post._id)}
                       icon={Trash2}
                     >
-                      Delete
+                      <T text="Delete" />
                     </Button>
                   </div>
                   {!isEditable && (
                     <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium text-center bg-amber-50 dark:bg-amber-950/40 p-1 rounded-lg border border-amber-200 dark:border-amber-900">
-                      Edit window closed (only allowed within 12 hours of posting)
+                      <T text="Edit window closed (only allowed within 12 hours of posting)" />
                     </div>
                   )}
                 </div>

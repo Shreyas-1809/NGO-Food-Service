@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Truck, Phone, MessageCircle, Mail, X, CheckCircle, Navigation, QrCode, ShieldCheck } from 'lucide-react';
 import DirectContactButtons from './ui/DirectContactButtons';
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
+import { T } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -55,9 +56,9 @@ const ActivePickupsDrawer = ({ user, token, onClose }) => {
     <div className="h-full flex flex-col bg-white dark:bg-slate-800">
       <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-800 z-10">
         <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center">
-          <Truck className="w-5 h-5 mr-2 text-green-600" /> Active Pickups
+          <Truck className="w-5 h-5 mr-2 text-green-600 shrink-0" /> <T text="Active Pickups" />
         </h3>
-        <button onClick={onClose} className="text-slate-500 hover:text-slate-800 dark:hover:text-white"><X className="w-5 h-5" /></button>
+        <button onClick={onClose} className="text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer"><X className="w-5 h-5" /></button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">

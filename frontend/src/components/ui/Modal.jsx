@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 const Modal = ({
@@ -37,15 +38,20 @@ const Modal = ({
     }
   };
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  return (
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
     <div
       className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100] flex justify-center items-center p-4 animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
       <div
-        className={`w-full ${maxWidth} bg-[var(--card-bg)] rounded-[12px] shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]`}
+        className={`w-full ${maxWidth} bg-[var(--card-bg)] rounded-[12px] shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden`}
       >
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-700/60 shrink-0">
           <div>
@@ -61,11 +67,12 @@ const Modal = ({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

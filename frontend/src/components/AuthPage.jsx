@@ -26,7 +26,7 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
         placeholder={placeholder}
         maxLength={maxLength}
         autoComplete={type === 'password' ? 'new-password' : 'off'}
-        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-[#e8dfd2] dark:border-[#38322c] focus:ring-[#E8873A]'} rounded-[10px] focus:ring-2 outline-none text-stone-900 dark:text-stone-100 bg-white dark:bg-[#2a2622] placeholder-stone-400 dark:placeholder-stone-500 transition-colors text-sm`}
+        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500'} rounded-[10px] focus:ring-2 outline-none text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors text-sm`}
       />
       {suffix && (
         <div className="absolute right-0 pr-3 flex items-center cursor-pointer">
@@ -39,8 +39,8 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
 );
 
 const AuthPage = ({ setToken, setUser }) => {
-  const [step, setStep] = useState('ENTRY'); // ENTRY, TYPE_SELECTION, FORM
-  const [isLogin, setIsLogin] = useState(false);
+  const [step, setStep] = useState('FORM'); // TYPE_SELECTION, FORM
+  const [isLogin, setIsLogin] = useState(true);
   const [accountType, setAccountType] = useState('DONOR'); // DONOR, ORGANISATION
   const [showPassword, setShowPassword] = useState(false);
   
@@ -353,7 +353,7 @@ const AuthPage = ({ setToken, setUser }) => {
   const submitDisabled = !isFormSubmitEnabled();
 
   return (
-    <div className="min-h-screen w-full bg-[#FBF8F3] dark:bg-[#181615] flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden transition-colors">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden transition-colors">
       <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 z-10">
         
         {/* Left Side: Brand Pitch & Hero Illustration (Desktop) */}
@@ -373,31 +373,42 @@ const AuthPage = ({ setToken, setUser }) => {
         </div>
 
         {/* Right Side: Auth Card */}
-        <div className="w-full max-w-md bg-white dark:bg-[#23201d] p-7 sm:p-8 rounded-2xl shadow-xl shadow-stone-200/50 dark:shadow-none border border-[#e8dfd2]/80 dark:border-[#38322c] transition-all duration-300">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 p-7 sm:p-8 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 transition-all duration-300">
           
-          {step !== 'ENTRY' && (
-            <button onClick={handleBack} className="text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 mb-4 flex items-center transition-colors text-xs font-bold cursor-pointer">
+          {step === 'FORM' && !isLogin && (
+            <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-4 flex items-center transition-colors text-xs font-bold cursor-pointer">
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </button>
           )}
 
-          {/* Mobile compact illustration for Entry step */}
-          {step === 'ENTRY' && (
-            <div className="lg:hidden flex justify-center mb-3">
-              <HeroIllustration className="w-48 h-auto" />
-            </div>
-          )}
-
-          <div className="text-center mb-6">
-            <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center bg-[#E8873A]/15 dark:bg-[#E8873A]/25 text-[#E8873A] dark:text-[#FFAE70]">
+          <div className="text-center mb-5">
+            <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
               <HeartHandshake className="h-6 w-6" />
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#2F7A4D] dark:text-[#86efac] tracking-tight">
-              {step === 'ENTRY' ? 'FoodBridge' : isLogin ? 'Welcome Back' : 'Create Account'}
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
+              {isLogin ? 'Welcome Back' : 'Create Account'}
             </h2>
-            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1.5">
-              {step === 'ENTRY' ? 'Connect surplus food with those in need.' : isLogin ? 'Login to continue.' : 'Join our network today.'}
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
+              {isLogin ? 'Login to continue.' : 'Join our network today.'}
             </p>
+          </div>
+
+          {/* Tab Switcher: Direct Login vs Register */}
+          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-5">
+            <button
+              type="button"
+              onClick={() => { setIsLogin(true); setStep('FORM'); resetForm(); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${isLogin ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsLogin(false); setStep('TYPE_SELECTION'); resetForm(); }}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${!isLogin ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Sign Up
+            </button>
           </div>
 
           {globalError && (
@@ -406,47 +417,30 @@ const AuthPage = ({ setToken, setUser }) => {
             </div>
           )}
 
-          {step === 'ENTRY' && (
-            <div className="space-y-3 animate-in fade-in zoom-in-95 duration-300">
-              <button
-                onClick={() => handleEntrySelection(true)}
-                className="w-full bg-[#E8873A] hover:bg-[#d57328] text-white font-bold py-3 rounded-[10px] transition-colors shadow-md shadow-[#E8873A]/20 cursor-pointer"
-              >
-                Login
-              </button>
-              <button
-                onClick={() => handleEntrySelection(false)}
-                className="w-full bg-white dark:bg-[#2a2622] text-[#2F7A4D] dark:text-[#86efac] border-2 border-[#2F7A4D]/50 hover:border-[#2F7A4D] font-bold py-3 rounded-[10px] hover:bg-[#2F7A4D]/10 transition-colors shadow-xs cursor-pointer"
-              >
-                Sign Up
-              </button>
-            </div>
-          )}
-
           {step === 'TYPE_SELECTION' && (
             <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
               <button
                 onClick={() => handleTypeSelection('DONOR')}
-                className="w-full flex items-center justify-center p-4 border-2 border-[#e8dfd2] dark:border-[#38322c] rounded-xl hover:border-[#E8873A] hover:bg-[#E8873A]/10 dark:hover:bg-[#E8873A]/15 transition-all group cursor-pointer"
+                className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-emerald-500 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 transition-all group cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full bg-[#E8873A]/15 text-[#E8873A] flex items-center justify-center mr-3 shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mr-3 shrink-0">
                   <UserCircle2 className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <span className="font-bold text-stone-800 dark:text-stone-100 block">Personal Donor</span>
-                  <span className="text-xs text-stone-500 dark:text-stone-400">Individuals, catering, or local restaurants</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 block">Personal Donor</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Individuals, catering, or local restaurants</span>
                 </div>
               </button>
               <button
                 onClick={() => handleTypeSelection('ORGANISATION')}
-                className="w-full flex items-center justify-center p-4 border-2 border-[#e8dfd2] dark:border-[#38322c] rounded-xl hover:border-[#2F7A4D] hover:bg-[#2F7A4D]/10 dark:hover:bg-[#2F7A4D]/15 transition-all group cursor-pointer"
+                className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-emerald-600 hover:bg-emerald-600/10 dark:hover:bg-emerald-600/15 transition-all group cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full bg-[#2F7A4D]/15 text-[#2F7A4D] flex items-center justify-center mr-3 shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center mr-3 shrink-0">
                   <Building2 className="w-5 h-5" />
                 </div>
                 <div className="text-left">
-                  <span className="font-bold text-stone-800 dark:text-stone-100 block">NGO / Organisation</span>
-                  <span className="text-xs text-stone-500 dark:text-stone-400">Verified community charities & shelters</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100 block">NGO / Organisation</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Verified community charities & shelters</span>
                 </div>
               </button>
             </div>
@@ -653,8 +647,8 @@ const AuthPage = ({ setToken, setUser }) => {
               disabled={submitDisabled || isSubmitting}
               className={`w-full font-bold py-3 rounded-[10px] transition-colors shadow-sm mt-4 cursor-pointer ${
                 submitDisabled || isSubmitting
-                  ? 'bg-stone-300 dark:bg-stone-700 text-stone-500 cursor-not-allowed' 
-                  : 'bg-[#E8873A] hover:bg-[#d57328] text-white shadow-md shadow-[#E8873A]/20'
+                  ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed' 
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
               }`}
             >
               {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}

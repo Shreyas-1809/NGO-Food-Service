@@ -17,6 +17,8 @@ import ConfirmPickupPage from './components/ConfirmPickupPage';
 import ConfirmDeliveryPage from './components/ConfirmDeliveryPage';
 import { io } from 'socket.io-client';
 
+import { LanguageProvider } from './context/LanguageContext';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const socket = io(API_URL, {
   autoConnect: true,
@@ -64,20 +66,9 @@ function App() {
     return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
   }, []);
 
-  const toggleTheme = () => setIsDarkMode(prev => !prev);
-
-  useEffect(() => {
-    // Socket setup — no-op, room joining handled after user is loaded
-    return () => socket.off('connect');
-  }, []);
-
-  // Join the user's private socket room once we know their ID
-  useEffect(() => {
-    const uid = user?.id || user?._id;
-    if (uid) {
-      socket.emit('join_room', uid);
-    }
-  }, [user]);
+  const toggleTheme = () => {
+    setIsDarkMode(prev => !prev);
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -91,7 +82,7 @@ function App() {
         });
         setUser(res.data);
       } catch (err) {
-        console.error('Session expired or invalid token');
+        console.error('Session restore failed:', err);
         localStorage.removeItem('token');
         setToken(null);
         setUser(null);
@@ -102,9 +93,27 @@ function App() {
     fetchUser();
   }, [token]);
 
+  // Handle live updates to user profile (e.g. background check verification)
+  useEffect(() => {
+    if (!user?._id) return;
+    
+    const roomName = `room:${user._id}`;
+    socket.emit('join_room', roomName);
+
+    const handleUserUpdate = (data) => {
+      if (data && data.user) {
+        setUser(data.user);
+      }
+    };
+
+    socket.on('user_updated', handleUserUpdate);
+
+    return () => {
+      socket.off('user_updated', handleUserUpdate);
+    };
+  }, [user?._id]);
+
   const handleLogout = () => {
-    const uid = user?.id || user?._id;
-    if (uid) socket.emit('leave_room', uid);
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -123,58 +132,60 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-[#FBF8F3] dark:bg-[#181615] font-sans text-stone-900 dark:text-stone-100 transition-colors duration-300">
-          <Navbar 
-            user={user} 
-            token={token}
-            onLogout={handleLogout} 
-            isDarkMode={isDarkMode} 
-            toggleTheme={toggleTheme} 
-            onUserUpdated={(updatedUser) => setUser(updatedUser)}
-          />
+      <LanguageProvider>
+        <Router>
+          <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+            <Navbar 
+              user={user} 
+              token={token}
+              onLogout={handleLogout} 
+              isDarkMode={isDarkMode} 
+              toggleTheme={toggleTheme} 
+              onUserUpdated={(updatedUser) => setUser(updatedUser)}
+            />
 
-          <main className="flex-1 flex w-full relative">
-            <Routes>
-              {/* Public no-login confirmation and task tracking routes */}
-              <Route path="/pickup/:taskId" element={<VolunteerTaskPage />} />
-              <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
-              <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
+            <main className="flex-1 flex w-full relative">
+              <Routes>
+                {/* Public no-login confirmation and task tracking routes */}
+                <Route path="/pickup/:taskId" element={<VolunteerTaskPage />} />
+                <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
+                <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
 
-              {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
-              {!user ? (
-                <>
-                  <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} />} />
-                </>
-              ) : (
-                <>
-                  {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
-                  <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
+                {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
+                {!user ? (
+                  <>
+                    <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} />} />
+                  </>
+                ) : (
+                  <>
+                    {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
+                    <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
 
-                  {/* User Activity Log */}
-                  <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
+                    {/* User Activity Log */}
+                    <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
 
-                  {/* Verified NGOs Directory & Map */}
-                  <Route path="/ngos" element={<FindNGOsPage user={user} />} />
-                  <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
-                  <Route path="/map" element={<MapPage user={user} />} />
-                  <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
+                    {/* Verified NGOs Directory & Map */}
+                    <Route path="/ngos" element={<FindNGOsPage user={user} />} />
+                    <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
+                    <Route path="/map" element={<MapPage user={user} />} />
+                    <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
 
-                  {/* Direct Donate Flow */}
-                  <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
+                    {/* Direct Donate Flow */}
+                    <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
 
-                  {/* Donation Dispatch Tracking */}
-                  <Route path="/track/:id" element={<DonationTrackingPage />} />
-                  <Route path="/track" element={<DonationTrackingPage />} />
+                    {/* Donation Dispatch Tracking */}
+                    <Route path="/track/:id" element={<DonationTrackingPage />} />
+                    <Route path="/track" element={<DonationTrackingPage />} />
 
-                  {/* Fallback to Dashboard */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </>
-              )}
-            </Routes>
-          </main>
-        </div>
-      </Router>
+                    {/* Fallback to Dashboard */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </>
+                )}
+              </Routes>
+            </main>
+          </div>
+        </Router>
+      </LanguageProvider>
     </ErrorBoundary>
   );
 }

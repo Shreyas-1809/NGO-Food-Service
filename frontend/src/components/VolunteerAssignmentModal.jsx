@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from './ui/Modal';
+import { T, useTranslatedString } from '../context/LanguageContext';
 import Button from './ui/Button';
 import DirectContactButtons from './ui/DirectContactButtons';
 

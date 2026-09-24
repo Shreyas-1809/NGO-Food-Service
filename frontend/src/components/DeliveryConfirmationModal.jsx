@@ -3,6 +3,7 @@ import { CheckCircle2, Copy, Check, QrCode, MessageCircle, ExternalLink, ShieldC
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 export default function DeliveryConfirmationModal({ 
   isOpen, 

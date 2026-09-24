@@ -19,13 +19,13 @@ import {
   CheckCheck,
   AlertTriangle
 } from 'lucide-react';
+import { T, useTranslatedString } from '../context/LanguageContext';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
 import Modal from './ui/Modal';
 import RejectDonationModal from './RejectDonationModal';
 import VolunteerAssignmentModal from './VolunteerAssignmentModal';
-import { formatPickupTime } from '../utils/formatters';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -338,8 +338,8 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Notifications"
-      subtitle={isOrg ? 'Donor acceptances, updates & tracking' : 'Incoming organisation claims & shortage alerts'}
+      title={<T text="Notifications" />}
+      subtitle={isOrg ? <T text="Donor acceptances, updates & tracking" /> : <T text="Incoming organisation claims & shortage alerts" />}
       icon={Bell}
       width="w-full max-w-md"
     >
@@ -349,7 +349,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       {notifications.length > 0 && !selectedClaim && (
         <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/70 dark:bg-slate-900/40 text-[11px]">
           <span className="text-slate-500 dark:text-slate-400 font-medium">
-            {unreadList.length} unread • {notifications.length} total
+            {unreadList.length} <T text="unread" /> • {notifications.length} <T text="total" />
           </span>
           <div className="flex gap-2">
             {unreadList.length > 0 && (
@@ -358,14 +358,14 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                 className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
-                <span>Mark all read</span>
+                <span><T text="Mark all read" /></span>
               </button>
             )}
             <button
               onClick={handleClearAll}
               className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors font-semibold cursor-pointer"
             >
-              Clear all
+              <T text="Clear all" />
             </button>
           </div>
         </div>

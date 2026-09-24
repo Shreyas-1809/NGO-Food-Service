@@ -3,6 +3,7 @@ import axios from 'axios';
 import { X, User, Phone, MapPin, Building, FileText, CheckCircle, Save } from 'lucide-react';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -23,6 +24,14 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Placeholders
+  const namePlaceholder = useTranslatedString(isDonor ? 'Your full name' : 'NGO / Organisation name');
+  const businessPlaceholder = useTranslatedString('e.g. Shrey\'s Home Kitchen or Fresh Bakes');
+  const phonePlaceholder = useTranslatedString('Contact phone number');
+  const addressPlaceholder = useTranslatedString('Street address');
+  const cityPlaceholder = useTranslatedString('City');
+  const descPlaceholder = useTranslatedString('e.g. We are a small home kitchen focused on reducing food waste and donating fresh meals to those in need...');
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -60,8 +69,8 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
     <Modal
       isOpen={true}
       onClose={onClose}
-      title={isDonor ? 'Edit Donor Profile' : 'Edit Organisation Profile'}
-      subtitle="User Profile Settings"
+      title={isDonor ? <T text="Edit Donor Profile" /> : <T text="Edit Organisation Profile" />}
+      subtitle={<T text="User Profile Settings" />}
       confirmClose={true}
     >
       <form onSubmit={handleSubmit} className="space-y-4 flex-1">
@@ -73,22 +82,22 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
 
           {success && (
             <div className="p-3 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-xs font-bold rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center">
-              <CheckCircle className="w-4 h-4 mr-1.5 shrink-0" /> Profile updated successfully!
+              <CheckCircle className="w-4 h-4 mr-1.5 shrink-0" /> <T text="Profile updated successfully!" />
             </div>
           )}
 
           {/* Name Field */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center">
-              <User className="w-3.5 h-3.5 mr-1 text-slate-400" />
-              {isDonor ? 'Full Name' : 'Organisation Name'}
+              <User className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
+              {isDonor ? <T text="Full Name" /> : <T text="Organisation Name" />}
             </label>
             <input
               type="text"
               name={isDonor ? 'fullName' : 'orgName'}
               value={isDonor ? formData.fullName : formData.orgName}
               onChange={handleChange}
-              placeholder={isDonor ? 'Your full name' : 'NGO / Organisation name'}
+              placeholder={namePlaceholder}
               required
               className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             />
@@ -98,14 +107,14 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
           {isDonor && (
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center">
-                <Building className="w-3.5 h-3.5 mr-1 text-slate-400" /> Business / Kitchen Name (Optional)
+                <Building className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" /> <T text="Business / Kitchen Name (Optional)" />
               </label>
               <input
                 type="text"
                 name="businessName"
                 value={formData.businessName}
                 onChange={handleChange}
-                placeholder="e.g. Shrey's Home Kitchen or Fresh Bakes"
+                placeholder={businessPlaceholder}
                 className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
@@ -114,42 +123,42 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
           {/* Contact Phone */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center">
-              <Phone className="w-3.5 h-3.5 mr-1 text-slate-400" /> Phone Number
+              <Phone className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" /> <T text="Phone Number" />
             </label>
             <input
               type="text"
               name="phone"
               value={formData.phone}
               onChange={handleChange}
-              placeholder="Contact phone number"
+              placeholder={phonePlaceholder}
               required
               className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             />
           </div>
 
           {/* Address & City */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center">
-                <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" /> Address
+                <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" /> <T text="Address" />
               </label>
               <input
                 type="text"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                placeholder="Street address"
+                placeholder={addressPlaceholder}
                 className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">City</label>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"><T text="City" /></label>
               <input
                 type="text"
                 name="city"
                 value={formData.city}
                 onChange={handleChange}
-                placeholder="City"
+                placeholder={cityPlaceholder}
                 className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
               />
             </div>
@@ -158,16 +167,16 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
           {/* Personal Intent / Description */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center">
-              <FileText className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-              {isDonor ? 'Personal Intent & Kitchen Description' : 'Organisation Description'}
+              <FileText className="w-3.5 h-3.5 mr-1 text-emerald-600 shrink-0" />
+              {isDonor ? <T text="Personal Intent & Kitchen Description" /> : <T text="Organisation Description" />}
             </label>
-            <p className="text-[11px] text-slate-400 mb-1">Share details about your food surplus goals or shop background.</p>
+            <p className="text-[11px] text-slate-400 mb-1"><T text="Share details about your food surplus goals or shop background." /></p>
             <textarea
               name="description"
               rows="4"
               value={formData.description}
               onChange={handleChange}
-              placeholder="e.g. We are a small home kitchen focused on reducing food waste and donating fresh meals to those in need..."
+              placeholder={descPlaceholder}
               className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
             ></textarea>
           </div>
@@ -181,7 +190,7 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
               loading={saving}
               icon={Save}
             >
-              Save Profile Changes
+              <T text="Save Profile Changes" />
             </Button>
             <Button
               type="button"
@@ -189,7 +198,7 @@ const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
               className="flex-1"
               onClick={onClose}
             >
-              Cancel
+              <T text="Cancel" />
             </Button>
           </div>
         </form>

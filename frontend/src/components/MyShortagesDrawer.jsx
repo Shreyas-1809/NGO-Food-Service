@@ -5,6 +5,7 @@ import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
 import EmptyState from './ui/EmptyState';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -98,7 +99,7 @@ const MyShortagesDrawer = ({ isOpen, token, onClose, onNeedUpdated }) => {
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="My Shortages & Needs"
+      title={<T text="My Shortages & Needs" />}
       icon={Package}
       width="w-full max-w-md"
     >
@@ -113,7 +114,7 @@ const MyShortagesDrawer = ({ isOpen, token, onClose, onNeedUpdated }) => {
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            One-Time Needs
+            <T text="One-Time Needs" />
           </button>
           <button
             onClick={() => setViewTab('TEMPLATES')}
@@ -123,7 +124,7 @@ const MyShortagesDrawer = ({ isOpen, token, onClose, onNeedUpdated }) => {
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            Recurring Templates
+            <T text="Recurring Templates" />
           </button>
         </div>
 
@@ -140,13 +141,13 @@ const MyShortagesDrawer = ({ isOpen, token, onClose, onNeedUpdated }) => {
                 <button
                   key={tab.key}
                   onClick={() => setFilterTab(tab.key)}
-                  className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
                     filterTab === tab.key
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                   }`}
                 >
-                  {tab.label}
+                  <T text={tab.label} />
                 </button>
               ))}
             </div>

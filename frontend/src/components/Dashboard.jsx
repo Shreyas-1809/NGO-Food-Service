@@ -10,6 +10,7 @@ import OrgPostNeedModal from './OrgPostNeedModal';
 import ActivePickupsDrawer from './ActivePickupsDrawer';
 import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus, Edit, HeartHandshake, Building2, ArrowRight } from 'lucide-react';
 import IconCircleBadge from './ui/IconCircleBadge';
+import { T } from '../context/LanguageContext';
 
 // donationService mock removed — notification count reads from real backend API
 
@@ -148,7 +149,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
                     setShowPostForm(true);
                   }
                 }}
-                className="bg-white dark:bg-[#23201d] rounded-2xl border border-[#e8dfd2]/80 dark:border-[#38322c] shadow-[0_4px_20px_rgba(232,135,58,0.06)] hover:shadow-md hover:border-[#E8873A]/50 transition-all cursor-pointer group overflow-hidden"
+                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-emerald-500/55 transition-all cursor-pointer group overflow-hidden"
               >
                 {/* Card Photo Banner */}
                 <div className="relative h-28 sm:h-32 overflow-hidden">
@@ -161,7 +162,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
                   <div className="absolute bottom-2.5 left-3">
                     <IconCircleBadge
                       icon={isOrg ? Plus : HeartHandshake}
-                      color="orange"
+                      color="green"
                       size="lg"
                       variant="solid"
                       className="shadow-md"
@@ -170,14 +171,14 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
                 </div>
                 <div className="p-4 flex items-center justify-between">
                   <div>
-                    <h3 className="font-extrabold text-sm sm:text-base text-stone-900 dark:text-stone-100 group-hover:text-[#E8873A] transition-colors">
-                      {isOrg ? 'Post Shortage / Need' : 'Donate Surplus Food'}
+                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      {isOrg ? <T text="Post Shortage / Need" /> : <T text="Donate Surplus Food" />}
                     </h3>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                      {isOrg ? 'Broadcast ingredient or ration deficits' : 'Share untouched meal portions with verified shelters'}
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {isOrg ? <T text="Broadcast ingredient or ration deficits" /> : <T text="Share untouched meal portions with verified shelters" />}
                     </p>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-[#E8873A]/10 text-[#E8873A] flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -185,7 +186,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
 
               <div
                 onClick={() => navigate('/ngos')}
-                className="bg-white dark:bg-[#23201d] rounded-2xl border border-[#e8dfd2]/80 dark:border-[#38322c] shadow-[0_4px_20px_rgba(47,122,77,0.06)] hover:shadow-md hover:border-[#2F7A4D]/50 transition-all cursor-pointer group overflow-hidden"
+                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-emerald-500/50 transition-all cursor-pointer group overflow-hidden"
               >
                 {/* Card Photo Banner */}
                 <div className="relative h-28 sm:h-32 overflow-hidden">
@@ -207,14 +208,14 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
                 </div>
                 <div className="p-4 flex items-center justify-between">
                   <div>
-                    <h3 className="font-extrabold text-sm sm:text-base text-stone-900 dark:text-stone-100 group-hover:text-[#2F7A4D] dark:group-hover:text-[#86efac] transition-colors">
-                      Find Verified NGOs
+                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                      <T text="Find Verified NGOs" />
                     </h3>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                      Browse community kitchens, orphanages, and relief hubs
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <T text="Browse community kitchens, orphanages, and relief hubs" />
                     </p>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-[#2F7A4D]/10 text-[#2F7A4D] dark:text-[#86efac] flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -232,7 +233,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
                   onClick={handleClosePostForm}
                   className="absolute -top-10 right-0 text-white hover:text-slate-200 flex items-center font-bold text-sm"
                 >
-                  Close <span className="text-2xl ml-1.5 font-normal">&times;</span>
+                  <T text="Close" /> <span className="text-2xl ml-1.5 font-normal">&times;</span>
                 </button>
                 <DonorPostForm
                   socket={socket}
@@ -283,7 +284,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               title="Post Surplus Food"
             >
               <Plus className="w-6 h-6" />
-              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Post Food</span>
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="Post Food" /></span>
             </button>
 
             <button
@@ -292,7 +293,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               title="Edit Postings"
             >
               <Edit className="w-6 h-6" />
-              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Edit Postings</span>
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="Edit Postings" /></span>
             </button>
             <button
               onClick={() => setActiveDrawer(activeDrawer === 'PICKUPS' ? null : 'PICKUPS')}
@@ -300,7 +301,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               title="Active Pickups"
             >
               <Truck className="w-6 h-6" />
-              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Active Pickups</span>
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="Active Pickups" /></span>
             </button>
           </>
         )}
@@ -314,7 +315,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               title="Post Shortage / Need"
             >
               <Plus className="w-6 h-6" />
-              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Post Shortage</span>
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="Post Shortage" /></span>
             </button>
 
             <button
@@ -323,7 +324,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               title="My Shortages & Needs"
             >
               <Package className="w-6 h-6" />
-              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">My Shortages</span>
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="My Shortages" /></span>
             </button>
             <button
               onClick={() => setActiveDrawer(activeDrawer === 'PICKUPS' ? null : 'PICKUPS')}
@@ -331,7 +332,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               title="Active Pickups"
             >
               <Truck className="w-6 h-6" />
-              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Active Pickups</span>
+              <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="Active Pickups" /></span>
             </button>
           </>
         )}
@@ -350,7 +351,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
               </span>
             )}
           </div>
-          <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold">Notifications</span>
+          <span className="absolute right-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-semibold"><T text="Notifications" /></span>
         </button>
       </aside>
 

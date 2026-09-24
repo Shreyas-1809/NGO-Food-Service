@@ -35,6 +35,7 @@ import DirectContactButtons from './ui/DirectContactButtons';
 import { calculateMatchScore } from '../services/matchingService';
 import { calculateListingUrgency } from '../utils/urgency';
 import { formatPickupTime } from '../utils/formatters';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -470,7 +471,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     return result;
   }, [listings, filter, searchQuery, sortBy]);
 
-  if (loading) return <div className="text-center p-8 text-slate-500 dark:text-slate-400">Loading live feed...</div>;
+  if (loading) return <div className="text-center p-8 text-slate-500 dark:text-slate-400"><T text="Loading live feed..." /></div>;
 
   return (
     <div className="space-y-6">
@@ -478,14 +479,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {isDonor && (
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Donor Command Dashboard</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white"><T text="Donor Command Dashboard" /></h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {!showMyUploads ? 'Default View: Active NGO claim requests submitted on your food listings.' : 'Toggled View: Managing your uploaded surplus food listings.'}
+              {!showMyUploads ? <T text="Default View: Active NGO claim requests submitted on your food listings." /> : <T text="Toggled View: Managing your uploaded surplus food listings." />}
             </p>
           </div>
           <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyUploads ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
-              NGO Requests
+              <T text="NGO Requests" />
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -497,7 +498,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-emerald-600"></div>
             </label>
             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyUploads ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
-              Show My Uploads/Postings
+              <T text="Show My Uploads/Postings" />
             </span>
           </div>
         </div>
@@ -507,14 +508,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {isOrg && (
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">Organisation Demand Hub</h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white"><T text="Organisation Demand Hub" /></h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {!showMyShortages ? 'Default View: Active surplus food listings available for claiming.' : 'Toggled View: Managing your organisation shortage requests.'}
+              {!showMyShortages ? <T text="Default View: Active surplus food listings available for claiming." /> : <T text="Toggled View: Managing your organisation shortage requests." />}
             </p>
           </div>
           <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyShortages ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
-              Surplus Feed
+              <T text="Surplus Feed" />
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
@@ -526,7 +527,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-amber-500"></div>
             </label>
             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
-              Show My Shortages/Needs
+              <T text="Show My Shortages/Needs" />
             </span>
           </div>
         </div>
@@ -539,27 +540,27 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center">
                 <Package className="w-5 h-5 mr-2 text-emerald-600" />
-                NGO Claim Requests ({donorClaims.length})
+                <T text="NGO Claim Requests" /> ({donorClaims.length})
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Review and manage incoming claim requests from verified NGOs.
+                <T text="Review and manage incoming claim requests from verified NGOs." />
               </p>
             </div>
             <button
               onClick={fetchDonorClaims}
               className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
             >
-              Refresh Requests
+              <T text="Refresh Requests" />
             </button>
           </div>
 
           {/* Status Filter Tabs */}
           <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit text-xs font-bold">
             {[
-              { id: 'ALL', label: `All (${donorClaims.length})` },
-              { id: 'PENDING', label: `Pending (${donorClaims.filter(c => c.status === 'PENDING').length})` },
-              { id: 'ACCEPTED', label: `Accepted (${donorClaims.filter(c => c.status === 'ACCEPTED').length})` },
-              { id: 'REJECTED', label: `Rejected (${donorClaims.filter(c => c.status === 'DECLINED' || c.status === 'REJECTED').length})` }
+              { id: 'ALL', labelKey: 'All', count: donorClaims.length },
+              { id: 'PENDING', labelKey: 'Pending', count: donorClaims.filter(c => c.status === 'PENDING').length },
+              { id: 'ACCEPTED', labelKey: 'Accepted', count: donorClaims.filter(c => c.status === 'ACCEPTED').length },
+              { id: 'REJECTED', labelKey: 'Rejected', count: donorClaims.filter(c => c.status === 'DECLINED' || c.status === 'REJECTED').length }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -570,13 +571,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                {tab.label}
+                <T text={tab.labelKey} /> ({tab.count})
               </button>
             ))}
           </div>
 
           {loadingDonorClaims ? (
-            <div className="text-center py-12 text-slate-500">Loading claim requests...</div>
+            <div className="text-center py-12 text-slate-500"><T text="Loading claim requests..." /></div>
           ) : (() => {
             const filteredDonorClaims = donorClaims.filter((claim) => {
               if (donorClaimStatusFilter === 'ALL') return true;
@@ -590,10 +591,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               return (
                 <EmptyState
                   illustration={EmptyStateNoRequests}
-                  message="No Matching Claim Requests"
+                  message={<T text="No Matching Claim Requests" />}
                   description={donorClaimStatusFilter === 'ALL'
-                    ? "When verified NGOs request to claim your surplus food listings, their requests will appear here for your direct review."
-                    : `No claim requests with status "${donorClaimStatusFilter.toLowerCase()}" were found.`
+                    ? <T text="When verified NGOs request to claim your surplus food listings, their requests will appear here for your direct review." />
+                    : <T text={`No claim requests with status "${donorClaimStatusFilter.toLowerCase()}" were found.`} />
                   }
                 />
               );
@@ -604,11 +605,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 {filteredDonorClaims.map((claim) => {
                   const cleanMsg = (() => {
                     const msg = claim.message;
-                    if (!msg || !msg.trim()) return 'No message provided';
+                    if (!msg || !msg.trim()) return null;
                     if (msg.includes('requested to claim')) {
                       const match = msg.match(/"([^"]+)"\s*$/);
                       if (match && match[1]) return `"${match[1]}"`;
-                      return 'No message provided';
+                      return null;
                     }
                     return `"${msg}"`;
                   })();
@@ -620,7 +621,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
                           <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-                            NGO Request
+                            <T text="NGO Request" />
                           </span>
                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                             claim.status === 'ACCEPTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
@@ -646,14 +647,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             />
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            Requesting: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || 'Surplus Listing'}</strong> ({claim.foodId?.quantity || 0} servings)
+                            <T text="Requesting" />: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || <T text="Surplus Listing" />}</strong> ({claim.foodId?.quantity || 0} <T text="servings" />)
                           </p>
                         </div>
 
                         {/* Request Message Box */}
                         <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                          <span className="font-bold text-[10px] uppercase text-slate-400 block">Request Message / Intent</span>
-                          <p className="italic">{cleanMsg}</p>
+                          <span className="font-bold text-[10px] uppercase text-slate-400 block"><T text="Request Message / Intent" /></span>
+                          <p className="italic">{cleanMsg || <T text="No message provided" />}</p>
                         </div>
 
                         {/* Details Grid */}
@@ -661,12 +662,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           {claim.requestedPickupTime && (
                             <div className="flex items-center text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-100 dark:border-emerald-800 font-semibold">
                               <Clock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
-                              <span>Requested Pickup: <strong>{formatPickupTime(claim.requestedPickupTime)}</strong></span>
+                              <span><T text="Requested Pickup" />: <strong>{formatPickupTime(claim.requestedPickupTime)}</strong></span>
                             </div>
                           )}
                           <div className="flex items-center pt-1">
                             <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
-                            <span>Address: {claim.ngoId?.address || claim.ngoId?.city || 'Pune'}</span>
+                            <span><T text="Address" />: {claim.ngoId?.address || claim.ngoId?.city || 'Pune'}</span>
                           </div>
                         </div>
                       </div>
@@ -677,7 +678,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             onClick={() => handleAcceptClaim(claim._id)}
                             className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
                           >
-                            Accept Request
+                            <T text="Accept Request" />
                           </button>
                           <button
                             onClick={() => {
@@ -686,13 +687,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             }}
                             className="flex-1 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400 font-bold rounded-xl text-xs transition-colors"
                           >
-                            Decline
+                            <T text="Decline" />
                           </button>
                         </div>
                       ) : claim.status === 'ACCEPTED' ? (
                         <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
                           <div className="flex justify-between items-center">
-                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">✓ Accepted Request</span>
+                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">✓ <T text="Accepted Request" /></span>
                             <button
                               onClick={() => {
                                 const fId = claim.foodId?._id || claim.foodId;
@@ -702,7 +703,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               }}
                               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
                             >
-                              {vols.length > 0 ? 'Edit Volunteers' : 'Arrange Pickup'}
+                              {vols.length > 0 ? <T text="Edit Volunteers" /> : <T text="Arrange Pickup" />}
                             </button>
                           </div>
                           {vols.length > 0 ? (
@@ -725,7 +726,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             </div>
                           ) : (
                             <div className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700 text-center">
-                              Volunteer not yet assigned
+                              <T text="Volunteer not yet assigned" />
                             </div>
                           )}
 
@@ -735,7 +736,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
                                   <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                  Volunteer Declined Task
+                                  <T text="Volunteer Declined Task" />
                                 </span>
                                 <button
                                   type="button"
@@ -747,7 +748,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                                   }}
                                   className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
                                 >
-                                  Reassign Volunteer
+                                  <T text="Reassign Volunteer" />
                                 </button>
                               </div>
                               {claim.foodId?.volunteerDeclineReason && (
@@ -759,12 +760,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           ) : claim.foodId?.volunteerStatus === 'accepted' ? (
                             <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Volunteer Accepted & En Route</span>
+                              <span><T text="Volunteer Accepted & En Route" /></span>
                             </div>
                           ) : vols.length > 0 && claim.foodId?.volunteerStatus === 'pending' ? (
                             <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
                               <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Awaiting Volunteer Response</span>
+                              <span><T text="Awaiting Volunteer Response" /></span>
                             </div>
                           ) : null}
 
@@ -780,7 +781,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-amber-900/60 via-amber-800/20 to-transparent" />
                                 <span className="absolute bottom-2 left-3 text-xs font-bold text-white flex items-center gap-1.5 drop-shadow-sm">
-                                  <Truck className="w-3.5 h-3.5" /> Food En Route
+                                  <Truck className="w-3.5 h-3.5" /> <T text="Food En Route" />
                                 </span>
                               </div>
                               <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 space-y-1.5">
@@ -808,10 +809,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               <div>
                                 <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
                                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                  Food Delivered & Verified ✓
+                                  <T text="Food Delivered & Verified" /> ✓
                                 </p>
                                 <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                  This donation was successfully delivered and receipt confirmed.
+                                  <T text="This donation was successfully delivered and receipt confirmed." />
                                 </p>
                               </div>
                             </div>
@@ -819,7 +820,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
                       ) : (
                         <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
-                          Decline Processed
+                          <T text="Decline Processed" />
                         </div>
                       )}
                     </div>
@@ -837,10 +838,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
                 <Package className="w-5 h-5 mr-2 text-emerald-600" />
-                My Active Listings ({donorPostings.length})
+                <T text="My Active Listings" /> ({donorPostings.length})
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Manage your posted surplus listings, edit postings within the 12-hour window, or track their statuses.
+                <T text="Manage your posted surplus listings, edit postings within the 12-hour window, or track their statuses." />
               </p>
             </div>
 
@@ -882,7 +883,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <span>{tab.label}</span>
+                      <span><T text={tab.label} /></span>
                       <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
                         donorPostingsTab === tab.key
                           ? 'bg-emerald-700 text-emerald-100'
@@ -910,18 +911,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             });
 
             if (loadingDonorPostings) {
-              return <div className="text-center py-12 text-slate-500">Loading your food postings...</div>;
+              return <div className="text-center py-12 text-slate-500"><T text="Loading your food postings..." /></div>;
             }
 
             if (filteredPostings.length === 0) {
               return (
                 <EmptyState
                   icon={Package}
-                  message="No Postings Found"
+                  message={<T text="No Postings Found" />}
                   description={
                     donorPostingsTab === 'ALL'
-                      ? 'You have not uploaded any surplus food listings yet.'
-                      : `No postings currently under "${donorPostingsTab}" status.`
+                      ? <T text="You have not uploaded any surplus food listings yet." />
+                      : <T text={`No postings currently under "${donorPostingsTab}" status.`} />
                   }
                   action={donorPostingsTab === 'ALL' ? (
                       <button
@@ -930,7 +931,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         }}
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
                       >
-                        Post a Surplus
+                        <T text="Post a Surplus" />
                       </button>
                     ) : null}
                 />
@@ -1006,12 +1007,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         <div>
                           <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{post.title}</h4>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            Servings: <strong className="text-slate-800 dark:text-slate-200">{post.quantity} Portions</strong>
+                            <T text="Servings" />: <strong className="text-slate-800 dark:text-slate-200">{post.quantity} <T text="Portions" /></strong>
                           </p>
                         </div>
                         
                         <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Posted: {new Date(post.createdAt).toLocaleDateString()}
+                          <T text="Posted" />: {new Date(post.createdAt).toLocaleDateString()}
                         </div>
 
                         {urgency.level !== 'EXPIRED' && isActive && (
@@ -1035,13 +1036,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               onClick={() => onEdit && onEdit(post)}
                               className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
-                              <Edit className="w-3.5 h-3.5" /> Edit Listing
+                              <Edit className="w-3.5 h-3.5" /> <T text="Edit Listing" />
                             </button>
                             <button
                               onClick={() => handleCancelListing(post._id, false)}
                               className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
-                              <XCircle className="w-3.5 h-3.5" /> Cancel
+                              <XCircle className="w-3.5 h-3.5" /> <T text="Cancel" />
                             </button>
                           </>
                         )}
@@ -1055,19 +1056,19 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               }}
                               className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
-                              <Search className="w-3.5 h-3.5" /> View Details
+                              <Search className="w-3.5 h-3.5" /> <T text="View Details" />
                             </button>
                             <button
                               onClick={() => handleMarkCollected(post._id)}
                               className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Mark Collected
+                              <CheckCircle2 className="w-3.5 h-3.5" /> <T text="Mark Collected" />
                             </button>
                             <button
                               onClick={() => handleCancelListing(post._id, true)}
                               className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
-                              <XCircle className="w-3.5 h-3.5" /> Cancel
+                              <XCircle className="w-3.5 h-3.5" /> <T text="Cancel" />
                             </button>
                           </>
                         )}
@@ -1077,7 +1078,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             onClick={() => onEdit && onEdit({ ...post, _id: undefined, isRepost: true })}
                             className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                           >
-                            <Package className="w-3.5 h-3.5" /> Repost
+                            <Package className="w-3.5 h-3.5" /> <T text="Repost" />
                           </button>
                         )}
 
@@ -1089,7 +1090,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             }}
                             className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                           >
-                            <Search className="w-3.5 h-3.5" /> View Details
+                            <Search className="w-3.5 h-3.5" /> <T text="View Details" />
                           </button>
                         )}
                       </div>
@@ -1107,27 +1108,27 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
                 <Package className="w-5 h-5 mr-2 text-amber-500" />
-                My Organisation Shortages & Needs ({myNeeds.length})
+                <T text="My Organisation Shortages & Needs" /> ({myNeeds.length})
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Manage your posted shortage requests, track fulfillment status, or update demand.
+                <T text="Manage your posted shortage requests, track fulfillment status, or update demand." />
               </p>
             </div>
             <button
               onClick={fetchMyNeeds}
               className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400"
             >
-              Refresh Shortages
+              <T text="Refresh Shortages" />
             </button>
           </div>
 
           {loadingMyNeeds ? (
-            <div className="text-center py-12 text-slate-500">Loading shortages...</div>
+            <div className="text-center py-12 text-slate-500"><T text="Loading shortages..." /></div>
           ) : myNeeds.length === 0 ? (
             <EmptyState
               illustration={EmptyStateNoShortages}
-              message="No Shortage Requests Found"
-              description='Use the "+ Post Shortage" button in the right sidebar to publish your food and ration needs.'
+              message={<T text="No Shortage Requests Found" />}
+              description={<T text='Use the "+ Post Shortage" button in the right sidebar to publish your food and ration needs.' />}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1136,7 +1137,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
                       <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300">
-                        {need.category || 'Food'} Deficit
+                        {need.category || 'Food'} <T text="Deficit" />
                       </span>
                       <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                         need.status === 'ACTIVE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
@@ -1150,7 +1151,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     <div>
                       <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{need.title}</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Needed Quantity: <strong className="text-slate-800 dark:text-slate-200">{need.quantity} {need.unit || 'servings'}</strong>
+                        <T text="Needed Quantity" />: <strong className="text-slate-800 dark:text-slate-200">{need.quantity} {need.unit || <T text="servings" />}</strong>
                       </p>
                     </div>
 
@@ -1172,7 +1173,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         }}
                         className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
                       >
-                        Mark Fulfilled
+                        <T text="Mark Fulfilled" />
                       </button>
                     )}
                     <button
@@ -1185,7 +1186,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       }}
                       className="py-2 px-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-xl font-bold text-xs transition-colors cursor-pointer"
                     >
-                      Delete
+                       <T text="Delete" />
                     </button>
                   </div>
                 </div>
@@ -1200,12 +1201,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-                {user?.accountType === 'ORGANISATION' ? 'Surplus Available For You' : 'Live Surplus Food Feed'}
+                {user?.accountType === 'ORGANISATION' ? <T text="Surplus Available For You" /> : <T text="Live Surplus Food Feed" />}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {user?.accountType === 'ORGANISATION'
-                  ? 'Claim surplus food matching your needs and arrange fast pickup.'
-                  : 'Browse available food donations.'}
+                  ? <T text="Claim surplus food matching your needs and arrange fast pickup." />
+                  : <T text="Browse available food donations." />}
               </p>
             </div>
 
@@ -1292,7 +1293,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     <div className="space-y-2.5 mb-3 text-xs">
                       <div className="flex items-center text-slate-600 dark:text-slate-300">
                         <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
-                        <strong>{portions} Portions</strong>
+                        <strong>{portions} <T text="Portions" /></strong>
                       </div>
                       <div className="flex items-center text-slate-600 dark:text-slate-400">
                         <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
@@ -1304,7 +1305,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           return (
                             <div className="flex items-center text-slate-500 dark:text-slate-500 font-medium">
                               <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
-                              <span>Expired</span>
+                              <span><T text="Expired" /></span>
                             </div>
                           );
                         }
@@ -1328,10 +1329,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-[11px]">
                         <span className="font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center mb-0.5">
                           <Sparkles className="w-3 h-3 mr-1 text-emerald-600" />
-                          Matches {match.ngoName}
+                          <T text="Matches" /> {match.ngoName}
                         </span>
                         <span className="text-slate-600 dark:text-slate-400 line-clamp-1">
-                          Needs: {match.quantity} {match.unit} {match.item}
+                          <T text="Needs" />: {match.quantity} {match.unit} {match.item}
                         </span>
                       </div>
                     ) : null}
@@ -1348,7 +1349,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
                         >
                           <XCircle className="w-3.5 h-3.5" />
-                          <span>Reject Donation</span>
+                          <span><T text="Reject Donation" /></span>
                         </button>
                         <button
                           onClick={(e) => {
@@ -1361,7 +1362,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
                         >
                           <Utensils className="w-3.5 h-3.5" />
-                          <span>Send Claim Request</span>
+                          <span><T text="Send Claim Request" /></span>
                         </button>
                       </div>
                     )}
@@ -1374,8 +1375,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div className="col-span-full">
               <EmptyState
                 icon={Package}
-                message="No surplus food available right now"
-                description="Check back soon for new food listings."
+                message={<T text="No surplus food available right now" />}
+                description={<T text="Check back soon for new food listings." />}
               />
             </div>
           )}
@@ -1389,7 +1390,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 sticky top-0">
               <div>
                 <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">
-                  Surplus Food Details
+                  <T text="Surplus Food Details" />
                 </span>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1 pr-4">{selectedListing.title}</h3>
               </div>
@@ -1404,14 +1405,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8" />
                   </div>
-                  <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">Claim Request Sent!</h4>
-                  <p className="text-slate-500 dark:text-slate-400 mb-6 text-xs">The donor will review your request. Check your notifications for updates.</p>
+                  <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-2"><T text="Claim Request Sent!" /></h4>
+                  <p className="text-slate-500 dark:text-slate-400 mb-6 text-xs"><T text="The donor will review your request. Check your notifications for updates." /></p>
                 </div>
               ) : claimStatus === 'FORM' ? (
                 <div className="space-y-4 animate-in fade-in">
-                  <h4 className="font-bold text-base text-slate-800 dark:text-white mb-1">Request Food as Verified NGO</h4>
+                  <h4 className="font-bold text-base text-slate-800 dark:text-white mb-1"><T text="Request Food as Verified NGO" /></h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Coordinate your pickup time and state your intent so the donor can review and accept.
+                    <T text="Coordinate your pickup time and state your intent so the donor can review and accept." />
                   </p>
 
                   {claimFormError && (
@@ -1424,7 +1425,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <div>
                     <div className="flex justify-between items-center mb-1.5">
                       <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        Request Message / Intent <span className="text-red-500">*</span>
+                        <T text="Request Message / Intent" /> <span className="text-red-500">*</span>
                       </label>
                       <span className={`text-[10px] font-bold ${claimMessage.trim().length < 10 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         {claimMessage.trim().length}/10 chars min
@@ -1443,7 +1444,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                      Estimated Pickup Date & Time <span className="text-red-500">*</span>
+                      <T text="Estimated Pickup Date & Time" /> <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2 mb-2">
                       <button
@@ -1481,10 +1482,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   </div>
                   <div className="flex gap-3 pt-4">
                     <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition-colors text-xs cursor-pointer shadow-xs">
-                      Submit Request
+                      <T text="Submit Request" />
                     </button>
                     <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs cursor-pointer">
-                      Cancel
+                      <T text="Cancel" />
                     </button>
                   </div>
                 </div>
@@ -1493,7 +1494,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   {/* Food Breakdown */}
                   <div>
                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
-                      <Package className="w-3.5 h-3.5 mr-1.5" /> Item Breakdown
+                      <Package className="w-3.5 h-3.5 mr-1.5" /> <T text="Item Breakdown" />
                     </h4>
                     {selectedListing.items && selectedListing.items.length > 0 ? (
                       <ul className="space-y-2">
@@ -1508,9 +1509,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       </ul>
                     ) : (
                       <div className="bg-slate-50 dark:bg-slate-700/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">Total Portions</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200"><T text="Total Portions" /></span>
                         <span className="float-right font-bold bg-white dark:bg-slate-800 px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-slate-300">
-                          {selectedListing.quantity} Servings
+                          {selectedListing.quantity} <T text="Servings" />
                         </span>
                       </div>
                     )}
@@ -1521,7 +1522,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   {selectedListing.photos && selectedListing.photos.length > 0 && (
                     <div>
                       <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
-                        <Search className="w-3.5 h-3.5 mr-1.5" /> Attached Images
+                        <Search className="w-3.5 h-3.5 mr-1.5" /> <T text="Attached Images" />
                       </h4>
                       <button
                         onClick={() => {
@@ -1539,7 +1540,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   {/* Donor Info */}
                   <div>
                     <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
-                      <Building2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Donor Information
+                      <Building2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> <T text="Donor Information" />
                     </h4>
                     {(() => {
                       const donor = (typeof selectedListing.donorId === 'object' && selectedListing.donorId !== null) ? selectedListing.donorId : {};
@@ -1552,11 +1553,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5 text-xs">
                           <div className="flex items-center text-slate-800 dark:text-white font-bold">
                             <Building2 className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
-                            <span>Name: {displayName}</span>
+                            <span><T text="Name" />: {displayName}</span>
                           </div>
                           <div className="flex items-center text-slate-600 dark:text-slate-300">
                             <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                            <span>Address: {address}</span>
+                            <span><T text="Address" />: {address}</span>
                           </div>
                           
                           {/* Contact Actions for NGO -> Donor */}
@@ -1564,7 +1565,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             <div className="flex flex-wrap items-center justify-between gap-1.5">
                               <div className="flex items-center text-slate-600 dark:text-slate-300">
                                 <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
-                                <span>Phone: {phone}</span>
+                                <span><T text="Phone" />: {phone}</span>
                               </div>
                               {phone !== 'Not provided' && (
                                 <DirectContactButtons
@@ -1592,13 +1593,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   {/* Timings */}
                   <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-slate-700 pt-3">
                     <div className="text-slate-500 dark:text-slate-400">
-                      <span className="block font-medium">Prepared</span>
+                      <span className="block font-medium"><T text="Prepared" /></span>
                       <span className="text-slate-800 dark:text-slate-200 font-semibold">
                         {selectedListing.preparedTime ? new Date(selectedListing.preparedTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'Recently'}
                       </span>
                     </div>
                     <div className="text-right text-amber-600 dark:text-amber-400">
-                      <span className="block font-medium">Expires</span>
+                      <span className="block font-medium"><T text="Expires" /></span>
                       <span className="font-bold">
                         {new Date(selectedListing.overallExpiry || selectedListing.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
@@ -1621,7 +1622,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 font-bold py-2.5 px-4 rounded-xl transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <XCircle className="w-4 h-4" />
-                      Reject Donation
+                      <T text="Reject Donation" />
                     </button>
                     <button
                       onClick={() => {
@@ -1633,7 +1634,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <Utensils className="w-4 h-4" />
-                      Send Claim Request
+                      <T text="Send Claim Request" />
                     </button>
                   </>
                 ) : (
@@ -1641,7 +1642,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     onClick={() => setSelectedListing(null)}
                     className="w-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-xs cursor-pointer"
                   >
-                    Close
+                    <T text="Close" />
                   </button>
                 )}
               </div>

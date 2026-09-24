@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Plus, Trash2, Clock, MapPin, UploadCloud, X, CheckCircle, Building2, Sparkles, HeartHandshake } from 'lucide-react';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -28,6 +29,11 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
   const [photos, setPhotos] = useState([]);
   const [autoDeleteValue, setAutoDeleteValue] = useState('');
   const [autoDeleteUnit, setAutoDeleteUnit] = useState('HOURS');
+
+  // Placeholders
+  const addressPlaceholder = useTranslatedString('Street address, city');
+  const foodTitlePlaceholder = useTranslatedString('e.g., Veg Fried Rice');
+  const quantityPlaceholder = useTranslatedString('Amount');
 
   useEffect(() => {
     if (prefill) {
@@ -230,8 +236,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       {/* Success Toast */}
       {successToast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200 px-6 py-3 rounded-full font-bold shadow-xl flex items-center z-50 animate-in slide-in-from-top-4 text-xs sm:text-sm">
-          <CheckCircle className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400" />
-          {prefill?.isEdit ? 'Listing updated successfully!' : prefill?.targetNgoName ? `Surplus logged & allocated for ${prefill.targetNgoName}!` : 'Successfully posted surplus to Live Feed!'}
+          <CheckCircle className="w-5 h-5 mr-2 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          {prefill?.isEdit ? <T text="Listing updated successfully!" /> : prefill?.targetNgoName ? <T text={`Surplus logged & allocated for ${prefill.targetNgoName}!`} /> : <T text="Successfully posted surplus to Live Feed!" />}
         </div>
       )}
 
@@ -245,23 +251,23 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
             <div>
               <div className="flex items-center space-x-2">
                 <span className="text-[10px] font-extrabold uppercase text-emerald-700 dark:text-emerald-400 tracking-wider">
-                  Direct Receiver Connection
+                  <T text="Direct Receiver Connection" />
                 </span>
                 <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-600 text-white">
-                  Target NGO
+                  <T text="Target NGO" />
                 </span>
               </div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Donating Directly for {prefill.targetNgoName}
+                <T text="Donating Directly for" /> {prefill.targetNgoName}
               </h3>
               <p className="text-xs text-slate-600 dark:text-slate-300">
-                Fulfilling shortage request: <strong className="text-emerald-700 dark:text-emerald-400">{prefill.quantity} {prefill.unit || 'units'} {prefill.foodType || prefill.item}</strong>
+                <T text="Fulfilling shortage request:" /> <strong className="text-emerald-700 dark:text-emerald-400">{prefill.quantity} {prefill.unit || 'units'} {prefill.foodType || prefill.item}</strong>
               </p>
             </div>
           </div>
           
           <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-white dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-700 shrink-0 text-center">
-            ✓ Shortage Pre-Filled
+            ✓ <T text="Shortage Pre-Filled" />
           </span>
         </div>
       )}
@@ -269,10 +275,10 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
-            {prefill?.isEdit ? 'Edit Surplus Mode' : prefill?.targetNgoName ? 'Direct Donation Flow' : 'Surplus Rescue Flow'}
+            {prefill?.isEdit ? <T text="Edit Surplus Mode" /> : prefill?.targetNgoName ? <T text="Direct Donation Flow" /> : <T text="SURPLUS RESCUE FLOW" />}
           </span>
           <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-            {prefill?.isEdit ? 'Edit Surplus Food' : prefill?.targetNgoName ? `Donate to ${prefill.targetNgoName}` : 'Log Surplus Food'}
+            {prefill?.isEdit ? <T text="Edit Surplus Food" /> : prefill?.targetNgoName ? <T text={`Donate to ${prefill.targetNgoName}`} /> : <T text="Log Surplus Food" />}
           </h2>
         </div>
       </div>
@@ -288,12 +294,12 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
         {/* Shared Logistics Section */}
         <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-4">
           <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center">
-            <MapPin className="w-4 h-4 mr-1.5" /> Pickup Details
+            <MapPin className="w-4 h-4 mr-1.5 shrink-0" /> <T text="PICKUP DETAILS" />
           </h3>
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Pickup Address</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><T text="Pickup Address" /></label>
               <div className="relative">
                 <input 
                   type="text" 
@@ -301,15 +307,15 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                   className="w-full pl-10 pr-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                   value={sharedFields.pickupAddress}
                   onChange={e => setSharedFields({...sharedFields, pickupAddress: e.target.value})}
-                  placeholder="Street address, city"
+                  placeholder={addressPlaceholder}
                 />
-                <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <MapPin className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 shrink-0" />
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Available From</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><T text="Available From" /></label>
                 <input 
                   type="datetime-local" 
                   required
@@ -319,7 +325,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Available Until</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"><T text="Available Until" /></label>
                 <input 
                   type="datetime-local" 
                   required
@@ -335,7 +341,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
         {/* Dynamic Item Blocks */}
         <div className="space-y-4">
           <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-700 pb-2">
-            <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Items</h3>
+            <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider"><T text="ITEMS" /></h3>
           </div>
           
           <div className="space-y-6">
@@ -357,71 +363,71 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                   <div className="flex-1 space-y-4">
                     <div className="grid grid-cols-12 gap-4">
                       <div className="col-span-12 sm:col-span-6">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Food Name / Title</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1"><T text="Food Name / Title" /></label>
                         <input 
                           type="text" 
                           required
-                          placeholder="e.g., Veg Fried Rice"
+                          placeholder={foodTitlePlaceholder}
                           className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                           value={item.itemName}
                           onChange={e => handleItemChange(index, 'itemName', e.target.value)}
                         />
                       </div>
                       <div className="col-span-6 sm:col-span-3">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Type</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1"><T text="Type" /></label>
                         <select 
-                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white cursor-pointer"
                           value={item.foodType}
                           onChange={e => handleItemChange(index, 'foodType', e.target.value)}
                         >
-                          <option value="VEG">Veg</option>
-                          <option value="NON-VEG">Non-Veg</option>
+                          <option value="VEG" className="bg-white dark:bg-slate-800"><T text="Veg" /></option>
+                          <option value="NON-VEG" className="bg-white dark:bg-slate-800"><T text="Non-Veg" /></option>
                         </select>
                       </div>
                       <div className="col-span-6 sm:col-span-3">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Category</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1"><T text="Category" /></label>
                         <select 
-                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white cursor-pointer"
                           value={item.category}
                           onChange={e => handleCategoryChange(index, e.target.value)}
                         >
-                          <option value="Cooked Meal">Cooked Meal</option>
-                          <option value="Raw Produce">Raw Produce</option>
-                          <option value="Baked Goods">Baked Goods</option>
-                          <option value="Packaged">Packaged</option>
+                          <option value="Cooked Meal" className="bg-white dark:bg-slate-800"><T text="Cooked Meal" /></option>
+                          <option value="Raw Produce" className="bg-white dark:bg-slate-800"><T text="Raw Produce" /></option>
+                          <option value="Baked Goods" className="bg-white dark:bg-slate-800"><T text="Baked Goods" /></option>
+                          <option value="Packaged" className="bg-white dark:bg-slate-800"><T text="Packaged" /></option>
                         </select>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-12 gap-4">
                       <div className="col-span-6 sm:col-span-4">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Quantity</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1"><T text="Quantity" /></label>
                         <input 
                           type="number" 
                           required
                           min="0.1" step="any"
-                          placeholder="Amount"
+                          placeholder={quantityPlaceholder}
                           className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
                           value={item.quantity}
                           onChange={e => handleItemChange(index, 'quantity', e.target.value)}
                         />
                       </div>
                       <div className="col-span-6 sm:col-span-2">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Unit</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1"><T text="Unit" /></label>
                         <select 
-                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
+                          className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white cursor-pointer"
                           value={item.unit}
                           onChange={e => handleItemChange(index, 'unit', e.target.value)}
                         >
-                          <option value="servings">servings</option>
-                          <option value="kg">kg</option>
-                          <option value="plates">plates</option>
-                          <option value="Liters">Liters</option>
-                          <option value="Dozen">Dozen</option>
+                          <option value="servings" className="bg-white dark:bg-slate-800"><T text="servings" /></option>
+                          <option value="kg" className="bg-white dark:bg-slate-800">kg</option>
+                          <option value="plates" className="bg-white dark:bg-slate-800"><T text="plates" /></option>
+                          <option value="Liters" className="bg-white dark:bg-slate-800"><T text="Liters" /></option>
+                          <option value="Dozen" className="bg-white dark:bg-slate-800"><T text="Dozen" /></option>
                         </select>
                       </div>
                       <div className="col-span-6 sm:col-span-3">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1"/> Prep Time</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1 shrink-0"/><T text="Prep Time" /></label>
                         <input 
                           type="datetime-local" 
                           required
@@ -431,7 +437,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                         />
                       </div>
                       <div className="col-span-6 sm:col-span-3">
-                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1"/> Expiry (Auto-set)</label>
+                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 flex items-center"><Clock className="w-3 h-3 mr-1 shrink-0"/><T text="Expiry (Auto-set)" /></label>
                         <input 
                           type="datetime-local" 
                           required
@@ -451,18 +457,18 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
           <button 
             type="button" 
             onClick={addItem}
-            className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-green-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 py-3 rounded-xl font-bold flex items-center justify-center transition-colors"
+            className="w-full border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-green-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 py-3 rounded-xl font-bold flex items-center justify-center transition-colors cursor-pointer"
           >
-            <Plus className="w-5 h-5 mr-2" /> Add More Item
+            <Plus className="w-5 h-5 mr-2 shrink-0" /> <T text="Add More Item" />
           </button>
         </div>
 
         {/* Global Photo Upload Section */}
         <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-4">
           <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center">
-            <UploadCloud className="w-4 h-4 mr-1.5" /> Attach Photos
+            <UploadCloud className="w-4 h-4 mr-1.5 shrink-0" /> <T text="Attach Photos" />
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2 mb-3">Upload clear photos of the food to help organizations verify quality and quantity.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2 mb-3"><T text="Upload clear photos of the food to help organizations verify quality and quantity." /></p>
           
           <div className="flex flex-wrap gap-4 items-start">
             {photos.map((photo, idx) => (
@@ -482,7 +488,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
             
             <label className="w-24 h-24 shrink-0 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-500 flex flex-col items-center justify-center cursor-pointer hover:border-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors">
               <UploadCloud className="w-6 h-6 text-slate-400 mb-1" />
-              <span className="text-[10px] text-slate-500">Add Image</span>
+              <span className="text-[10px] text-slate-500"><T text="Add Image" /></span>
               <input 
                 type="file" 
                 accept="image/*" 
@@ -497,10 +503,10 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
         {/* Auto-Delete Option */}
         <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2 mt-6">
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center">
-            <Trash2 className="w-4 h-4 mr-1.5 text-red-500" /> Auto-Delete Listing
+            <Trash2 className="w-4 h-4 mr-1.5 text-red-500 shrink-0" /> <T text="Auto-Delete Listing" />
           </label>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Specify when this listing should be automatically removed from the system to prevent stale posts.</p>
-          <div className="flex gap-3 items-center pt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400"><T text="Specify when this listing should be automatically removed from the system to prevent stale posts." /></p>
+          <div className="flex flex-wrap gap-3 items-center pt-1">
             <input
               type="number"
               min="1"
@@ -512,10 +518,10 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
             <select
               value={autoDeleteUnit}
               onChange={e => setAutoDeleteUnit(e.target.value)}
-              className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold"
+              className="px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-green-500 outline-none bg-white dark:bg-slate-700 text-slate-900 dark:text-white font-semibold cursor-pointer"
             >
-              <option value="HOURS">Hours after posting</option>
-              <option value="DAYS">Days after posting</option>
+              <option value="HOURS" className="bg-white dark:bg-slate-800"><T text="Hours after posting" /></option>
+              <option value="DAYS" className="bg-white dark:bg-slate-800"><T text="Days after posting" /></option>
             </select>
           </div>
         </div>
@@ -523,9 +529,9 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
         <button 
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-green-600 text-white font-bold py-4 px-4 rounded-xl hover:bg-green-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-8 text-lg"
+          className="w-full bg-green-600 text-white font-bold py-4 px-4 rounded-xl hover:bg-green-700 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-8 text-lg cursor-pointer"
         >
-          {isSubmitting ? 'Processing...' : prefill?.isEdit ? 'Save Changes' : 'Post Surplus Food Listing'}
+          {isSubmitting ? <T text="Processing..." /> : prefill?.isEdit ? <T text="Save Changes" /> : <T text="Post Surplus Food Listing" />}
         </button>
       </form>
     </div>

@@ -13,12 +13,12 @@ import React from 'react';
  */
 const COLOR_MAP = {
   orange: {
-    soft: 'bg-[#E8873A]/15 text-[#E8873A] dark:bg-[#E8873A]/25 dark:text-[#FFAE70]',
-    solid: 'bg-[#E8873A] text-white shadow-md shadow-[#E8873A]/25'
+    soft: 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-400',
+    solid: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
   },
   green: {
-    soft: 'bg-[#2F7A4D]/15 text-[#2F7A4D] dark:bg-[#2F7A4D]/25 dark:text-[#86efac]',
-    solid: 'bg-[#2F7A4D] text-white shadow-md shadow-[#2F7A4D]/25'
+    soft: 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-400',
+    solid: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
   },
   amber: {
     soft: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',

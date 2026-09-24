@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Loader2, Search, Filter, Package, Activity, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
 import StatusBadge from './ui/StatusBadge';
 import HistoryDetailDrawer from './HistoryDetailDrawer';
+import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -22,6 +23,11 @@ const ActivityHistory = ({ token, user }) => {
 
   // Selected Record
   const [selectedRecord, setSelectedRecord] = useState(null);
+
+  // Placeholders
+  const searchPlaceholder = useTranslatedString('Search items...');
+  const minQtyPlaceholder = useTranslatedString('Min Qty');
+  const maxQtyPlaceholder = useTranslatedString('Max Qty');
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -116,8 +122,8 @@ const ActivityHistory = ({ token, user }) => {
     <div className="max-w-5xl mx-auto py-8 px-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div className="flex items-center space-x-3 mb-4 md:mb-0">
-          <Activity className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Donation & Fulfilment History</h1>
+          <Activity className="h-8 w-8 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white"><T text="Donation & Fulfilment History" /></h1>
         </div>
       </div>
 
@@ -140,7 +146,7 @@ const ActivityHistory = ({ token, user }) => {
               className="inline-flex items-center space-x-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Retry Loading History</span>
+              <span><T text="Retry Loading History" /></span>
             </button>
           </div>
         </div>
@@ -161,13 +167,13 @@ const ActivityHistory = ({ token, user }) => {
                 <button
                   key={tab.key}
                   onClick={() => setStatusTab(tab.key)}
-                  className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors cursor-pointer ${
+                  className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
                     statusTab === tab.key
                       ? 'bg-amber-500 text-white shadow-xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                   }`}
                 >
-                  {tab.label}
+                  <T text={tab.label} />
                 </button>
               ))}
             </div>
@@ -178,7 +184,7 @@ const ActivityHistory = ({ token, user }) => {
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input 
                   type="text"
-                  placeholder="Search items..."
+                  placeholder={searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
@@ -187,7 +193,7 @@ const ActivityHistory = ({ token, user }) => {
               <div className="flex items-center space-x-2">
                 <input 
                   type="number"
-                  placeholder="Min Qty"
+                  placeholder={minQtyPlaceholder}
                   value={minQty}
                   onChange={(e) => setMinQty(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
@@ -195,7 +201,7 @@ const ActivityHistory = ({ token, user }) => {
                 <span className="text-slate-400">-</span>
                 <input 
                   type="number"
-                  placeholder="Max Qty"
+                  placeholder={maxQtyPlaceholder}
                   value={maxQty}
                   onChange={(e) => setMaxQty(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
@@ -209,7 +215,7 @@ const ActivityHistory = ({ token, user }) => {
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
                 />
-                <span className="text-slate-400">to</span>
+                <span className="text-slate-400 text-xs font-semibold"><T text="to" /></span>
                 <input 
                   type="date"
                   value={endDate}
@@ -226,7 +232,7 @@ const ActivityHistory = ({ token, user }) => {
               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-12 text-center border border-slate-200 dark:border-slate-700">
                 <Package className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
                 <p className="text-slate-500 dark:text-slate-400 font-medium">
-                  {history.length === 0 ? 'No donation or fulfilment activity recorded yet.' : 'No records match your filters.'}
+                  {history.length === 0 ? <T text="No donation or fulfilment activity recorded yet." /> : <T text="No records match your filters." />}
                 </p>
               </div>
             ) : (

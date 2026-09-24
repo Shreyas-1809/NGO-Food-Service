@@ -5,6 +5,7 @@ import TrackingMapView from './TrackingMapView';
 import DonationCertificateModal from './DonationCertificateModal';
 import DirectContactButtons from './ui/DirectContactButtons';
 import { QRCodeSVG } from 'qrcode.react';
+import { T, useTranslatedString } from '../context/LanguageContext';
 import {
   CheckCircle2,
   Clock,

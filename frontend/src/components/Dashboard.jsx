@@ -16,7 +16,7 @@ import { T } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
+const Dashboard = ({ socket, user, token, autoOpenDonate = false, role }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [showPostForm, setShowPostForm] = useState(autoOpenDonate || location.pathname === '/donate' || Boolean(location.state?.prefill));

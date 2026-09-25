@@ -3,6 +3,7 @@ import axios from 'axios';
 import { HeartHandshake, Building2, UserCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
 import HeroIllustration from './illustrations/HeroIllustration';
+import { T } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -407,7 +408,7 @@ const AuthPage = ({ setToken, setUser }) => {
               onClick={() => { setIsLogin(false); setStep('TYPE_SELECTION'); resetForm(); }}
               className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${!isLogin ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
-              Sign Up
+              <T text='Sign Up'/>
             </button>
           </div>
 
@@ -651,7 +652,7 @@ const AuthPage = ({ setToken, setUser }) => {
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
               }`}
             >
-              {isSubmitting ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
+              {isSubmitting ? <T text="Processing..." /> : (isLogin ? <T text="Login" /> : <T text="Register" />)}
             </button>
           </form>
         )}

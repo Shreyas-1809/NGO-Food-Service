@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import axios from 'axios';
 import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
+import DonorDashboard from './pages/donor/Dashboard';
+import NGODashboard from './pages/ngo/Dashboard';
+import LogSurplus from './pages/donor/LogSurplus';
+import VolunteerSection from './pages/donor/VolunteerSection';
 import AuthPage from './components/AuthPage';
 import ActivityHistory from './components/ActivityHistory';
 
@@ -159,7 +163,7 @@ function App() {
                 ) : (
                   <>
                     {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
-                    <Route path="/" element={<Dashboard socket={socket} user={user} token={token} />} />
+                    <Route path="/" element={user?.role === 'DONOR' ? <DonorDashboard socket={socket} user={user} token={token} /> : <NGODashboard socket={socket} user={user} token={token} />} />
 
                     {/* User Activity Log */}
                     <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
@@ -172,6 +176,8 @@ function App() {
 
                     {/* Direct Donate Flow */}
                     <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
+<Route path="/donor/log-surplus" element={<LogSurplus socket={socket} user={user} token={token} />} />
+<Route path="/donor/volunteer" element={<VolunteerSection socket={socket} user={user} token={token} />} />
 
                     {/* Donation Dispatch Tracking */}
                     <Route path="/track/:id" element={<DonationTrackingPage />} />

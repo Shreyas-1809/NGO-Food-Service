@@ -1,21 +1,26 @@
 export const formatPickupTime = (pickupTime) => {
-  if (!pickupTime) return 'Not provided';
-  if (typeof pickupTime !== 'string') return String(pickupTime);
+  if (!pickupTime) return 'As scheduled';
+  if (typeof pickupTime === 'object') {
+    if (pickupTime.start) return formatPickupTime(pickupTime.start);
+    return 'As scheduled';
+  }
   
-  const trimmed = pickupTime.trim();
-  if (!trimmed) return 'Not provided';
+  const trimmed = String(pickupTime).trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed.toLowerCase() === 'invalid date') {
+    return 'As scheduled';
+  }
 
   // 1. Try parsing full date/datetime (ISO, datetime-local, timestamp)
   const d = new Date(trimmed);
   if (!isNaN(d.getTime()) && !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(trimmed)) {
-    return d.toLocaleString([], {
+    const res = d.toLocaleString([], {
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true
     });
+    if (res && res !== 'Invalid Date') return res;
   }
 
   // 2. Check if it's a bare time like "14:00" or "03:41" (legacy claims)
@@ -30,5 +35,5 @@ export const formatPickupTime = (pickupTime) => {
   }
 
   // 3. Return raw string if it's readable e.g. "Flexible"
-  return trimmed;
+  return trimmed !== 'Invalid Date' ? trimmed : 'As scheduled';
 };

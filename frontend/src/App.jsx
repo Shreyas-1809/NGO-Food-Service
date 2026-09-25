@@ -19,6 +19,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import VolunteerTaskPage from './components/VolunteerTaskPage';
 import ConfirmPickupPage from './components/ConfirmPickupPage';
 import ConfirmDeliveryPage from './components/ConfirmDeliveryPage';
+import DonationCertificatePage from './components/DonationCertificatePage';
 import { io } from 'socket.io-client';
 
 import { LanguageProvider } from './context/LanguageContext';
@@ -154,6 +155,7 @@ function App() {
                 <Route path="/pickup/:taskId" element={<VolunteerTaskPage />} />
                 <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
                 <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
+                <Route path="/certificate/:id" element={<DonationCertificatePage />} />
 
                 {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
                 {!user ? (

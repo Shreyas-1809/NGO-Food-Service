@@ -42,9 +42,8 @@ router.get('/task/:taskId', async (req, res) => {
       return res.status(404).json({ valid: false, message: 'Task or donation not found.' });
     }
 
-    // Verify token matches the food's recorded volunteer token
-    if (food.confirmationTokens?.volunteerToken !== token) {
-      return res.status(403).json({ valid: false, message: 'This volunteer task link has been superseded or is invalid.' });
+    if (verification.decoded?.taskId !== food._id.toString()) {
+      return res.status(403).json({ valid: false, message: 'This volunteer task link is invalid for this donation.' });
     }
 
     // Fetch accepted claim for NGO details
@@ -129,9 +128,8 @@ router.get('/pickup/:taskId', async (req, res) => {
       return res.status(404).json({ valid: false, message: 'Donation listing not found.' });
     }
 
-    // Token must match active token recorded on food
-    if (food.confirmationTokens?.pickupToken !== token) {
-      return res.status(400).json({ valid: false, message: 'This pickup link is no longer valid or has been refreshed.' });
+    if (verification.decoded?.taskId !== food._id.toString()) {
+      return res.status(400).json({ valid: false, message: 'This pickup link is invalid for this donation.' });
     }
 
     // Single-use & stage check: if already used or status past pickup
@@ -185,8 +183,8 @@ router.post('/pickup/:taskId', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Donation listing not found.' });
     }
 
-    if (food.confirmationTokens?.pickupToken !== token) {
-      return res.status(400).json({ success: false, message: 'This pickup link is no longer valid or has been refreshed.' });
+    if (verification.decoded?.taskId !== food._id.toString()) {
+      return res.status(400).json({ success: false, message: 'This pickup link is invalid for this donation.' });
     }
 
     if (food.confirmationTokens?.pickupUsedAt || ['IN_TRANSIT', 'COMPLETED'].includes(food.status)) {
@@ -198,6 +196,8 @@ router.post('/pickup/:taskId', async (req, res) => {
 
     // Mark food as IN_TRANSIT and invalidate the single-use pickup token
     food.status = 'IN_TRANSIT';
+    food.volunteerStatus = 'picked_up';
+    if (!food.confirmationTokens) food.confirmationTokens = {};
     food.confirmationTokens.pickupUsedAt = new Date();
     await food.save();
 
@@ -265,8 +265,8 @@ router.get('/delivery/:taskId', async (req, res) => {
       return res.status(404).json({ valid: false, message: 'Donation listing not found.' });
     }
 
-    if (food.confirmationTokens?.deliveryToken !== token) {
-      return res.status(400).json({ valid: false, message: 'This delivery link is no longer valid or has been refreshed.' });
+    if (verification.decoded?.taskId !== food._id.toString()) {
+      return res.status(400).json({ valid: false, message: 'This delivery link is invalid for this donation.' });
     }
 
     // Single-use & stage check: if already completed
@@ -323,8 +323,8 @@ router.post('/delivery/:taskId', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Donation listing not found.' });
     }
 
-    if (food.confirmationTokens?.deliveryToken !== token) {
-      return res.status(400).json({ success: false, message: 'This delivery link is no longer valid or has been refreshed.' });
+    if (verification.decoded?.taskId !== food._id.toString()) {
+      return res.status(400).json({ success: false, message: 'This delivery link is invalid for this donation.' });
     }
 
     if (food.confirmationTokens?.deliveryUsedAt || food.status === 'COMPLETED') {
@@ -336,6 +336,8 @@ router.post('/delivery/:taskId', async (req, res) => {
 
     // Mark food and claim as COMPLETED and invalidate the single-use delivery token
     food.status = 'COMPLETED';
+    food.volunteerStatus = 'delivered';
+    if (!food.confirmationTokens) food.confirmationTokens = {};
     food.confirmationTokens.deliveryUsedAt = new Date();
     await food.save();
 
@@ -358,11 +360,17 @@ router.post('/delivery/:taskId', async (req, res) => {
     const volName = food.volunteerAssignment?.name || 'Volunteer';
     if (food.donorId && emitToUser) {
       try {
+        const User = require('../models/User');
+        const ngoUser = acceptedClaim?.ngoId ? await User.findById(acceptedClaim.ngoId).select('orgName fullName') : null;
+        const ngoName = ngoUser?.orgName || ngoUser?.fullName || 'the recipient NGO';
+        const formattedDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const quantityStr = `${food.quantity || 1} ${food.items?.[0]?.unit || 'servings'}`;
+
         const donorNotif = new Notification({
           userId: food.donorId,
           type: 'STATUS_UPDATE',
-          title: 'Donation Delivered & Completed ✓',
-          message: `The recipient NGO has confirmed receiving "${food.title}" from ${volName}. Thank you for your generous impact!`,
+          title: 'Donation Delivered & Verified! 🎉',
+          message: `Your donation of "${food.title}" (${quantityStr}) was successfully delivered to ${ngoName} on ${formattedDate}. Click to view and download your Official Donation Certificate.`,
           relatedClaimId: acceptedClaim?._id,
           relatedFoodId: food._id,
           stage: 'Delivered ✓'
@@ -410,13 +418,13 @@ router.post('/volunteer-accept/:taskId', async (req, res) => {
       return res.status(403).json({ success: false, message: 'This volunteer link is no longer valid.' });
     }
 
-    if (food.volunteerStatus === 'accepted') {
-      return res.json({ success: true, alreadyAccepted: true, message: 'You have already accepted this task.', status: food.status });
+    if (food.volunteerStatus === 'accepted' || food.volunteerStatus === 'en_route') {
+      return res.json({ success: true, alreadyAccepted: true, message: 'You have already accepted this task.', status: food.status, volunteerStatus: food.volunteerStatus });
     }
 
-    // Mark volunteer as accepted — food status stays as-is (CLAIMED/ACCEPTED),
+    // Mark volunteer as en_route / accepted — food status stays as-is (CLAIMED/ACCEPTED),
     // pickup confirmed moves status to IN_TRANSIT via the donor link
-    food.volunteerStatus = 'accepted';
+    food.volunteerStatus = 'en_route';
     await food.save();
 
     // Notify NGO and Donor via socket
@@ -426,7 +434,7 @@ router.post('/volunteer-accept/:taskId', async (req, res) => {
     if (io) {
       io.emit('TASK_UPDATED', {
         taskId: food._id,
-        volunteerStatus: 'accepted',
+        volunteerStatus: 'en_route',
         volunteerName: food.volunteerAssignment?.name || food.volunteerAssignments?.[0]?.name || 'Volunteer'
       });
       io.emit('LISTING_UPDATED', food);
@@ -452,7 +460,7 @@ router.post('/volunteer-accept/:taskId', async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: 'You have accepted this pickup task. Head to the donor location!', volunteerStatus: 'accepted' });
+    res.json({ success: true, message: 'You have accepted this pickup task. Head to the donor location!', volunteerStatus: 'en_route' });
   } catch (err) {
     console.error('Error processing volunteer accept:', err);
     res.status(500).json({ success: false, message: 'Server error processing your acceptance.' });

@@ -8,8 +8,7 @@ import MyShortagesDrawer from './MyShortagesDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
 import OrgPostNeedModal from './OrgPostNeedModal';
 import ActivePickupsDrawer from './ActivePickupsDrawer';
-import { Plus, Package, Truck, Bell, Utensils, Scale, AlertCircle, FilePlus, Edit, HeartHandshake, Building2, ArrowRight } from 'lucide-react';
-import IconCircleBadge from './ui/IconCircleBadge';
+import { Plus, Package, Truck, Bell, Edit } from 'lucide-react';
 import { T } from '../context/LanguageContext';
 
 // donationService mock removed — notification count reads from real backend API
@@ -135,95 +134,8 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false, role }) => {
     <div className="flex flex-1 w-full relative overflow-hidden bg-slate-50 dark:bg-slate-900">
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto relative p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Top Spacing / Content Start */}
-          <div className="pt-1 mb-6">
-            {/* Quick Action Choices matching "choose an action" pattern */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                onClick={() => {
-                  if (isOrg) {
-                    setShowOrgNeedModal(true);
-                  } else {
-                    setShowPostForm(true);
-                  }
-                }}
-                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-emerald-500/55 transition-all cursor-pointer group overflow-hidden"
-              >
-                {/* Card Photo Banner */}
-                <div className="relative h-28 sm:h-32 overflow-hidden">
-                  <img
-                    src="/images/donate-surplus.jpg"
-                    alt="Surplus food donations ready for distribution"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
-                  <div className="absolute bottom-2.5 left-3">
-                    <IconCircleBadge
-                      icon={isOrg ? Plus : HeartHandshake}
-                      color="green"
-                      size="lg"
-                      variant="solid"
-                      className="shadow-md"
-                    />
-                  </div>
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      {isOrg ? <T text="Post Shortage / Need" /> : <T text="Donate Surplus Food" />}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {isOrg ? <T text="Broadcast ingredient or ration deficits" /> : <T text="Share untouched meal portions with verified shelters" />}
-                    </p>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                onClick={() => navigate('/ngos')}
-                className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-emerald-500/50 transition-all cursor-pointer group overflow-hidden"
-              >
-                {/* Card Photo Banner */}
-                <div className="relative h-28 sm:h-32 overflow-hidden">
-                  <img
-                    src="/images/find-ngos.jpg"
-                    alt="Community shelter kitchen volunteers sorting donations"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent" />
-                  <div className="absolute bottom-2.5 left-3">
-                    <IconCircleBadge
-                      icon={Building2}
-                      color="green"
-                      size="lg"
-                      variant="solid"
-                      className="shadow-md"
-                    />
-                  </div>
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                      <T text="Find Verified NGOs" />
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      <T text="Browse community kitchens, orphanages, and relief hubs" />
-                    </p>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
+      <main className="flex-1 overflow-y-auto relative p-6 sm:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
 
           {/* Post Food Modal Overlay (Donor) */}
           {showPostForm && (
@@ -266,11 +178,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false, role }) => {
         <MyPostingsDrawer isOpen={activeDrawer === 'POSTINGS'} user={user} token={token} onClose={closeDrawer} onEdit={handleEditPosting} />
         <MyShortagesDrawer isOpen={activeDrawer === 'SHORTAGES'} token={token} onClose={closeDrawer} />
         <NotificationsDrawer isOpen={activeDrawer === 'NOTIFICATIONS'} user={user} token={token} socket={socket} onClose={closeDrawer} onNotificationChange={fetchNotificationsCount} />
-        {activeDrawer === 'PICKUPS' && (
-          <div className="absolute top-0 right-20 w-96 h-full bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 z-[100] animate-in slide-in-from-right duration-300">
-            <ActivePickupsDrawer user={user} token={token} onClose={closeDrawer} />
-          </div>
-        )}
+        <ActivePickupsDrawer isOpen={activeDrawer === 'PICKUPS'} user={user} token={token} socket={socket} onClose={closeDrawer} />
       </>
 
       {/* Right-Hand Icon Navigation Bar */}

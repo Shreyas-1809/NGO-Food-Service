@@ -17,7 +17,8 @@ import {
   Send,
   Truck,
   CheckCheck,
-  AlertTriangle
+  AlertTriangle,
+  Award
 } from 'lucide-react';
 import { T, useTranslatedString } from '../context/LanguageContext';
 import Drawer from './ui/Drawer';
@@ -25,7 +26,9 @@ import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
 import Modal from './ui/Modal';
 import RejectDonationModal from './RejectDonationModal';
-import VolunteerAssignmentModal from './VolunteerAssignmentModal';
+import DonationCertificateModal from './DonationCertificateModal';
+import { formatPickupTime } from '../utils/formatters';
+
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -88,9 +91,8 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
   const [actionInProgress, setActionInProgress] = useState({}); // notifId -> boolean
   const [claimError, setClaimError] = useState(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [volModalOpen, setVolModalOpen] = useState(false);
-  const [volModalFoodId, setVolModalFoodId] = useState(null);
-  const [volModalInitialVolunteers, setVolModalInitialVolunteers] = useState([]);
+  const [certModalOpen, setCertModalOpen] = useState(false);
+  const [certFoodId, setCertFoodId] = useState(null);
 
   const isOrg = user?.accountType === 'ORGANISATION' ||
                 user?.accountType === 'ORGANIZATION' ||
@@ -205,6 +207,18 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
     markAsRead(notif);
     setClaimError(null);
 
+    // Task-progress notifications (accepted/in-transit/confirmed/delivered) deep-link
+    // directly into the Active Pickups workspace instead of the inline detail view.
+    const taskProgressTypes = ['CLAIM_ACCEPTED', 'NGO_CONFIRMED', 'PICKUP_CONFIRMED'];
+    if (taskProgressTypes.includes(notif.type)) {
+      onClose(); // close notifications drawer
+      // Small timeout lets the close animation finish before opening the pickups drawer
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('OPEN_DRAWER', { detail: 'PICKUPS' }));
+      }, 150);
+      return;
+    }
+
     if (notif.relatedClaimId) {
       setLoadingClaim(true);
       try {
@@ -219,7 +233,6 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
         setDeclineReason('');
       } catch (err) {
         console.error('Failed to load claim details:', err);
-        // If 404 or similar, the claim is gone
         if (err.response?.status === 404) {
           setClaimError('This request is no longer available (it may have been deleted or resolved).');
         } else {
@@ -599,8 +612,26 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                 </div>
               </div>
             ) : (
-              <div className="text-center p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-xs border border-emerald-200 dark:border-emerald-800">
-                Claim {selectedClaim.status} ✓
+              <div className="space-y-2">
+                <div className="text-center p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-xs border border-emerald-200 dark:border-emerald-800">
+                  Claim {selectedClaim.status} ✓
+                </div>
+                {(selectedClaim.status === 'COMPLETED' || selectedClaim.foodId?.volunteerStatus === 'delivered') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const fId = selectedClaim.foodId?._id || selectedClaim.foodId;
+                      if (fId) {
+                        setCertFoodId(fId);
+                        setCertModalOpen(true);
+                      }
+                    }}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <Award className="w-4 h-4" />
+                    <span>View Donation Certificate 📜</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -698,6 +729,26 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     </div>
                   )}
 
+                  {/* Delivery Certificate Button for Donor / Recipient */}
+                  {(note.type === 'PICKUP_CONFIRMED' || (note.title && note.title.toLowerCase().includes('delivered')) || (note.stage && note.stage.toLowerCase().includes('delivered'))) && (
+                    <div className="pt-1 border-t border-emerald-100 dark:border-emerald-900/40" onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const fId = note.foodId?._id || note.foodId || note.relatedClaimId?.foodId?._id || note.relatedClaimId?.foodId;
+                          if (fId) {
+                            setCertFoodId(fId);
+                            setCertModalOpen(true);
+                          }
+                        }}
+                        className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer text-xs transition-colors"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        <span>View Donation Certificate 📜</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Bottom Bar: Timestamp and subtle Read Indicator */}
                   <div className="flex justify-between items-center text-[10px] text-slate-400 pt-0.5">
                     <span className="flex items-center gap-1">
@@ -719,18 +770,10 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       </div>
       </div>
       
-      <VolunteerAssignmentModal
-        isOpen={volModalOpen}
-        onClose={() => setVolModalOpen(false)}
-        foodId={volModalFoodId}
-        initialVolunteers={volModalInitialVolunteers}
-        token={token}
-        onSuccess={() => {
-          fetchNotifications();
-          if (selectedClaim && selectedClaim.relatedClaimId) {
-            handleNotificationClick({ relatedClaimId: selectedClaim.relatedClaimId });
-          }
-        }}
+      <DonationCertificateModal
+        isOpen={certModalOpen}
+        onClose={() => setCertModalOpen(false)}
+        foodId={certFoodId}
       />
     </Drawer>
   );

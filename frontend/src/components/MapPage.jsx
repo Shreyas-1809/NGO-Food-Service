@@ -193,13 +193,17 @@ const MapPage = ({ user }) => {
 
     socket.on('VOLUNTEER_LOCATION', (payload) => {
       if (!payload?.taskId || !payload?.lat || !payload?.lng) return;
+      // Only track locations for in-transit tasks
+      const activeStatuses = ['IN_TRANSIT', 'en_route', 'picked_up'];
+      if (payload.status && !activeStatuses.includes(payload.status)) return;
       setVolunteerLocations(prev => ({
         ...prev,
         [payload.taskId]: {
           lat: payload.lat,
           lng: payload.lng,
           volunteerName: payload.volunteerName || 'Volunteer',
-          timestamp: payload.timestamp || Date.now()
+          timestamp: payload.timestamp || Date.now(),
+          status: payload.status || 'IN_TRANSIT'
         }
       }));
     });
@@ -531,8 +535,14 @@ const MapPage = ({ user }) => {
                 </Popup>
               </Marker>
             ))}
-            {/* Live Volunteer Location Markers */}
-            {showVolunteers && Object.entries(volunteerLocations).map(([taskId, loc]) => (
+            {/* Live Volunteer Location Markers — only shown when IN_TRANSIT and fresh (≤5 min) */}
+            {showVolunteers && Object.entries(volunteerLocations)
+              .filter(([, loc]) => {
+                const isActiveStatus = ['IN_TRANSIT', 'en_route', 'picked_up'].includes(loc.status);
+                const isFresh = Date.now() - (loc.timestamp || 0) <= 5 * 60 * 1000;
+                return isActiveStatus && isFresh;
+              })
+              .map(([taskId, loc]) => (
               <Marker
                 key={`volunteer-${taskId}`}
                 position={[loc.lat, loc.lng]}

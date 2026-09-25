@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Loader2, Search, Filter, Package, Activity, Calendar, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, Search, Filter, Package, Activity, Calendar, AlertCircle, RefreshCw, Award } from 'lucide-react';
 import StatusBadge from './ui/StatusBadge';
 import HistoryDetailDrawer from './HistoryDetailDrawer';
+import DonationCertificateModal from './DonationCertificateModal';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -13,8 +14,12 @@ const ActivityHistory = ({ token, user }) => {
   const [error, setError] = useState('');
   const [errorDetails, setErrorDetails] = useState('');
 
+  // Certificate modal
+  const [certModalOpen, setCertModalOpen] = useState(false);
+  const [certFoodId, setCertFoodId] = useState(null);
+
   // Filtering state
-  const [statusTab, setStatusTab] = useState('ALL'); // ALL, SENT, ACCEPTED, DECLINED, PENDING
+  const [statusTab, setStatusTab] = useState('ALL'); // ALL, SENT, ACCEPTED, COMPLETED, DECLINED, PENDING
   const [searchTerm, setSearchTerm] = useState('');
   const [minQty, setMinQty] = useState('');
   const [maxQty, setMaxQty] = useState('');
@@ -79,7 +84,9 @@ const ActivityHistory = ({ token, user }) => {
       if (statusTab === 'SENT') {
         if (item.direction !== 'SENT' && item.direction !== 'POSTED') return false;
       } else if (statusTab === 'ACCEPTED') {
-        if (item.overallStatus !== 'ACCEPTED' && item.overallStatus !== 'COMPLETED') return false;
+        if (item.overallStatus !== 'ACCEPTED') return false;
+      } else if (statusTab === 'COMPLETED') {
+        if (item.overallStatus !== 'COMPLETED') return false;
       } else if (statusTab === 'DECLINED') {
         if (item.overallStatus !== 'CANCELLED') return false;
       } else if (statusTab === 'PENDING') {
@@ -161,6 +168,7 @@ const ActivityHistory = ({ token, user }) => {
                 { key: 'ALL', label: 'All' },
                 { key: 'SENT', label: 'Requests Sent' },
                 { key: 'ACCEPTED', label: 'Accepted' },
+                { key: 'COMPLETED', label: 'Completed ✓' },
                 { key: 'PENDING', label: 'Unchecked / Pending' },
                 { key: 'DECLINED', label: 'Declined' }
               ].map(tab => (
@@ -253,8 +261,22 @@ const ActivityHistory = ({ token, user }) => {
                       <span className="font-medium">{item.quantity} {item.unit}</span> • {item.otherPartyName}
                     </p>
                   </div>
-                  <div>
+                  <div className="flex flex-col items-end gap-2">
                     <StatusBadge status={item.overallStatus} />
+                    {item.overallStatus === 'COMPLETED' && (item.foodId || item.rawFood?._id) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCertFoodId(item.foodId || item.rawFood?._id);
+                          setCertModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                      >
+                        <Award className="w-3.5 h-3.5" />
+                        Certificate 📜
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -267,6 +289,11 @@ const ActivityHistory = ({ token, user }) => {
         isOpen={!!selectedRecord}
         onClose={() => setSelectedRecord(null)}
         record={selectedRecord}
+      />
+      <DonationCertificateModal
+        isOpen={certModalOpen}
+        onClose={() => setCertModalOpen(false)}
+        foodId={certFoodId}
       />
     </div>
   );

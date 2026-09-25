@@ -67,8 +67,8 @@ const VolunteerTaskPage = () => {
       setError(null);
       const res = await axios.get(`${API_URL}/api/confirm/task/${taskId}?token=${token}`);
       setData(res.data);
-      // If already accepted, reflect that in UI immediately
-      if (res.data.task?.volunteerStatus === 'accepted') {
+      // If already accepted or en route, reflect that in UI immediately
+      if (['accepted', 'en_route'].includes(res.data.task?.volunteerStatus)) {
         setActionDone('accepted');
       } else if (res.data.task?.volunteerStatus === 'declined') {
         setActionDone('declined');
@@ -106,7 +106,7 @@ const VolunteerTaskPage = () => {
             }
           };
         });
-        if (payload.volunteerStatus === 'accepted') setActionDone('accepted');
+        if (['accepted', 'en_route'].includes(payload.volunteerStatus)) setActionDone('accepted');
         if (payload.volunteerStatus === 'declined') setActionDone('declined');
       }
     });
@@ -281,11 +281,11 @@ const VolunteerTaskPage = () => {
               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
               : volunteerStatus === 'declined'
               ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800'
-              : volunteerStatus === 'accepted'
+              : ['accepted', 'en_route'].includes(volunteerStatus)
               ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
               : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800'
           }`}>
-            {isDelivered ? 'Delivered ✓' : isPickedUp ? 'In Transit 🚚' : volunteerStatus === 'declined' ? 'Declined ✗' : volunteerStatus === 'accepted' ? 'Accepted ✓' : 'Awaiting Response'}
+            {isDelivered ? 'Delivered ✓' : isPickedUp ? 'In Transit 🚚' : volunteerStatus === 'declined' ? 'Declined ✗' : ['accepted', 'en_route'].includes(volunteerStatus) ? 'En Route 🚚' : 'Awaiting Response'}
           </span>
         </div>
 

@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
-import { Package, Download, User as UserIcon, Building2, MapPin, X, FileText } from 'lucide-react';
+import { Package, Download, User as UserIcon, Building2, MapPin, X, FileText, Award } from 'lucide-react';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
 import DirectContactButtons from './ui/DirectContactButtons';
+import DonationCertificateModal from './DonationCertificateModal';
 
 const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
+  const [certModalOpen, setCertModalOpen] = useState(false);
   if (!record) return null;
 
   const handleDownloadSinglePDF = () => {
@@ -160,7 +162,17 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
           </div>
         )}
 
-        <div className="mt-auto pt-6 pb-2">
+        <div className="mt-auto pt-6 pb-2 space-y-2">
+          {record.overallStatus === 'COMPLETED' && (
+            <Button 
+              variant="primary" 
+              className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-bold"
+              icon={Award}
+              onClick={() => setCertModalOpen(true)}
+            >
+              View Donation Certificate 📜
+            </Button>
+          )}
           <Button 
             variant="secondary" 
             className="w-full justify-center border-slate-300"
@@ -171,6 +183,12 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
           </Button>
         </div>
       </div>
+
+      <DonationCertificateModal
+        isOpen={certModalOpen}
+        onClose={() => setCertModalOpen(false)}
+        foodId={record.foodId || record.rawFood?._id}
+      />
     </Drawer>
   );
 };

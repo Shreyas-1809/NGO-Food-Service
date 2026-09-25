@@ -52,7 +52,7 @@ const FoodSchema = new mongoose.Schema({
   receiptNote: { type: String },
   volunteerStatus: {
     type: String,
-    enum: ['pending', 'accepted', 'declined'],
+    enum: ['pending', 'assigned', 'accepted', 'en_route', 'picked_up', 'delivered', 'declined'],
     default: 'pending'
   },
   volunteerDeclineReason: { type: String },

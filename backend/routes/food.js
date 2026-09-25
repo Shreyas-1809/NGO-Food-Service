@@ -169,11 +169,92 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/food/active-pickups
+// @desc    Get active claimed pickups for the user (auto-archives COMPLETED/delivered)
+// @access  Private
+router.get('/active-pickups', auth, async (req, res) => {
+  try {
+    const activeStatuses = ['CLAIMED', 'ACCEPTED', 'IN_TRANSIT'];
+    let query = { 
+      status: { $in: activeStatuses },
+      volunteerStatus: { $ne: 'delivered' }
+    };
+    if (req.user.accountType === 'DONOR') {
+      query.donorId = req.user.id;
+    } else {
+      const Claim = require('../models/Claim');
+      const acceptedClaims = await Claim.find({
+        ngoId: req.user.id,
+        status: { $in: ['ACCEPTED', 'IN_TRANSIT'] }
+      }).select('foodId');
+      const foodIds = acceptedClaims.map(c => c.foodId).filter(Boolean);
+      query.$or = [
+        { claimantId: req.user.id },
+        { _id: { $in: foodIds } }
+      ];
+    }
+    const foods = await Food.find(query)
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
+      .populate('claimantId', 'orgName fullName phone email address city')
+      .sort({ updatedAt: -1 });
+    res.json(foods);
+  } catch (err) {
+    console.error('Error in /api/food/active-pickups:', err);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET /api/food/:id/certificate
+// @desc    Get official donation certificate data for completed task
+// @access  Public / Private
+router.get('/:id/certificate', async (req, res) => {
+  try {
+    if (!req.params.id.match(/^[a-f\d]{24}$/i)) {
+      return res.status(404).json({ message: 'Invalid donation ID' });
+    }
+    const food = await Food.findById(req.params.id)
+      .populate('donorId', 'orgName fullName address city email')
+      .populate('claimantId', 'orgName fullName address city');
+    if (!food) return res.status(404).json({ message: 'Donation not found' });
+
+    const Claim = require('../models/Claim');
+    const claim = await Claim.findOne({ foodId: food._id, status: { $in: ['ACCEPTED', 'COMPLETED'] } })
+      .populate('ngoId', 'orgName fullName address city');
+
+    const donorName = food.donorId?.orgName || food.donorId?.fullName || 'Food Donor';
+    const ngoName = claim?.ngoId?.orgName || claim?.ngoId?.fullName || food.claimantId?.orgName || food.claimantId?.fullName || 'Verified NGO Hub';
+    const deliveryDate = food.confirmationTokens?.deliveryUsedAt || food.updatedAt || new Date();
+
+    const certData = {
+      certificateNumber: `FB-${food._id.toString().slice(-6).toUpperCase()}-${new Date(deliveryDate).getFullYear()}`,
+      foodId: food._id,
+      donorName,
+      ngoName,
+      itemTitle: food.title,
+      quantity: `${food.quantity || 1} ${food.items?.[0]?.unit || 'servings'}`,
+      foodType: food.foodType || 'Prepared Meals',
+      donorLocation: food.address || food.pickupLocation || food.donorId?.city || 'Pune',
+      deliveredDate: new Date(deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+      verificationCode: food.verificationCode || 'VERIFIED-HANDOVER',
+      thankYouMessage: 'In recognition of your compassionate contribution to reduce food waste and support families in need.'
+    };
+
+    res.json(certData);
+  } catch (err) {
+    console.error('Error fetching certificate:', err);
+    res.status(500).json({ message: 'Server error generating certificate' });
+  }
+});
+
 // @route   GET /api/food/:id
 // @desc    Get single food listing by ID
 // @access  Private
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', auth, async (req, res, next) => {
   try {
+    // Guard: skip if id is not a valid ObjectId
+    if (!req.params.id.match(/^[a-f\d]{24}$/i)) {
+      return next();
+    }
     const food = await Food.findById(req.params.id)
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
       .populate('claimantId', 'orgName fullName phone email address city');
@@ -539,28 +620,6 @@ router.patch('/verify-pickup/:id', auth, async (req, res) => {
   }
 });
 
-// @route   GET /api/food/active-pickups
-// @desc    Get active claimed pickups for the user
-// @access  Private
-router.get('/active-pickups', auth, async (req, res) => {
-  try {
-    let query = { status: { $in: ['CLAIMED', 'ACCEPTED', 'COMPLETED'] } };
-    if (req.user.accountType === 'DONOR') {
-      query.donorId = req.user.id;
-    } else {
-      query.claimantId = req.user.id;
-    }
-    const foods = await Food.find(query)
-      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
-      .populate('claimantId', 'orgName fullName phone email address city')
-      .sort({ updatedAt: -1 });
-    res.json(foods);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Server Error');
-  }
-});
-
 // @route   PATCH /api/food/:id/cancel
 // @desc    Cancel a food listing (Donor only)
 // @access  Private
@@ -721,6 +780,8 @@ router.patch('/:id/assign-volunteer', auth, async (req, res) => {
         phone: list[0].phone,
         arrivalTime: list[0].vehicleNumber
       };
+      food.volunteerStatus = 'assigned';
+      food.volunteerDeclineReason = null;
     }
 
     // Generate signed single-use confirmation tokens for Donor, NGO, and Volunteer

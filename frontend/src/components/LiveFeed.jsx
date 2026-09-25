@@ -18,9 +18,7 @@ import {
   Building2,
   Mail,
   UserCheck,
-  QrCode,
-  ShieldCheck,
-  AlertTriangle
+  ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
@@ -28,7 +26,7 @@ import EmptyStateNoRequests from './illustrations/EmptyStateNoRequests';
 import EmptyStateNoShortages from './illustrations/EmptyStateNoShortages';
 import DeliverySuccessIllustration from './illustrations/DeliverySuccessIllustration';
 import RejectDonationModal from './RejectDonationModal';
-import VolunteerAssignmentModal from './VolunteerAssignmentModal';
+
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 import DirectContactButtons from './ui/DirectContactButtons';
 // donationService mock calls removed — all data now comes from real API endpoints
@@ -86,11 +84,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [listingToReject, setListingToReject] = useState(null);
 
-  // Donor claim status filter & Volunteer assignment modal state
+  // Donor claim status filter
   const [donorClaimStatusFilter, setDonorClaimStatusFilter] = useState('ALL');
-  const [volModalOpen, setVolModalOpen] = useState(false);
-  const [volModalFoodId, setVolModalFoodId] = useState(null);
-  const [volModalInitialVolunteers, setVolModalInitialVolunteers] = useState([]);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const [deliveryModalFood, setDeliveryModalFood] = useState(null);
 
@@ -614,7 +609,15 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     return `"${msg}"`;
                   })();
 
-                  const vols = claim.foodId?.volunteerAssignments || (claim.foodId?.volunteerAssignment?.name ? [claim.foodId.volunteerAssignment] : []);
+                  const vol = claim.foodId?.volunteerAssignment || claim.foodId?.volunteerAssignments?.[0] || null;
+                  const volStatusLabel = (() => {
+                    const vs = claim.foodId?.volunteerStatus;
+                    if (vs === 'accepted') return `🚚 ${vol?.name || 'Volunteer'} — En Route`;
+                    if (vs === 'declined') return `⚠️ Volunteer declined — Reassign in Active Pickups`;
+                    if (vs === 'pending') return `⏳ ${vol?.name || 'Volunteer'} — Awaiting Response`;
+                    if (vol?.name) return `👤 ${vol.name} — Assigned`;
+                    return 'No volunteer assigned yet';
+                  })();
 
                   return (
                     <div key={claim._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
@@ -692,131 +695,37 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
                       ) : claim.status === 'ACCEPTED' ? (
                         <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
-                          <div className="flex justify-between items-center">
+                          <div className="flex items-center justify-between gap-2">
                             <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">✓ <T text="Accepted Request" /></span>
                             <button
-                              onClick={() => {
-                                const fId = claim.foodId?._id || claim.foodId;
-                                setVolModalFoodId(fId);
-                                setVolModalInitialVolunteers(vols);
-                                setVolModalOpen(true);
-                              }}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                              onClick={() => window.dispatchEvent(new CustomEvent('OPEN_DRAWER', { detail: 'PICKUPS' }))}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center gap-1"
                             >
-                              {vols.length > 0 ? <T text="Edit Volunteers" /> : <T text="Arrange Pickup" />}
+                              <Truck className="w-3 h-3" />
+                              <T text="View in Active Pickups" />
                             </button>
                           </div>
-                          {vols.length > 0 ? (
-                            <div className="space-y-2 text-xs bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                              {vols.map((v, idx) => (
-                                <div key={idx} className="flex flex-wrap items-center justify-between gap-1.5 py-1 border-b border-slate-200/50 dark:border-slate-700/50 last:border-none">
-                                  <div>
-                                    <strong className="text-slate-900 dark:text-white">Volunteer #{idx + 1}:</strong> {v.name}
-                                    {v.vehicleNumber ? ` (${v.vehicleNumber})` : ''}
-                                    {v.phone && <span className="text-slate-500 dark:text-slate-400 block text-[11px]">{v.phone}</span>}
-                                  </div>
-                                  <DirectContactButtons
-                                    phone={v.phone}
-                                    name={v.name}
-                                    waMessage={`Hello ${v.name}, contacting you regarding pickup for "${claim.foodId?.title || 'Food Donation'}".`}
-                                    size="xs"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-slate-500 italic bg-slate-50 dark:bg-slate-900/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700 text-center">
-                              <T text="Volunteer not yet assigned" />
+
+                          {/* Compact Volunteer Status Line */}
+                          <div className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 ${
+                            claim.foodId?.volunteerStatus === 'accepted'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                              : claim.foodId?.volunteerStatus === 'declined'
+                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
+                              : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                          }`}>
+                            {volStatusLabel}
+                          </div>
+
+                          {/* Delivery Complete Badge */}
+                          {(claim.foodId?.status === 'COMPLETED' || claim.foodId?.status === 'delivered') && (
+                            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                                <T text="Food Delivered & Verified" /> ✓
+                              </p>
                             </div>
                           )}
-
-                          {/* Volunteer Status Indicator / Decline Alert */}
-                          {claim.foodId?.volunteerStatus === 'declined' ? (
-                            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                  <T text="Volunteer Declined Task" />
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const fId = claim.foodId?._id || claim.foodId;
-                                    setVolModalFoodId(fId);
-                                    setVolModalInitialVolunteers(vols);
-                                    setVolModalOpen(true);
-                                  }}
-                                  className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
-                                >
-                                  <T text="Reassign Volunteer" />
-                                </button>
-                              </div>
-                              {claim.foodId?.volunteerDeclineReason && (
-                                <p className="text-[11px] text-rose-600 dark:text-rose-300 italic">
-                                  Reason: "{claim.foodId.volunteerDeclineReason}"
-                                </p>
-                              )}
-                            </div>
-                          ) : claim.foodId?.volunteerStatus === 'accepted' ? (
-                            <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span><T text="Volunteer Accepted & En Route" /></span>
-                            </div>
-                          ) : vols.length > 0 && claim.foodId?.volunteerStatus === 'pending' ? (
-                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
-                              <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              <span><T text="Awaiting Volunteer Response" /></span>
-                            </div>
-                          ) : null}
-
-                          {/* Live Status indicator & Confirm Delivery Link */}
-                          {(claim.foodId?.status === 'IN_TRANSIT' || claim.foodId?.status === 'picked_up') ? (
-                            <div className="rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden">
-                              {/* Delivery photo banner */}
-                              <div className="relative h-20 overflow-hidden">
-                                <img
-                                  src="/images/food-delivery.jpg"
-                                  alt="Volunteer delivering food"
-                                  className="w-full h-full object-cover"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-amber-900/60 via-amber-800/20 to-transparent" />
-                                <span className="absolute bottom-2 left-3 text-xs font-bold text-white flex items-center gap-1.5 drop-shadow-sm">
-                                  <Truck className="w-3.5 h-3.5" /> <T text="Food En Route" />
-                                </span>
-                              </div>
-                              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 space-y-1.5">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-[10px] text-amber-700 dark:text-amber-300/80">
-                                    Donor confirmed food handover. Share or open the delivery confirmation link once the volunteer reaches the drop-off.
-                                  </p>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setDeliveryModalFood(claim.foodId);
-                                      setDeliveryModalOpen(true);
-                                    }}
-                                    className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition-colors flex items-center gap-1 shadow-xs shrink-0 ml-2"
-                                  >
-                                    <QrCode className="w-3 h-3" />
-                                    <span>Delivery Link</span>
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (claim.foodId?.status === 'COMPLETED' || claim.foodId?.status === 'delivered') ? (
-                            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-3">
-                              <DeliverySuccessIllustration size="sm" className="shrink-0" />
-                              <div>
-                                <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                  <T text="Food Delivered & Verified" /> ✓
-                                </p>
-                                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                  <T text="This donation was successfully delivered and receipt confirmed." />
-                                </p>
-                              </div>
-                            </div>
-                          ) : null}
                         </div>
                       ) : (
                         <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
@@ -1724,17 +1633,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         onSubmit={handleDeclineClaim}
       />
 
-      {/* Volunteer Assignment Modal */}
-      <VolunteerAssignmentModal
-        isOpen={volModalOpen}
-        onClose={() => setVolModalOpen(false)}
-        foodId={volModalFoodId}
-        initialVolunteers={volModalInitialVolunteers}
-        token={token}
-        onSuccess={() => {
-          if (fetchDonorClaims) fetchDonorClaims();
-        }}
-      />
+
 
       {/* NGO Delivery Confirmation Link & QR Modal */}
       <DeliveryConfirmationModal

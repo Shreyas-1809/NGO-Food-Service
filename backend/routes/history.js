@@ -66,6 +66,7 @@ router.get('/', auth, async (req, res) => {
           rejectionReason: claim.declineReason || food.rejectionReason,
           createdAt: claim.createdAt,
           pickupDetails: food.pickupAddress || 'Not specified',
+          foodId: food._id,
           rawClaim: claim,
           rawFood: food
         });
@@ -126,6 +127,7 @@ router.get('/', auth, async (req, res) => {
               rejectionReason: claim.declineReason || food.rejectionReason,
               createdAt: claim.createdAt,
               pickupDetails: food.pickupAddress || 'Not specified',
+              foodId: food._id,
               rawClaim: claim,
               rawFood: food
             });
@@ -148,6 +150,7 @@ router.get('/', auth, async (req, res) => {
             rejectionReason: food.rejectionReason,
             createdAt: food.createdAt,
             pickupDetails: food.pickupAddress || 'Not specified',
+            foodId: food._id,
             rawFood: food
           });
         }

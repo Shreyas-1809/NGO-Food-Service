@@ -80,6 +80,18 @@ router.patch('/:id/accept', auth, async (req, res) => {
     food.status = 'ACCEPTED';
     food.claimantId = claim.ngoId;
     food.verificationCode = code;
+
+    const { generateTokensForFood } = require('../utils/confirmationTokens');
+    if (!food.confirmationTokens || !food.confirmationTokens.pickupToken) {
+      const tokens = generateTokensForFood(food._id);
+      food.confirmationTokens = {
+        pickupToken: tokens.pickupToken,
+        pickupUsedAt: null,
+        deliveryToken: tokens.deliveryToken,
+        deliveryUsedAt: null,
+        volunteerToken: tokens.volunteerToken
+      };
+    }
     await food.save();
 
     // Update the original CLAIM_REQUEST notification for the donor:

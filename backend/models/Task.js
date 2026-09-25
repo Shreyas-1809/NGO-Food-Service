@@ -29,7 +29,7 @@ const TaskSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['assigned', 'en_route', 'declined', 'picked_up', 'delivered'],
+    enum: ['pending', 'assigned', 'accepted', 'en_route', 'picked_up', 'delivered', 'declined'],
     default: 'assigned',
     index: true
   },

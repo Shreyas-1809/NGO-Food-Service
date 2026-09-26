@@ -6,6 +6,6 @@ import Dashboard from '../../components/Dashboard';
  * The generic Dashboard receives a `role` prop to decide which sections
  * to render (shortages, active pickups, etc.).
  */
-export default function NGODashboard({ socket, user, token }) {
-  return <Dashboard socket={socket} user={user} token={token} role="ngo" />;
+export default function NGODashboard({ socket, user, token, onLogout, isDarkMode, toggleTheme }) {
+  return <Dashboard socket={socket} user={user} token={token} role="ngo" onLogout={onLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
 }

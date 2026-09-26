@@ -1,21 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { HeartHandshake, Building2, UserCircle2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { 
+  Heart, 
+  Building2, 
+  UserCircle2, 
+  ArrowLeft, 
+  Eye, 
+  EyeOff, 
+  Mail, 
+  Lock, 
+  Leaf, 
+  Users, 
+  Check, 
+  ArrowRight, 
+  Globe, 
+  Sun, 
+  Moon 
+} from 'lucide-react';
 import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
 import HeroIllustration from './illustrations/HeroIllustration';
-import { T } from '../context/LanguageContext';
+import { T, useLanguage } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const InputField = ({ label, type, value, onChange, onBlur, error, required, placeholder, prefix, maxLength, suffix }) => (
+const InputField = ({ label, type, value, onChange, onBlur, error, required, placeholder, prefix, maxLength, suffix, icon: Icon }) => (
   <div className="mb-4 relative">
-    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-      {label} {required && <span className="text-red-500">*</span>}
+    <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+      {label} {required && <span className="text-emerald-500">*</span>}
     </label>
     <div className="relative flex items-center">
+      {Icon && (
+        <div className="absolute left-3.5 flex items-center pointer-events-none text-slate-400">
+          <Icon className="w-4 h-4" />
+        </div>
+      )}
       {prefix && (
-        <div className="absolute left-0 pl-3 flex items-center pointer-events-none">
-          <span className="text-slate-500 dark:text-slate-400 sm:text-sm">{prefix}</span>
+        <div className="absolute left-3.5 flex items-center pointer-events-none">
+          <span className="text-slate-500 dark:text-slate-400 text-xs font-bold">{prefix}</span>
         </div>
       )}
       <input
@@ -27,19 +48,22 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
         placeholder={placeholder}
         maxLength={maxLength}
         autoComplete={type === 'password' ? 'new-password' : 'off'}
-        className={`w-full ${prefix ? 'pl-10' : 'px-4'} py-2 border ${error ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500'} rounded-[10px] focus:ring-2 outline-none text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors text-sm`}
+        className={`w-full ${Icon || prefix ? 'pl-10' : 'px-4'} py-2.5 border ${
+          error ? 'border-rose-500 focus:ring-rose-500' : 'border-slate-200 dark:border-slate-700 focus:ring-emerald-500'
+        } rounded-xl focus:ring-2 outline-none text-slate-900 dark:text-slate-100 bg-[#f8faf7] dark:bg-slate-800/90 placeholder-slate-400 transition-all text-xs font-medium`}
       />
       {suffix && (
-        <div className="absolute right-0 pr-3 flex items-center cursor-pointer">
+        <div className="absolute right-3.5 flex items-center cursor-pointer">
           {suffix}
         </div>
       )}
     </div>
-    {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+    {error && <p className="mt-1 text-[11px] font-bold text-rose-500">{error}</p>}
   </div>
 );
 
 const AuthPage = ({ setToken, setUser }) => {
+  const { currentLanguage, setLanguage, languages } = useLanguage();
   const [step, setStep] = useState('FORM'); // TYPE_SELECTION, FORM
   const [isLogin, setIsLogin] = useState(true);
   const [accountType, setAccountType] = useState('DONOR'); // DONOR, ORGANISATION
@@ -94,12 +118,6 @@ const AuthPage = ({ setToken, setUser }) => {
     setGlobalError('');
   };
 
-  const handleEntrySelection = (isLoginSelection) => {
-    setIsLogin(isLoginSelection);
-    resetForm();
-    setStep('TYPE_SELECTION');
-  };
-
   const handleTypeSelection = (type) => {
     setAccountType(type);
     resetForm();
@@ -109,7 +127,6 @@ const AuthPage = ({ setToken, setUser }) => {
   const handleBack = () => {
     resetForm();
     if (step === 'FORM') setStep('TYPE_SELECTION');
-    else if (step === 'TYPE_SELECTION') setStep('ENTRY');
   };
 
   const validateField = (field, value) => {
@@ -172,7 +189,6 @@ const AuthPage = ({ setToken, setUser }) => {
   };
 
   const handleChange = (field, value) => {
-    // Only allow digits for phone/pincode
     if (['phone', 'shopPhone', 'pincode', 'shopPincode'].includes(field)) {
       value = value.replace(/\D/g, '');
     }
@@ -193,11 +209,9 @@ const AuthPage = ({ setToken, setUser }) => {
     formDataRef.current = newFormData;
     setFormData(newFormData);
 
-    // Real-time validation
     const errorMsg = validateField(field, value);
     setErrors(prev => ({ ...prev, [field]: errorMsg }));
 
-    // Pincode lookup API
     if (field === 'pincode' && value.length === 6) {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = setTimeout(() => {
@@ -244,7 +258,7 @@ const AuthPage = ({ setToken, setUser }) => {
           checkField('shopPincode', formData.businessDetails.shopPincode);
           checkField('shopEmail', formData.businessDetails.shopEmail);
         }
-      } else { // ORGANISATION
+      } else {
         checkField('orgName', formData.orgName);
         checkField('pincode', formData.pincode);
         checkField('address', formData.address);
@@ -291,11 +305,6 @@ const AuthPage = ({ setToken, setUser }) => {
         delete payload.address;
         if (!payload.businessName) {
           delete payload.businessDetails;
-        } else {
-          // If shop name is present, make sure we format it correctly for the backend
-          // We map 'shopPhone', etc back if needed, but our backend model expects shopAddress, shopPincode, shopEmail.
-          // Wait, backend User schema doesn't have shopPhone? It has shopAddress, shopPincode, shopEmail.
-          // The prompt says "5a. Shop Phone Number", so let's send it anyway. It might just not be saved or we can update the schema later.
         }
       }
     }
@@ -336,12 +345,9 @@ const AuthPage = ({ setToken, setUser }) => {
 
   const isFormSubmitEnabled = () => {
     const relevantFields = getRelevantFields();
-    
-    // Check if any relevant field has an explicit error
     const hasExplicitErrors = relevantFields.some(field => errors[field] && errors[field] !== '');
     if (hasExplicitErrors) return false;
     
-    // Check if any relevant field is empty
     const hasMissingFields = relevantFields.some(field => {
       const val = field.startsWith('shop') ? formData.businessDetails[field] : formData[field];
       return !val || (typeof val === 'string' && val.trim() === '');
@@ -354,312 +360,350 @@ const AuthPage = ({ setToken, setUser }) => {
   const submitDisabled = !isFormSubmitEnabled();
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 sm:p-6 lg:p-12 relative overflow-hidden transition-colors">
-      <div className="w-full max-w-5xl flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-14 z-10">
-        
-        {/* Left Side: Brand Pitch & Hero Illustration (Desktop) */}
-        <div className="hidden lg:flex flex-col items-start max-w-md space-y-4 animate-in fade-in slide-in-from-left-4 duration-500">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2F7A4D]/10 dark:bg-[#2F7A4D]/25 text-[#2F7A4D] dark:text-[#86efac] text-xs font-bold tracking-wide">
-            <span>🌱 Community Food Sharing Network</span>
+    <div className="min-h-screen w-full bg-[#f3faf6] dark:bg-[#061412] text-slate-900 dark:text-slate-100 flex flex-col justify-between relative overflow-hidden transition-colors duration-300">
+      
+      {/* TOP NAVBAR (Matching Reference Screenshots) */}
+      <header className="w-full px-6 lg:px-12 py-5 flex items-center justify-between z-20">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-xs border border-emerald-200/50 dark:border-emerald-800/40">
+            <Heart className="w-5 h-5 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-stone-900 dark:text-stone-100 tracking-tight leading-snug">
-            Connecting surplus meals with local shelters
+          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            FoodBridge
+          </span>
+        </div>
+
+        {/* Right Controls */}
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/80 dark:bg-slate-800/80 border border-emerald-200/60 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs">
+            <Globe className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <select
+              value={currentLanguage}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer pr-1"
+              aria-label="Select Language"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.code} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                  {lang.nativeName} ({lang.code.toUpperCase()})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTENT SPLIT GRID */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-12 py-8 flex items-center justify-between gap-10 z-10">
+        
+        {/* Left Side: Hero Pitch & Illustration */}
+        <div className="hidden lg:flex flex-col items-start max-w-xl space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
+          
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-300/60 dark:border-emerald-600/40 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold tracking-wide">
+            <Leaf className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-600 dark:fill-emerald-400" />
+            <span>Community Food Sharing Network</span>
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+            Connecting surplus meals <br />
+            <span className="text-emerald-600 dark:text-emerald-400">with local shelters</span>
           </h1>
-          <p className="text-sm text-stone-600 dark:text-stone-400 leading-relaxed">
+
+          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-md">
             Join our verified ecosystem of caring restaurants, bakeries, caterers, and active NGOs making zero food waste a daily reality.
           </p>
-          <div className="pt-2 w-full flex justify-start">
+
+          {/* 3 Feature Badges */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-800/50 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
+                <Leaf className="w-3.5 h-3.5" />
+              </div>
+              <span>Reduce Food Waste</span>
+            </div>
+
+            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-800/50 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
+                <Users className="w-3.5 h-3.5" />
+              </div>
+              <span>Support Local Communities</span>
+            </div>
+
+            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-800/50 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200">
+              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
+                <Heart className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
+              </div>
+              <span>Make a Bigger Impact</span>
+            </div>
+          </div>
+
+          {/* Handwritten Slogan Accent */}
+          <div className="pt-2 flex items-center space-x-3 text-emerald-700 dark:text-emerald-400 font-extrabold text-sm italic tracking-wide">
+            <span>Good Food</span>
+            <Check className="w-4 h-4 text-emerald-600 font-black" />
+            <span>Happy People</span>
+            <Check className="w-4 h-4 text-emerald-600 font-black" />
+            <span>Greener Planet</span>
+          </div>
+
+          <div className="w-full pt-2">
             <HeroIllustration className="w-full max-w-[420px] h-auto drop-shadow-sm" />
+          </div>
+
+        </div>
+
+        {/* Right Side: Auth Card (Matching Reference Screenshots EXACTLY) */}
+        <div className="w-full max-w-md mx-auto lg:mx-0">
+          
+          <div className="bg-white/95 dark:bg-[#0c2521]/90 p-8 sm:p-9 rounded-[32px] border border-emerald-200/80 dark:border-emerald-500/40 shadow-xl shadow-emerald-900/10 dark:shadow-[0_0_45px_rgba(16,185,129,0.18)] backdrop-blur-md relative space-y-5">
+            
+            {step === 'FORM' && !isLogin && (
+              <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-2 flex items-center transition-colors text-xs font-bold cursor-pointer">
+                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+              </button>
+            )}
+
+            {/* Emblem Header */}
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs border border-emerald-300/40">
+                <Heart className="w-6 h-6 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                {isLogin ? 'Welcome Back' : 'Create Account'}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {isLogin ? 'Login to continue.' : 'Join our verified network today.'}
+              </p>
+            </div>
+
+            {/* Tab Switcher */}
+            <div className="flex bg-[#f3faf6] dark:bg-slate-800/80 p-1 rounded-2xl border border-emerald-100 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => { setIsLogin(true); setStep('FORM'); resetForm(); }}
+                className={`flex-1 py-2.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  isLogin
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsLogin(false); setStep('TYPE_SELECTION'); resetForm(); }}
+                className={`flex-1 py-2.5 text-xs font-extrabold rounded-xl transition-all cursor-pointer ${
+                  !isLogin
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            {globalError && (
+              <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 p-3 rounded-xl text-xs font-bold text-center border border-rose-200 dark:border-rose-800">
+                {globalError}
+              </div>
+            )}
+
+            {step === 'TYPE_SELECTION' && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
+                <button
+                  onClick={() => handleTypeSelection('DONOR')}
+                  className="w-full flex items-center justify-center p-4 border-2 border-emerald-100 dark:border-slate-700 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mr-3 shrink-0">
+                    <UserCircle2 className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100 block text-xs">Personal Donor</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Individuals, catering, or local restaurants</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleTypeSelection('ORGANISATION')}
+                  className="w-full flex items-center justify-center p-4 border-2 border-emerald-100 dark:border-slate-700 rounded-2xl hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all group cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center mr-3 shrink-0">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100 block text-xs">NGO / Organisation</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Verified community charities & shelters</span>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {step === 'FORM' && (
+              <form onSubmit={handleSubmit} className="space-y-3 animate-in fade-in duration-300">
+                
+                {isLogin ? (
+                  <>
+                    <InputField 
+                      label="Email ID" type="email" required icon={Mail}
+                      placeholder="e.g. ngo@example.com"
+                      value={formData.email}
+                      onChange={e => handleChange('email', e.target.value)}
+                      onBlur={() => handleBlur('email')}
+                      error={errors.email}
+                    />
+                    <InputField 
+                      label="Password" type={showPassword ? 'text' : 'password'} required icon={Lock}
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={e => handleChange('password', e.target.value)}
+                      onBlur={() => handleBlur('password')}
+                      error={errors.password}
+                      suffix={
+                        <span onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600">
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </span>
+                      }
+                    />
+                  </>
+                ) : accountType === 'DONOR' ? (
+                  <>
+                    <InputField 
+                      label="Full Name" type="text" required
+                      placeholder="e.g. Rahul Sharma"
+                      value={formData.fullName}
+                      onChange={e => handleChange('fullName', e.target.value)}
+                      onBlur={() => handleBlur('fullName')}
+                      error={errors.fullName}
+                    />
+                    <InputField 
+                      label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                      placeholder="9876543210"
+                      value={formData.phone}
+                      onChange={e => handleChange('phone', e.target.value)}
+                      onBlur={() => handleBlur('phone')}
+                      error={errors.phone}
+                    />
+                    <InputField 
+                      label="Email ID" type="email" required icon={Mail}
+                      placeholder="e.g. rahul@example.com"
+                      value={formData.email}
+                      onChange={e => handleChange('email', e.target.value)}
+                      onBlur={() => handleBlur('email')}
+                      error={errors.email}
+                    />
+                    <InputField 
+                      label="Profile Password" type={showPassword ? 'text' : 'password'} required icon={Lock}
+                      placeholder="Create a strong password"
+                      value={formData.password}
+                      onChange={e => handleChange('password', e.target.value)}
+                      onBlur={() => handleBlur('password')}
+                      error={errors.password}
+                      suffix={
+                        <span onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600">
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </span>
+                      }
+                    />
+                  </>
+                ) : (
+                  <>
+                    <InputField 
+                      label="Organisation Name" type="text" required
+                      placeholder="e.g. Robin Hood Army"
+                      value={formData.orgName}
+                      onChange={e => handleChange('orgName', e.target.value)}
+                      onBlur={() => handleBlur('orgName')}
+                      error={errors.orgName}
+                    />
+                    <InputField 
+                      label="Pincode" type="text" required maxLength={6}
+                      placeholder="e.g. 411001"
+                      value={formData.pincode}
+                      onChange={e => handleChange('pincode', e.target.value)}
+                      onBlur={() => handleBlur('pincode')}
+                      error={errors.pincode}
+                    />
+                    <InputField 
+                      label="Email" type="email" required icon={Mail}
+                      placeholder="e.g. contact@ngo.org"
+                      value={formData.email}
+                      onChange={e => handleChange('email', e.target.value)}
+                      onBlur={() => handleBlur('email')}
+                      error={errors.email}
+                    />
+                    <InputField 
+                      label="Phone Number" type="text" required prefix="+91" maxLength={10}
+                      placeholder="9876543210"
+                      value={formData.phone}
+                      onChange={e => handleChange('phone', e.target.value)}
+                      onBlur={() => handleBlur('phone')}
+                      error={errors.phone}
+                    />
+                    <InputField 
+                      label="Password" type={showPassword ? 'text' : 'password'} required icon={Lock}
+                      placeholder="Create a strong password"
+                      value={formData.password}
+                      onChange={e => handleChange('password', e.target.value)}
+                      onBlur={() => handleBlur('password')}
+                      error={errors.password}
+                      suffix={
+                        <span onClick={() => setShowPassword(!showPassword)} className="text-slate-400 hover:text-slate-600">
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </span>
+                      }
+                    />
+                  </>
+                )}
+
+                <button 
+                  type="submit"
+                  disabled={submitDisabled || isSubmitting}
+                  className={`w-full font-extrabold py-3 rounded-2xl transition-all shadow-md flex items-center justify-center space-x-2 mt-4 cursor-pointer ${
+                    submitDisabled || isSubmitting
+                      ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-emerald-500/25'
+                  }`}
+                >
+                  <span>{isSubmitting ? <T text="Processing..." /> : (isLogin ? <T text="Login" /> : <T text="Register" />)}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            )}
+
+            {/* Social Dividers & Decorative Handwritten Slogan */}
+            <div className="pt-2 text-center space-y-3">
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
+                <span className="bg-white dark:bg-[#0c2521] px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute">or</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button type="button" className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center space-x-1.5 hover:bg-slate-50 cursor-pointer">
+                  <span>Google</span>
+                </button>
+                <button type="button" className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center space-x-1.5 hover:bg-slate-50 cursor-pointer">
+                  <span>Apple</span>
+                </button>
+              </div>
+
+              <div className="pt-2 text-[12px] font-extrabold text-emerald-600 dark:text-emerald-400 italic flex items-center justify-center space-x-1">
+                <span>Together we feed hope</span>
+                <Heart className="w-3.5 h-3.5 fill-emerald-500 text-emerald-500 inline" />
+              </div>
+            </div>
+
           </div>
         </div>
 
-        {/* Right Side: Auth Card */}
-        <div className="w-full max-w-md bg-white dark:bg-slate-900 p-7 sm:p-8 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-200 dark:border-slate-800 transition-all duration-300">
-          
-          {step === 'FORM' && !isLogin && (
-            <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-4 flex items-center transition-colors text-xs font-bold cursor-pointer">
-              <ArrowLeft className="w-4 h-4 mr-1" /> Back
-            </button>
-          )}
+      </main>
 
-          <div className="text-center mb-5">
-            <div className="w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-              <HeartHandshake className="h-6 w-6" />
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
-              {isLogin ? 'Welcome Back' : 'Create Account'}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
-              {isLogin ? 'Login to continue.' : 'Join our network today.'}
-            </p>
-          </div>
+      {/* FOOTER */}
+      <footer className="w-full py-4 text-center text-xs font-semibold text-slate-400 dark:text-slate-500 border-t border-emerald-100/60 dark:border-emerald-950/40">
+        FoodBridge © {new Date().getFullYear()} — Surplus Food Rescue Network
+      </footer>
 
-          {/* Tab Switcher: Direct Login vs Register */}
-          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl mb-5">
-            <button
-              type="button"
-              onClick={() => { setIsLogin(true); setStep('FORM'); resetForm(); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${isLogin ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => { setIsLogin(false); setStep('TYPE_SELECTION'); resetForm(); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${!isLogin ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-            >
-              <T text='Sign Up'/>
-            </button>
-          </div>
-
-          {globalError && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-[10px] mb-4 text-xs font-semibold text-center border border-red-200 dark:border-red-800">
-              {globalError}
-            </div>
-          )}
-
-          {step === 'TYPE_SELECTION' && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-300">
-              <button
-                onClick={() => handleTypeSelection('DONOR')}
-                className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-emerald-500 hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 transition-all group cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mr-3 shrink-0">
-                  <UserCircle2 className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <span className="font-bold text-slate-800 dark:text-slate-100 block">Personal Donor</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Individuals, catering, or local restaurants</span>
-                </div>
-              </button>
-              <button
-                onClick={() => handleTypeSelection('ORGANISATION')}
-                className="w-full flex items-center justify-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-emerald-600 hover:bg-emerald-600/10 dark:hover:bg-emerald-600/15 transition-all group cursor-pointer"
-              >
-                <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 flex items-center justify-center mr-3 shrink-0">
-                  <Building2 className="w-5 h-5" />
-                </div>
-                <div className="text-left">
-                  <span className="font-bold text-slate-800 dark:text-slate-100 block">NGO / Organisation</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">Verified community charities & shelters</span>
-                </div>
-              </button>
-            </div>
-          )}
-
-        {step === 'FORM' && (
-          <form onSubmit={handleSubmit} className="space-y-1 animate-in fade-in slide-in-from-right-4 duration-300">
-            
-            {isLogin ? (
-              <>
-                <InputField 
-                  label="Email ID" type="email" required
-                  placeholder="e.g. ngo@example.com"
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  error={errors.email}
-                />
-                <InputField 
-                  label="Password" type={showPassword ? 'text' : 'password'} required
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  error={errors.password}
-                  suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </span>
-                  }
-                />
-              </>
-            ) : accountType === 'DONOR' ? (
-              <>
-                {/* FLOW 3A: DONOR FORM */}
-                <InputField 
-                  label="Full Name" type="text" required
-                  placeholder="e.g. Rahul Sharma"
-                  value={formData.fullName}
-                  onChange={e => handleChange('fullName', e.target.value)}
-                  onBlur={() => handleBlur('fullName')}
-                  error={errors.fullName}
-                />
-                <InputField 
-                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
-                  placeholder="9876543210"
-                  value={formData.phone}
-                  onChange={e => handleChange('phone', e.target.value)}
-                  onBlur={() => handleBlur('phone')}
-                  error={errors.phone}
-                />
-                <InputField 
-                  label="Email ID" type="email" required
-                  placeholder="e.g. rahul@example.com"
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  error={errors.email}
-                />
-                <InputField 
-                  label="Profile Password" type={showPassword ? 'text' : 'password'} required
-                  placeholder="Create a strong password"
-                  value={formData.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  error={errors.password}
-                  suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </span>
-                  }
-                />
-                
-                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                  <InputField 
-                    label="Shop Name (Optional)" type="text"
-                    placeholder="e.g. Sharma Sweets"
-                    value={formData.businessName}
-                    onChange={e => handleChange('businessName', e.target.value)}
-                  />
-                  
-                  {formData.businessName.trim() !== '' && (
-                    <div className="pl-4 border-l-2 border-green-500 space-y-2 mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <InputField 
-                        label="Shop Phone Number" type="text" required prefix="+91" maxLength={10}
-                        placeholder="9876543210"
-                        value={formData.businessDetails.shopPhone}
-                        onChange={e => handleChange('shopPhone', e.target.value)}
-                        onBlur={() => handleBlur('shopPhone')}
-                        error={errors.shopPhone}
-                      />
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                          Shop Address <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          required
-                          placeholder="e.g. 123 Main Street"
-                          value={formData.businessDetails.shopAddress}
-                          onChange={e => handleChange('shopAddress', e.target.value)}
-                          onBlur={() => handleBlur('shopAddress')}
-                          className={`w-full px-4 py-2 border ${errors.shopAddress ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
-                          rows={2}
-                        />
-                        {errors.shopAddress && <p className="mt-1 text-sm text-red-500">{errors.shopAddress}</p>}
-                      </div>
-                      <InputField 
-                        label="Shop Pincode" type="text" required maxLength={6}
-                        placeholder="e.g. 411001"
-                        value={formData.businessDetails.shopPincode}
-                        onChange={e => handleChange('shopPincode', e.target.value)}
-                        onBlur={() => handleBlur('shopPincode')}
-                        error={errors.shopPincode}
-                      />
-                      <InputField 
-                        label="Shop Email Address" type="email" required
-                        placeholder="e.g. shop@example.com"
-                        value={formData.businessDetails.shopEmail}
-                        onChange={e => handleChange('shopEmail', e.target.value)}
-                        onBlur={() => handleBlur('shopEmail')}
-                        error={errors.shopEmail}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <>
-                {/* FLOW 3B: NGO / ORGANISATION FORM */}
-                <InputField 
-                  label="Organisation Name" type="text" required
-                  placeholder="e.g. Robin Hood Army"
-                  value={formData.orgName}
-                  onChange={e => handleChange('orgName', e.target.value)}
-                  onBlur={() => handleBlur('orgName')}
-                  error={errors.orgName}
-                />
-                <InputField 
-                  label="Pincode" type="text" required maxLength={6}
-                  placeholder="e.g. 411001"
-                  value={formData.pincode}
-                  onChange={e => handleChange('pincode', e.target.value)}
-                  onBlur={() => handleBlur('pincode')}
-                  error={errors.pincode}
-                />
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Address <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    required
-                    placeholder="e.g. 123 Relief Camp, Main Street"
-                    value={formData.address}
-                    onChange={e => handleChange('address', e.target.value)}
-                    onBlur={() => handleBlur('address')}
-                    className={`w-full px-4 py-2 border ${errors.address ? 'border-red-500 focus:ring-red-500' : 'border-slate-300 dark:border-slate-700 focus:ring-green-500'} rounded-lg focus:ring-2 outline-none text-slate-900 dark:text-white bg-white dark:bg-slate-800 placeholder-slate-400 dark:placeholder-slate-500 transition-colors`}
-                    rows={2}
-                  />
-                  {errors.address && <p className="mt-1 text-sm text-red-500">{errors.address}</p>}
-                </div>
-                <InputField 
-                  label="Email" type="email" required
-                  placeholder="e.g. contact@ngo.org"
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  onBlur={() => handleBlur('email')}
-                  error={errors.email}
-                />
-                <InputField 
-                  label="City" type="text" required
-                  placeholder="e.g. Pune"
-                  value={formData.city}
-                  onChange={e => handleChange('city', e.target.value)}
-                  onBlur={() => handleBlur('city')}
-                  error={errors.city}
-                  suffix={isLoadingCity && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>}
-                />
-                <InputField 
-                  label="Phone Number" type="text" required prefix="+91" maxLength={10}
-                  placeholder="9876543210"
-                  value={formData.phone}
-                  onChange={e => handleChange('phone', e.target.value)}
-                  onBlur={() => handleBlur('phone')}
-                  error={errors.phone}
-                />
-                <InputField 
-                  label="Password" type={showPassword ? 'text' : 'password'} required
-                  placeholder="Create a strong password"
-                  value={formData.password}
-                  onChange={e => handleChange('password', e.target.value)}
-                  onBlur={() => handleBlur('password')}
-                  error={errors.password}
-                  suffix={
-                    <span onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-700">
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </span>
-                  }
-                />
-              </>
-            )}
-
-            <button 
-              type="submit"
-              disabled={submitDisabled || isSubmitting}
-              className={`w-full font-bold py-3 rounded-[10px] transition-colors shadow-sm mt-4 cursor-pointer ${
-                submitDisabled || isSubmitting
-                  ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 cursor-not-allowed' 
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
-              }`}
-            >
-              {isSubmitting ? <T text="Processing..." /> : (isLogin ? <T text="Login" /> : <T text="Register" />)}
-            </button>
-          </form>
-        )}
-      </div>
     </div>
-  </div>
   );
 };
 
 export default AuthPage;
+

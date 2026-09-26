@@ -140,14 +140,16 @@ function App() {
       <LanguageProvider>
         <Router>
           <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-            <Navbar 
-              user={user} 
-              token={token}
-              onLogout={handleLogout} 
-              isDarkMode={isDarkMode} 
-              toggleTheme={toggleTheme} 
-              onUserUpdated={(updatedUser) => setUser(updatedUser)}
-            />
+            {!user && (
+              <Navbar 
+                user={user} 
+                token={token}
+                onLogout={handleLogout} 
+                isDarkMode={isDarkMode} 
+                toggleTheme={toggleTheme} 
+                onUserUpdated={(updatedUser) => setUser(updatedUser)}
+              />
+            )}
 
             <main className="flex-1 flex w-full relative">
               <Routes>
@@ -165,7 +167,14 @@ function App() {
                 ) : (
                   <>
                     {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
-                    <Route path="/" element={user?.role === 'DONOR' ? <DonorDashboard socket={socket} user={user} token={token} /> : <NGODashboard socket={socket} user={user} token={token} />} />
+                    <Route 
+                      path="/" 
+                      element={
+                        user?.role === 'DONOR' 
+                          ? <DonorDashboard socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /> 
+                          : <NGODashboard socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+                      } 
+                    />
 
                     {/* User Activity Log */}
                     <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
@@ -177,7 +186,7 @@ function App() {
                     <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
 
                     {/* Direct Donate Flow */}
-                    <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} />} />
+                    <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
 <Route path="/donor/log-surplus" element={<LogSurplus socket={socket} user={user} token={token} />} />
 <Route path="/donor/volunteer" element={<VolunteerSection socket={socket} user={user} token={token} />} />
 

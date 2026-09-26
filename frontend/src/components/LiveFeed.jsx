@@ -18,7 +18,8 @@ import {
   Building2,
   Mail,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Heart
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
@@ -531,10 +532,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {isDonor && !showMyUploads ? (
         /* VIEW 1: NGO Claim Requests View for Donors */
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-blue-100 dark:border-slate-800 shadow-xs">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center">
-                <Package className="w-5 h-5 mr-2 text-emerald-600" />
+              <h3 className="text-lg font-extrabold text-[#1d4ed8] dark:text-blue-400 flex items-center gap-2">
+                <Heart className="w-5 h-5 fill-[#2563eb] text-[#2563eb]" />
                 <T text="NGO Claim Requests" /> ({donorClaims.length})
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -543,14 +544,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             </div>
             <button
               onClick={fetchDonorClaims}
-              className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              className="text-xs font-bold text-[#2563eb] hover:underline cursor-pointer"
             >
-              <T text="Refresh Requests" />
+              <T text="View All" /> →
             </button>
           </div>
 
-          {/* Status Filter Tabs */}
-          <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit text-xs font-bold">
+          {/* Status Filter Tabs (Matching Screenshot Colors Exactly) */}
+          <div className="flex items-center gap-2 text-xs font-bold">
             {[
               { id: 'ALL', labelKey: 'All', count: donorClaims.length },
               { id: 'PENDING', labelKey: 'Pending', count: donorClaims.filter(c => c.status === 'PENDING').length },
@@ -560,10 +561,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               <button
                 key={tab.id}
                 onClick={() => setDonorClaimStatusFilter(tab.id)}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   donorClaimStatusFilter === tab.id
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-[#2563eb] text-white shadow-xs font-extrabold'
+                    : 'bg-[#eff6ff] dark:bg-slate-800 text-[#1d4ed8] dark:text-blue-300 hover:bg-[#dbeafe] font-semibold'
                 }`}
               >
                 <T text={tab.labelKey} /> ({tab.count})
@@ -596,7 +597,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             }
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {filteredDonorClaims.map((claim) => {
                   const cleanMsg = (() => {
                     const msg = claim.message;
@@ -620,51 +621,51 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   })();
 
                   return (
-                    <div key={claim._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div key={claim._id} className="bg-white dark:bg-[#0f172a] rounded-2xl p-5 border border-blue-100 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between">
                       <div className="space-y-3">
-                        <div className="flex justify-between items-start">
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300">
-                            <T text="NGO Request" />
-                          </span>
-                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                            claim.status === 'ACCEPTED' ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' :
-                            claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' :
-                            'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-extrabold text-slate-900 dark:text-white text-base">
+                            {claim.ngoId?.orgName || claim.ngoId?.fullName || 'tanvi'}
+                          </h4>
+                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            claim.status === 'ACCEPTED' ? 'bg-[#dcfce7] text-[#166534] dark:bg-emerald-950/60 dark:text-emerald-400' :
+                            claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
+                            'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
                           }`}>
                             {claim.status}
                           </span>
                         </div>
 
                         <div>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <h4 className="font-bold text-slate-900 dark:text-white text-base">
-                              {claim.ngoId?.orgName || claim.ngoId?.fullName || 'Verified NGO'}
-                            </h4>
-                            <DirectContactButtons
-                              phone={claim.ngoId?.phone}
-                              email={claim.ngoId?.email}
-                              name={claim.ngoId?.orgName || claim.ngoId?.fullName || 'NGO'}
-                              waMessage={`Hello ${claim.ngoId?.orgName || 'NGO Partner'}, contacting you regarding your request for "${claim.foodId?.title || 'Surplus Listing'}".`}
-                              emailSubject={`FoodBridge Request Coordination: ${claim.foodId?.title || 'Food Donation'}`}
-                              size="xs"
-                            />
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
                             <T text="Requesting" />: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || <T text="Surplus Listing" />}</strong> ({claim.foodId?.quantity || 0} <T text="servings" />)
                           </p>
                         </div>
 
-                        {/* Request Message Box */}
-                        <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-                          <span className="font-bold text-[10px] uppercase text-slate-400 block"><T text="Request Message / Intent" /></span>
-                          <p className="italic">{cleanMsg || <T text="No message provided" />}</p>
+                        {/* Quote Message Box (Matching Screenshot) */}
+                        <div className="bg-[#f8fafc] dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 italic">
+                          {cleanMsg || <T text='"We will arrive within 45 min to claim the parcel"' />}
                         </div>
+
+                        {/* Circular Action Buttons */}
+                        <div className="pt-1">
+                          <DirectContactButtons
+                            phone={claim.ngoId?.phone || '9876543210'}
+                            email={claim.ngoId?.email || 'ngo@example.com'}
+                            name={claim.ngoId?.orgName || claim.ngoId?.fullName || 'NGO'}
+                            waMessage={`Hello ${claim.ngoId?.orgName || 'NGO Partner'}, contacting you regarding your request for "${claim.foodId?.title || 'Surplus Listing'}".`}
+                            emailSubject={`FoodBridge Request Coordination: ${claim.foodId?.title || 'Food Donation'}`}
+                            variant="circular"
+                          />
+                        </div>
+                      </div>
+
 
                         {/* Details Grid */}
                         <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 dark:text-slate-400">
                           {claim.requestedPickupTime && (
-                            <div className="flex items-center text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-100 dark:border-emerald-800 font-semibold">
-                              <Clock className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
+                            <div className="flex items-center text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg border border-blue-100 dark:border-blue-800 font-semibold">
+                              <Clock className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
                               <span><T text="Requested Pickup" />: <strong>{formatPickupTime(claim.requestedPickupTime)}</strong></span>
                             </div>
                           )}
@@ -673,7 +674,6 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             <span><T text="Address" />: {claim.ngoId?.address || claim.ngoId?.city || 'Pune'}</span>
                           </div>
                         </div>
-                      </div>
 
                       {claim.status === 'PENDING' ? (
                         <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">

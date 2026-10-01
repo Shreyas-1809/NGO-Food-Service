@@ -19,7 +19,8 @@ import {
   Mail,
   UserCheck,
   ShieldCheck,
-  Heart
+  Heart,
+  HandHeart
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
@@ -49,6 +50,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [claimStatus, setClaimStatus] = useState('IDLE'); // 'IDLE', 'FORM', 'SUCCESS'
   const [claimMessage, setClaimMessage] = useState('');
   const [tick, setTick] = useState(0);
+
+  const searchDishesPlaceholder = useTranslatedString("Search dishes or items...");
+  const tCatVeg = useTranslatedString('category.veg');
+  const tCatNonVeg = useTranslatedString('category.non_veg');
+  const tCatRaw = useTranslatedString('category.raw_produce');
+  const tCatBaked = useTranslatedString('category.baked_goods');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -502,15 +509,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
       {/* NGO View Mode Toggle */}
       {isOrg && (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white"><T text="Organisation Demand Hub" /></h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {!showMyShortages ? <T text="Default View: Active surplus food listings available for claiming." /> : <T text="Toggled View: Managing your organisation shortage requests." />}
+            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <HandHeart className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <T text="hubTitle" fallback="Food Rescue Hub" />
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
+              <T text="hubSubtitle" fallback="Browse surplus food from nearby donors and claim it before it expires." />
             </p>
           </div>
-          <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyShortages ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${!showMyShortages ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
               <T text="Surplus Feed" />
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -520,10 +530,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 onChange={e => setShowMyShortages(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-amber-500"></div>
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-emerald-600"></div>
             </label>
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
-              <T text="Show My Shortages/Needs" />
+            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+              <T text="Show My Shortages" />
             </span>
           </div>
         </div>
@@ -1119,13 +1129,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-wrap w-full lg:w-auto">
               {/* Search */}
               <div className="relative w-full sm:w-60">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Search dishes or items..."
+                  placeholder={searchDishesPlaceholder || "Search dishes or items..."}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs"
@@ -1133,14 +1143,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               </div>
 
               {/* Category Pills */}
-              <div className="flex flex-wrap gap-1.5 justify-start">
-                {['ALL', 'VEG', 'NON-VEG', 'RAW PRODUCE', 'BAKED GOODS'].map(f => (
+              <div className="flex flex-wrap gap-3 justify-start">
+                {[
+                  { val: 'ALL', key: 'category.all' },
+                  { val: 'VEG', key: 'category.veg' },
+                  { val: 'NON-VEG', key: 'category.non_veg' },
+                  { val: 'RAW PRODUCE', key: 'category.raw_produce' },
+                  { val: 'BAKED GOODS', key: 'category.baked_goods' }
+                ].map(f => (
                   <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+                    key={f.val}
+                    onClick={() => setFilter(f.val)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f.val ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
                   >
-                    {f}
+                    <T text={f.key} />
                   </button>
                 ))}
               </div>
@@ -1151,9 +1167,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 onChange={e => setSortBy(e.target.value)}
                 className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
               >
-                <option>Expiring Soonest</option>
-                <option>Recently Added</option>
-                <option>Nearest Location</option>
+                <option value="Expiring Soonest"><T text="Expiring Soonest" /></option>
+                <option value="Recently Added"><T text="Recently Added" /></option>
+                <option value="Nearest Location"><T text="Distance: Nearest First" fallback="Nearest Location" /></option>
               </select>
             </div>
           </div>
@@ -1189,13 +1205,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="text-base font-bold text-slate-800 dark:text-white line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" title={title}>{title}</h3>
                       {listing.foodType === 'VEG' ? (
-                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title="Vegetarian"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-green-500 shrink-0 mt-1" title={tCatVeg || "Vegetarian"}></span>
                       ) : listing.foodType === 'NON-VEG' ? (
-                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title="Non-Vegetarian"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 mt-1" title={tCatNonVeg || "Non-Vegetarian"}></span>
                       ) : listing.foodType === 'RAW PRODUCE' ? (
-                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title="Raw Produce"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shrink-0 mt-1" title={tCatRaw || "Raw Produce"}></span>
                       ) : (
-                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title="Baked Goods"></span>
+                        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title={tCatBaked || "Baked Goods"}></span>
                       )}
                     </div>
 

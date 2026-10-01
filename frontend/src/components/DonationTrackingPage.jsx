@@ -197,7 +197,7 @@ const DonationTrackingPage = () => {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 animate-in fade-in duration-200">
+    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200">
       
       {/* Top Navigation Bar */}
       <div className="flex flex-wrap justify-between items-center gap-3">

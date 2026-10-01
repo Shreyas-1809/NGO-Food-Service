@@ -87,9 +87,9 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     // Auto-suggest expiry
     const now = new Date();
     let hoursToAdd = 4; // Default for Cooked Meal
-    if (value === 'Raw Produce') hoursToAdd = 48; // 2 days
-    else if (value === 'Baked Goods') hoursToAdd = 24; // 1 day
-    else if (value === 'Packaged') hoursToAdd = 720; // 30 days
+    if (value === 'raw_produce') hoursToAdd = 48; // 2 days
+    else if (value === 'baked_goods') hoursToAdd = 24; // 1 day
+    else if (value === 'packaged') hoursToAdd = 720; // 30 days
     
     newItems[index].expiryTime = new Date(now.getTime() + hoursToAdd * 60 * 60 * 1000).toISOString().slice(0, 16);
     setItems(newItems);
@@ -380,8 +380,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                           value={item.foodType}
                           onChange={e => handleItemChange(index, 'foodType', e.target.value)}
                         >
-                          <option value="VEG" className="bg-white dark:bg-slate-800"><T text="Veg" /></option>
-                          <option value="NON-VEG" className="bg-white dark:bg-slate-800"><T text="Non-Veg" /></option>
+                          <option value="veg" className="bg-white dark:bg-slate-800"><T text="category.veg" /></option>
+                          <option value="non_veg" className="bg-white dark:bg-slate-800"><T text="category.non_veg" /></option>
                         </select>
                       </div>
                       <div className="col-span-6 sm:col-span-3">
@@ -391,10 +391,10 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
                           value={item.category}
                           onChange={e => handleCategoryChange(index, e.target.value)}
                         >
-                          <option value="Cooked Meal" className="bg-white dark:bg-slate-800"><T text="Cooked Meal" /></option>
-                          <option value="Raw Produce" className="bg-white dark:bg-slate-800"><T text="Raw Produce" /></option>
-                          <option value="Baked Goods" className="bg-white dark:bg-slate-800"><T text="Baked Goods" /></option>
-                          <option value="Packaged" className="bg-white dark:bg-slate-800"><T text="Packaged" /></option>
+                          <option value="cooked_meal" className="bg-white dark:bg-slate-800"><T text="category.cooked_meal" /></option>
+                          <option value="raw_produce" className="bg-white dark:bg-slate-800"><T text="category.raw_produce" /></option>
+                          <option value="baked_goods" className="bg-white dark:bg-slate-800"><T text="category.baked_goods" /></option>
+                          <option value="packaged" className="bg-white dark:bg-slate-800"><T text="category.packaged" /></option>
                         </select>
                       </div>
                     </div>

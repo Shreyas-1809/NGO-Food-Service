@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Heart, 
@@ -9,16 +9,18 @@ import {
   EyeOff, 
   Mail, 
   Lock, 
-  Leaf, 
-  Users, 
-  Check, 
   ArrowRight, 
   Globe, 
   Sun, 
-  Moon 
+  Moon,
+  Link as LinkIcon,
+  Map as MapIcon,
+  ShieldCheck,
+  Clock,
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { validatePhoneNumber, validateEmail, validatePincode, validatePassword, validateName } from '../utils/validation';
-import HeroIllustration from './illustrations/HeroIllustration';
 import { T, useLanguage } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -26,7 +28,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const InputField = ({ label, type, value, onChange, onBlur, error, required, placeholder, prefix, maxLength, suffix, icon: Icon }) => (
   <div className="mb-4 relative">
     <label className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
-      {label} {required && <span className="text-emerald-500">*</span>}
+      <T text={label} /> {required && <span className="text-emerald-500">*</span>}
     </label>
     <div className="relative flex items-center">
       {Icon && (
@@ -58,12 +60,13 @@ const InputField = ({ label, type, value, onChange, onBlur, error, required, pla
         </div>
       )}
     </div>
-    {error && <p className="mt-1 text-[11px] font-bold text-rose-500">{error}</p>}
+    {error && <p className="mt-1 text-[11px] font-bold text-rose-500"><T text={error} fallback={error} /></p>}
   </div>
 );
 
-const AuthPage = ({ setToken, setUser }) => {
+const AuthPage = ({ setToken, setUser, isDarkMode, toggleTheme }) => {
   const { currentLanguage, setLanguage, languages } = useLanguage();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [step, setStep] = useState('FORM'); // TYPE_SELECTION, FORM
   const [isLogin, setIsLogin] = useState(true);
   const [accountType, setAccountType] = useState('DONOR'); // DONOR, ORGANISATION
@@ -127,6 +130,12 @@ const AuthPage = ({ setToken, setUser }) => {
   const handleBack = () => {
     resetForm();
     if (step === 'FORM') setStep('TYPE_SELECTION');
+  };
+
+  const openAuth = (login = true) => {
+    setIsLogin(login);
+    setStep(login ? 'FORM' : 'TYPE_SELECTION');
+    setIsAuthModalOpen(true);
   };
 
   const validateField = (field, value) => {
@@ -251,13 +260,6 @@ const AuthPage = ({ setToken, setUser }) => {
         checkField('phone', formData.phone);
         checkField('email', formData.email);
         checkField('password', formData.password);
-        
-        if (formData.businessName.trim()) {
-          checkField('shopPhone', formData.businessDetails.shopPhone);
-          checkField('shopAddress', formData.businessDetails.shopAddress);
-          checkField('shopPincode', formData.businessDetails.shopPincode);
-          checkField('shopEmail', formData.businessDetails.shopEmail);
-        }
       } else {
         checkField('orgName', formData.orgName);
         checkField('pincode', formData.pincode);
@@ -315,6 +317,7 @@ const AuthPage = ({ setToken, setUser }) => {
       localStorage.setItem('token', token);
       setToken(token);
       setUser(user);
+      setIsAuthModalOpen(false);
     } catch (err) {
       if (err.response) {
         setGlobalError(err.response.data.message || 'Authentication failed');
@@ -359,125 +362,190 @@ const AuthPage = ({ setToken, setUser }) => {
 
   const submitDisabled = !isFormSubmitEnabled();
 
+  const featureCards = [
+    {
+      title: "Donor–NGO Matching",
+      description: "Connect restaurants, bakeries and caterers with verified NGOs in minutes.",
+      icon: LinkIcon,
+      color: "text-emerald-500"
+    },
+    {
+      title: "Live Map & Delivery Tracking",
+      description: "View nearby surplus and track volunteers en-route on an interactive live map.",
+      icon: MapIcon,
+      color: "text-teal-500"
+    },
+    {
+      title: "Multilingual Access",
+      description: "The entire platform is available in six Indian languages, removing language barriers.",
+      icon: Globe,
+      color: "text-indigo-500"
+    },
+    {
+      title: "Verified Partner Network",
+      description: "Every donor and NGO is vetted, so surplus food reaches people safely.",
+      icon: ShieldCheck,
+      color: "text-blue-500"
+    },
+    {
+      title: "Real-Time Surplus Listings",
+      description: "Post surplus food instantly and let nearby NGOs claim it right away.",
+      icon: Clock,
+      color: "text-emerald-500"
+    },
+    {
+      title: "Impact Analytics",
+      description: "Track meals rescued, waste reduced and community impact with clear reports.",
+      icon: TrendingUp,
+      color: "text-teal-500"
+    }
+  ];
+
   return (
-    <div className="min-h-screen w-full bg-[#f3faf6] dark:bg-[#061412] text-slate-900 dark:text-slate-100 flex flex-col justify-between relative overflow-hidden transition-colors duration-300">
+    <div className="min-h-screen w-full relative bg-[#f2faf5] dark:bg-[#061412] text-slate-900 dark:text-slate-100 overflow-x-hidden font-sans">
       
-      {/* TOP NAVBAR (Matching Reference Screenshots) */}
-      <header className="w-full px-6 lg:px-12 py-5 flex items-center justify-between z-20">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-xs border border-emerald-200/50 dark:border-emerald-800/40">
-            <Heart className="w-5 h-5 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
-          </div>
-          <span className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            FoodBridge
-          </span>
-        </div>
+      {/* Soft glowing background blobs */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 dark:bg-emerald-900/20 blur-[100px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-teal-500/10 dark:bg-teal-900/20 blur-[100px]" />
+      </div>
 
-        {/* Right Controls */}
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/80 dark:bg-slate-800/80 border border-emerald-200/60 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs">
-            <Globe className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <select
-              value={currentLanguage}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer pr-1"
-              aria-label="Select Language"
+      {/* Floating Pill Navbar */}
+      <div className="fixed top-4 left-0 w-full z-40 px-4 sm:px-6 flex justify-center">
+        <nav className="w-full max-w-6xl flex items-center justify-between px-4 py-3 bg-white/70 dark:bg-[#0c2521]/70 backdrop-blur-md rounded-full shadow-[0_4px_30px_rgba(16,185,129,0.1)] border border-white/20 dark:border-emerald-500/20">
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
+            <div className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-sm border border-emerald-200/50 dark:border-emerald-800/40">
+              <Heart className="w-5 h-5 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
+            </div>
+            <span className="text-xl font-black tracking-tight text-slate-900 dark:text-white">
+              FoodBridge
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Language Selector */}
+            <div className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-slate-700">
+              <Globe className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <select
+                value={currentLanguage}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer pr-1"
+                aria-label="Select Language"
+              >
+                {languages.map((lang) => (
+                  <option key={lang.code} value={lang.code} className="bg-white dark:bg-slate-900">
+                    {lang.nativeName} ({lang.code.toUpperCase()})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white bg-white/80 hover:bg-emerald-50 dark:bg-slate-800/80 dark:hover:bg-slate-700 border border-emerald-100 dark:border-slate-700 transition-all cursor-pointer"
             >
-              {languages.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
-                  {lang.nativeName} ({lang.code.toUpperCase()})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
+              {isDarkMode ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-emerald-600" />}
+            </button>
 
-      {/* MAIN CONTENT SPLIT GRID */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-12 py-8 flex items-center justify-between gap-10 z-10">
+            {/* Login Link */}
+            <button onClick={() => openAuth(true)} className="hidden sm:block text-sm font-bold text-slate-700 hover:text-emerald-600 dark:text-slate-200 dark:hover:text-emerald-400 transition-colors cursor-pointer px-2">
+              <T text="Login" />
+            </button>
+
+            {/* Sign Up Button */}
+            <button onClick={() => openAuth(false)} className="px-5 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
+              <T text="Sign Up" />
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      {/* Hero Section */}
+      <section className="pt-40 pb-20 px-6 w-full max-w-7xl mx-auto flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.1] max-w-4xl" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <T text="Connecting Surplus Meals" /><br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300">
+            <T text="With Local Shelters" />
+          </span>
+        </h1>
         
-        {/* Left Side: Hero Pitch & Illustration */}
-        <div className="hidden lg:flex flex-col items-start max-w-xl space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
-          
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-emerald-500/15 dark:bg-emerald-500/25 border border-emerald-300/60 dark:border-emerald-600/40 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold tracking-wide">
-            <Leaf className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-600 dark:fill-emerald-400" />
-            <span>Community Food Sharing Network</span>
-          </div>
+        <p className="mt-8 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl italic font-medium" style={{ fontFamily: 'Lora, serif' }}>
+          <T text="Join our verified ecosystem of caring restaurants, bakeries, caterers, and active NGOs making zero food waste a daily reality." />
+        </p>
 
-          <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-            Connecting surplus meals <br />
-            <span className="text-emerald-600 dark:text-emerald-400">with local shelters</span>
-          </h1>
+        <button onClick={() => openAuth(false)} className="mt-10 px-8 py-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-lg font-bold shadow-lg shadow-emerald-500/30 transition-transform hover:scale-105 cursor-pointer flex items-center space-x-2">
+          <span><T text="Get Started" /></span>
+          <ArrowRight className="w-5 h-5" />
+        </button>
+      </section>
 
-          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-md">
-            Join our verified ecosystem of caring restaurants, bakeries, caterers, and active NGOs making zero food waste a daily reality.
-          </p>
-
-          {/* 3 Feature Badges */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-800/50 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200">
-              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
-                <Leaf className="w-3.5 h-3.5" />
-              </div>
-              <span>Reduce Food Waste</span>
-            </div>
-
-            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-800/50 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200">
-              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
-                <Users className="w-3.5 h-3.5" />
-              </div>
-              <span>Support Local Communities</span>
-            </div>
-
-            <div className="flex items-center space-x-2 px-3.5 py-1.5 rounded-2xl bg-white/80 dark:bg-slate-800/80 border border-emerald-100 dark:border-emerald-800/50 shadow-2xs text-xs font-bold text-slate-700 dark:text-slate-200">
-              <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 flex items-center justify-center">
-                <Heart className="w-3.5 h-3.5 fill-emerald-600 text-emerald-600" />
-              </div>
-              <span>Make a Bigger Impact</span>
-            </div>
-          </div>
-
-          {/* Handwritten Slogan Accent */}
-          <div className="pt-2 flex items-center space-x-3 text-emerald-700 dark:text-emerald-400 font-extrabold text-sm italic tracking-wide">
-            <span>Good Food</span>
-            <Check className="w-4 h-4 text-emerald-600 font-black" />
-            <span>Happy People</span>
-            <Check className="w-4 h-4 text-emerald-600 font-black" />
-            <span>Greener Planet</span>
-          </div>
-
-          <div className="w-full pt-2">
-            <HeroIllustration className="w-full max-w-[420px] h-auto drop-shadow-sm" />
-          </div>
-
+      {/* Features Section */}
+      <section className="py-20 px-6 w-full max-w-6xl mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
+            <T text="Features" />
+          </h2>
         </div>
 
-        {/* Right Side: Auth Card (Matching Reference Screenshots EXACTLY) */}
-        <div className="w-full max-w-md mx-auto lg:mx-0">
-          
-          <div className="bg-white/95 dark:bg-[#0c2521]/90 p-8 sm:p-9 rounded-[32px] border border-emerald-200/80 dark:border-emerald-500/40 shadow-xl shadow-emerald-900/10 dark:shadow-[0_0_45px_rgba(16,185,129,0.18)] backdrop-blur-md relative space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+          {featureCards.map((card, idx) => (
+            <div 
+              key={idx} 
+              className={`group relative p-8 rounded-[32px] bg-white/60 dark:bg-[#0c2521]/60 backdrop-blur-sm border border-emerald-100 dark:border-emerald-800/40 shadow-sm hover:shadow-2xl hover:shadow-emerald-900/10 dark:hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] hover:border-emerald-300 dark:hover:border-emerald-500/50 transition-all duration-300 ease-out cursor-pointer hover:-translate-y-2 hover:scale-105 hover:z-10 h-full w-full`}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center mb-6 border border-emerald-100 dark:border-emerald-800/50 group-hover:scale-110 transition-transform duration-300">
+                <card.icon className={`w-6 h-6 ${card.color} dark:brightness-125`} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3" style={{ fontFamily: 'Playfair Display, serif' }}>
+                <T text={card.title} />
+              </h3>
+              <p className="text-slate-600 dark:text-slate-300 italic leading-relaxed text-sm" style={{ fontFamily: 'Lora, serif' }}>
+                <T text={card.description} />
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="w-full py-8 text-center text-sm font-semibold text-slate-500 dark:text-slate-400 mt-20 border-t border-emerald-100/60 dark:border-emerald-950/40">
+        <T text="FoodBridge © 2026 — Surplus Food Rescue Network" />
+      </footer>
+
+      {/* AUTH MODAL */}
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white dark:bg-[#0c2521] p-8 sm:p-9 rounded-[32px] border border-emerald-200/80 dark:border-emerald-500/40 shadow-2xl relative overflow-y-auto max-h-[90vh] animate-in zoom-in-95 duration-300">
             
+            <button 
+              onClick={() => setIsAuthModalOpen(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
             {step === 'FORM' && !isLogin && (
               <button onClick={handleBack} className="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 mb-2 flex items-center transition-colors text-xs font-bold cursor-pointer">
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
+                <ArrowLeft className="w-4 h-4 mr-1" /> <T text="Back" />
               </button>
             )}
 
             {/* Emblem Header */}
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 mt-2 mb-6">
               <div className="w-12 h-12 rounded-full bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xs border border-emerald-300/40">
                 <Heart className="w-6 h-6 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" />
               </div>
               <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                {isLogin ? 'Welcome Back' : 'Create Account'}
+                {isLogin ? <T text="Welcome Back" /> : <T text="Create Account" />}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {isLogin ? 'Login to continue.' : 'Join our verified network today.'}
+                {isLogin ? <T text="Login to continue." /> : <T text="Join our verified network today." />}
               </p>
             </div>
 
             {/* Tab Switcher */}
-            <div className="flex bg-[#f3faf6] dark:bg-slate-800/80 p-1 rounded-2xl border border-emerald-100 dark:border-slate-700">
+            <div className="flex bg-[#f3faf6] dark:bg-slate-800/80 p-1 rounded-2xl border border-emerald-100 dark:border-slate-700 mb-6">
               <button
                 type="button"
                 onClick={() => { setIsLogin(true); setStep('FORM'); resetForm(); }}
@@ -487,7 +555,7 @@ const AuthPage = ({ setToken, setUser }) => {
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                Login
+                <T text="Login" />
               </button>
               <button
                 type="button"
@@ -498,13 +566,13 @@ const AuthPage = ({ setToken, setUser }) => {
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                Sign Up
+                <T text="Sign Up" />
               </button>
             </div>
 
             {globalError && (
-              <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 p-3 rounded-xl text-xs font-bold text-center border border-rose-200 dark:border-rose-800">
-                {globalError}
+              <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 p-3 rounded-xl text-xs font-bold text-center border border-rose-200 dark:border-rose-800 mb-4">
+                <T text={globalError} fallback={globalError} />
               </div>
             )}
 
@@ -518,8 +586,8 @@ const AuthPage = ({ setToken, setUser }) => {
                     <UserCircle2 className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <span className="font-extrabold text-slate-800 dark:text-slate-100 block text-xs">Personal Donor</span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Individuals, catering, or local restaurants</span>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100 block text-xs"><T text="Personal Donor" /></span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400"><T text="Individuals, catering, or local restaurants" /></span>
                   </div>
                 </button>
                 <button
@@ -530,8 +598,8 @@ const AuthPage = ({ setToken, setUser }) => {
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <span className="font-extrabold text-slate-800 dark:text-slate-100 block text-xs">NGO / Organisation</span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Verified community charities & shelters</span>
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100 block text-xs"><T text="NGO / Organisation" /></span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400"><T text="Verified community charities & shelters" /></span>
                   </div>
                 </button>
               </div>
@@ -539,7 +607,6 @@ const AuthPage = ({ setToken, setUser }) => {
 
             {step === 'FORM' && (
               <form onSubmit={handleSubmit} className="space-y-3 animate-in fade-in duration-300">
-                
                 {isLogin ? (
                   <>
                     <InputField 
@@ -669,41 +736,18 @@ const AuthPage = ({ setToken, setUser }) => {
               </form>
             )}
 
-            {/* Social Dividers & Decorative Handwritten Slogan */}
-            <div className="pt-2 text-center space-y-3">
-              <div className="relative flex items-center justify-center">
-                <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
-                <span className="bg-white dark:bg-[#0c2521] px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest absolute">or</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button type="button" className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center space-x-1.5 hover:bg-slate-50 cursor-pointer">
-                  <span>Google</span>
-                </button>
-                <button type="button" className="py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[11px] font-bold text-slate-700 dark:text-slate-200 flex items-center justify-center space-x-1.5 hover:bg-slate-50 cursor-pointer">
-                  <span>Apple</span>
-                </button>
-              </div>
-
-              <div className="pt-2 text-[12px] font-extrabold text-emerald-600 dark:text-emerald-400 italic flex items-center justify-center space-x-1">
-                <span>Together we feed hope</span>
-                <Heart className="w-3.5 h-3.5 fill-emerald-500 text-emerald-500 inline" />
+            <div className="pt-6 text-center space-y-3">
+              <div className="text-[12px] font-extrabold text-emerald-600 dark:text-emerald-400 italic flex items-center justify-center space-x-1" style={{ fontFamily: 'Lora, serif' }}>
+                <span><T text="Together we feed hope ♥" /></span>
               </div>
             </div>
 
           </div>
         </div>
-
-      </main>
-
-      {/* FOOTER */}
-      <footer className="w-full py-4 text-center text-xs font-semibold text-slate-400 dark:text-slate-500 border-t border-emerald-100/60 dark:border-emerald-950/40">
-        FoodBridge © {new Date().getFullYear()} — Surplus Food Rescue Network
-      </footer>
+      )}
 
     </div>
   );
 };
 
 export default AuthPage;
-

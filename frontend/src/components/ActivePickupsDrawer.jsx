@@ -676,7 +676,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                           <button
                             onClick={() => {
                               onClose();
-                              navigate(`/map?taskId=${pickup._id}`);
+                              navigate(`/track/${pickup._id}`);
                             }}
                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
                           >

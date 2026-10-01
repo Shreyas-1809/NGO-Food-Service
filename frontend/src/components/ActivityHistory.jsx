@@ -126,8 +126,8 @@ const ActivityHistory = ({ token, user }) => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between">
         <div className="flex items-center space-x-3 mb-4 md:mb-0">
           <Activity className="h-8 w-8 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white"><T text="Donation & Fulfilment History" /></h1>

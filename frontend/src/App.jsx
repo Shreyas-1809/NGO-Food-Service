@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar from './components/Navbar';
+
 import Dashboard from './components/Dashboard';
+import AppLayout from './components/AppLayout';
 import DonorDashboard from './pages/donor/Dashboard';
 import NGODashboard from './pages/ngo/Dashboard';
 import LogSurplus from './pages/donor/LogSurplus';
@@ -139,67 +140,54 @@ function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <Router>
-          <div className="min-h-screen w-full overflow-x-hidden flex flex-col bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
-            {!user && (
-              <Navbar 
-                user={user} 
-                token={token}
-                onLogout={handleLogout} 
-                isDarkMode={isDarkMode} 
-                toggleTheme={toggleTheme} 
-                onUserUpdated={(updatedUser) => setUser(updatedUser)}
-              />
-            )}
+          <div className="min-h-screen w-full flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+            {/* Navbar is intentionally omitted here for !user because AuthPage has its own floating navbar */}
 
-            <main className="flex-1 flex w-full relative">
-              <Routes>
-                {/* Public no-login confirmation and task tracking routes */}
-                <Route path="/pickup/:taskId" element={<VolunteerTaskPage />} />
-                <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
-                <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
-                <Route path="/certificate/:id" element={<DonationCertificatePage />} />
+            <Routes>
+              {/* Public no-login confirmation and task tracking routes */}
+              <Route path="/pickup/:taskId" element={<VolunteerTaskPage />} />
+              <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
+              <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
+              <Route path="/certificate/:id" element={<DonationCertificatePage />} />
 
-                {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
-                {!user ? (
-                  <>
-                    <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} />} />
-                  </>
-                ) : (
-                  <>
-                    {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
-                    <Route 
-                      path="/" 
-                      element={
-                        user?.role === 'DONOR' 
-                          ? <DonorDashboard socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /> 
-                          : <NGODashboard socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
-                      } 
-                    />
+              {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
+              {!user ? (
+                  <Route path="*" element={<AuthPage setToken={setToken} setUser={setUser} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+              ) : (
+                <Route element={<AppLayout socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />}>
+                  {/* Main Dashboard (Live Feed, Post Surplus Modal, Active Pickups, Drawers) */}
+                  <Route 
+                    path="/" 
+                    element={
+                      user?.role === 'DONOR' 
+                        ? <DonorDashboard socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} /> 
+                        : <NGODashboard socket={socket} user={user} token={token} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
+                    } 
+                  />
 
-                    {/* User Activity Log */}
-                    <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
+                  {/* User Activity Log */}
+                  <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
 
-                    {/* Verified NGOs Directory & Map */}
-                    <Route path="/ngos" element={<FindNGOsPage user={user} />} />
-                    <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
-                    <Route path="/map" element={<MapPage user={user} />} />
-                    <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
+                  {/* Verified NGOs Directory & Map */}
+                  <Route path="/map" element={<MapPage user={user} />} />
+                  <Route path="/ngos" element={<FindNGOsPage user={user} />} />
+                  <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
+                  <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
 
-                    {/* Direct Donate Flow */}
-                    <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
-<Route path="/donor/log-surplus" element={<LogSurplus socket={socket} user={user} token={token} />} />
-<Route path="/donor/volunteer" element={<VolunteerSection socket={socket} user={user} token={token} />} />
+                  {/* Direct Donate Flow */}
+                  <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />
+                  <Route path="/donor/log-surplus" element={<LogSurplus socket={socket} user={user} token={token} />} />
+                  <Route path="/donor/volunteer" element={<VolunteerSection socket={socket} user={user} token={token} />} />
 
-                    {/* Donation Dispatch Tracking */}
-                    <Route path="/track/:id" element={<DonationTrackingPage />} />
-                    <Route path="/track" element={<DonationTrackingPage />} />
+                  {/* Donation Dispatch Tracking */}
+                  <Route path="/track/:id" element={<DonationTrackingPage />} />
+                  <Route path="/track" element={<DonationTrackingPage />} />
 
-                    {/* Fallback to Dashboard */}
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </>
-                )}
-              </Routes>
-            </main>
+                  {/* Fallback to Dashboard */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              )}
+            </Routes>
           </div>
         </Router>
       </LanguageProvider>

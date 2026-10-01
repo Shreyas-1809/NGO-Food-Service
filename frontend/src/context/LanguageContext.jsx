@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
+import { landingTranslations } from '../i18n/translations';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -25,6 +26,10 @@ export const LanguageProvider = ({ children }) => {
   // Helper to load cache from localStorage
   const getCachedTranslation = useCallback((text, lang) => {
     if (lang === 'en') return text;
+    // Check hardcoded first
+    if (landingTranslations[lang] && landingTranslations[lang][text]) {
+      return landingTranslations[lang][text];
+    }
     const cacheKey = `${lang}__${text}`;
     if (cacheRef.current[cacheKey]) {
       return cacheRef.current[cacheKey];
@@ -56,7 +61,16 @@ export const LanguageProvider = ({ children }) => {
 
   const translateText = useCallback(async (text, targetLang = currentLanguage) => {
     if (!text || typeof text !== 'string' || !text.trim()) return text;
-    if (targetLang === 'en') return text;
+
+    // Use landingTranslations for English as well, if it exists
+    if (targetLang === 'en') {
+      return landingTranslations.en?.[text] || (text.includes('.') ? text.split('.').pop().replace(/_/g, ' ') : text);
+    }
+
+    // Hardcoded check
+    if (landingTranslations[targetLang] && landingTranslations[targetLang][text]) {
+      return landingTranslations[targetLang][text];
+    }
 
     const cached = getCachedTranslation(text, targetLang);
     if (cached) return cached;
@@ -75,7 +89,14 @@ export const LanguageProvider = ({ children }) => {
     } catch (err) {
       console.error('Translation error:', err);
     }
-    return text;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.warn(`[i18n] Missing translation for key: "${text}" in lang: "${targetLang}"`);
+    }
+
+    // Safe fallback: use English translation if available, else format the raw key
+    const fallbackText = landingTranslations.en?.[text] || text;
+    return fallbackText.includes('.') ? fallbackText.split('.').pop().replace(/_/g, ' ') : fallbackText;
   }, [currentLanguage, getCachedTranslation, setCachedTranslation]);
 
   return (
@@ -105,14 +126,28 @@ export const useLanguage = () => {
 export const T = ({ text, fallback }) => {
   const { currentLanguage, translateText, getCachedTranslation } = useLanguage();
   const [translatedText, setTranslatedText] = useState(() => {
-    if (currentLanguage === 'en') return text;
-    return getCachedTranslation(text, currentLanguage) || fallback || text;
+    let englishOrFallback = text;
+    if (landingTranslations.en?.[text]) {
+      englishOrFallback = landingTranslations.en[text];
+    } else if (text && text.includes('.')) {
+      englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    if (currentLanguage === 'en') return englishOrFallback;
+    return getCachedTranslation(text, currentLanguage) || fallback || englishOrFallback;
   });
 
   useEffect(() => {
     let isMounted = true;
+    let englishOrFallback = text;
+    if (landingTranslations.en?.[text]) {
+      englishOrFallback = landingTranslations.en[text];
+    } else if (text && text.includes('.')) {
+      englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
     if (currentLanguage === 'en') {
-      setTranslatedText(text);
+      setTranslatedText(englishOrFallback);
       return;
     }
 
@@ -120,7 +155,7 @@ export const T = ({ text, fallback }) => {
     if (cached) {
       setTranslatedText(cached);
     } else {
-      setTranslatedText(text); // Display original while fetching
+      setTranslatedText(fallback || englishOrFallback); // Display original while fetching
       translateText(text, currentLanguage).then(res => {
         if (isMounted && res) {
           setTranslatedText(res);
@@ -142,14 +177,28 @@ export const T = ({ text, fallback }) => {
 export const useTranslatedString = (text) => {
   const { currentLanguage, translateText, getCachedTranslation } = useLanguage();
   const [translated, setTranslated] = useState(() => {
-    if (!text || currentLanguage === 'en') return text;
-    return getCachedTranslation(text, currentLanguage) || text;
+    let englishOrFallback = text;
+    if (landingTranslations.en?.[text]) {
+      englishOrFallback = landingTranslations.en[text];
+    } else if (text && text.includes('.')) {
+      englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    if (!text || currentLanguage === 'en') return englishOrFallback;
+    return getCachedTranslation(text, currentLanguage) || englishOrFallback;
   });
 
   useEffect(() => {
     let isMounted = true;
+    let englishOrFallback = text;
+    if (landingTranslations.en?.[text]) {
+      englishOrFallback = landingTranslations.en[text];
+    } else if (text && text.includes('.')) {
+      englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
     if (!text || currentLanguage === 'en') {
-      setTranslated(text);
+      setTranslated(englishOrFallback);
       return;
     }
 
@@ -157,7 +206,7 @@ export const useTranslatedString = (text) => {
     if (cached) {
       setTranslated(cached);
     } else {
-      setTranslated(text);
+      setTranslated(englishOrFallback);
       translateText(text, currentLanguage).then(res => {
         if (isMounted && res) {
           setTranslated(res);

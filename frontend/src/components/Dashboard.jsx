@@ -7,6 +7,7 @@ import {
   Plus, Package, Truck, Bell, Clock, Users, Leaf, ChevronRight, TrendingUp, Sun, CloudSun, Moon 
 } from 'lucide-react';
 import { T, useLanguage } from '../context/LanguageContext';
+import Modal from './ui/Modal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -148,25 +149,21 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
         )}
 
         {/* ALERTS & MODALS */}
-        {showPostForm && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-center items-center p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-2xl relative animate-in zoom-in-95 duration-300">
-              <button
-                onClick={handleClosePostForm}
-                className="absolute -top-10 right-0 text-white hover:text-slate-200 flex items-center font-bold text-sm cursor-pointer"
-              >
-                <T text="Close" /> <span className="text-2xl ml-1.5 font-normal">&times;</span>
-              </button>
-              <DonorPostForm
-                socket={socket}
-                user={user}
-                token={token}
-                prefill={prefillData}
-                onSuccess={handleClosePostForm}
-              />
-            </div>
+        <Modal 
+          isOpen={showPostForm} 
+          onClose={handleClosePostForm}
+          maxWidth="max-w-3xl"
+        >
+          <div className="-m-6">
+            <DonorPostForm
+              socket={socket}
+              user={user}
+              token={token}
+              prefill={prefillData}
+              onSuccess={handleClosePostForm}
+            />
           </div>
-        )}
+        </Modal>
 
         {showOrgNeedModal && (
           <OrgPostNeedModal

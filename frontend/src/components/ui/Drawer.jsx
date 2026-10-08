@@ -61,7 +61,8 @@ const Drawer = ({
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors"
+            aria-label="Close drawer"
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
           >
             <X className="w-5 h-5" />
           </button>

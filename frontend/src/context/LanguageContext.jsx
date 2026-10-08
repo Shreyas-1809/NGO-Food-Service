@@ -64,7 +64,7 @@ export const LanguageProvider = ({ children }) => {
 
     // Use landingTranslations for English as well, if it exists
     if (targetLang === 'en') {
-      return landingTranslations.en?.[text] || (text.includes('.') ? text.split('.').pop().replace(/_/g, ' ') : text);
+      return landingTranslations.en?.[text] || ((text.includes('.') && !text.includes(' ')) ? text.split('.').pop().replace(/_/g, ' ') : text);
     }
 
     // Hardcoded check
@@ -96,7 +96,7 @@ export const LanguageProvider = ({ children }) => {
 
     // Safe fallback: use English translation if available, else format the raw key
     const fallbackText = landingTranslations.en?.[text] || text;
-    return fallbackText.includes('.') ? fallbackText.split('.').pop().replace(/_/g, ' ') : fallbackText;
+    return (fallbackText.includes('.') && !fallbackText.includes(' ')) ? fallbackText.split('.').pop().replace(/_/g, ' ') : fallbackText;
   }, [currentLanguage, getCachedTranslation, setCachedTranslation]);
 
   return (
@@ -129,7 +129,7 @@ export const T = ({ text, fallback }) => {
     let englishOrFallback = text;
     if (landingTranslations.en?.[text]) {
       englishOrFallback = landingTranslations.en[text];
-    } else if (text && text.includes('.')) {
+    } else if (text && text.includes('.') && !text.includes(' ')) {
       englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
@@ -142,7 +142,7 @@ export const T = ({ text, fallback }) => {
     let englishOrFallback = text;
     if (landingTranslations.en?.[text]) {
       englishOrFallback = landingTranslations.en[text];
-    } else if (text && text.includes('.')) {
+    } else if (text && text.includes('.') && !text.includes(' ')) {
       englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
@@ -180,7 +180,7 @@ export const useTranslatedString = (text) => {
     let englishOrFallback = text;
     if (landingTranslations.en?.[text]) {
       englishOrFallback = landingTranslations.en[text];
-    } else if (text && text.includes('.')) {
+    } else if (text && text.includes('.') && !text.includes(' ')) {
       englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
@@ -193,7 +193,7 @@ export const useTranslatedString = (text) => {
     let englishOrFallback = text;
     if (landingTranslations.en?.[text]) {
       englishOrFallback = landingTranslations.en[text];
-    } else if (text && text.includes('.')) {
+    } else if (text && text.includes('.') && !text.includes(' ')) {
       englishOrFallback = text.split('.').pop().replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 

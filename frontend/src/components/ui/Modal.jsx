@@ -51,7 +51,8 @@ const Modal = ({
       onClick={handleBackdropClick}
     >
       <div
-        className={`w-full ${maxWidth} bg-[var(--card-bg)] rounded-[12px] shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden`}
+        className={`w-full ${maxWidth} bg-[var(--card-bg)] rounded-[12px] shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[100dvh] sm:max-h-[90vh] overflow-hidden`}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-700/60 shrink-0">
           <div>
@@ -62,7 +63,8 @@ const Modal = ({
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors"
+            aria-label="Close modal"
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm"
           >
             <X className="w-5 h-5" />
           </button>

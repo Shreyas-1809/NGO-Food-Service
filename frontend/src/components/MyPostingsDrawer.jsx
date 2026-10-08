@@ -28,9 +28,7 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
         setLoading(false);
       }
     };
-    if (user.accountType === 'DONOR') {
-      fetchMyPostings();
-    }
+    fetchMyPostings();
   }, [user, token]);
 
   const handleDelete = async (id) => {
@@ -46,18 +44,7 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
     }
   };
 
-  if (user.accountType !== 'DONOR') {
-    return (
-      <Drawer
-        isOpen={isOpen}
-        onClose={onClose}
-        title={<T text="Edit Postings" />}
-        icon={Package}
-      >
-        <div className="p-6 text-center text-slate-500"><T text="Only donors have active postings." /></div>
-      </Drawer>
-    );
-  }
+
 
   const activePostings = (Array.isArray(myPostings) ? myPostings : []).filter(post => post.status === 'AVAILABLE' || post.status === 'ACTIVE');
 
@@ -85,17 +72,20 @@ const MyPostingsDrawer = ({ isOpen, user, token, onClose, onEdit }) => {
             return (
               <div key={post._id} className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 space-y-3">
                 <div className="flex justify-between items-start">
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{post.title}</h4>
-                  <StatusBadge status={post.status} />
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 line-clamp-1">
+                    {user?.businessDetails?.shopName || user?.name || post.donor?.businessName || post.donor?.name || 'Assorted Surplus Batch'}
+                  </h4>
+                  <StatusBadge status={post.status === 'AVAILABLE' ? 'Active' : post.status} />
                 </div>
                 
                 <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                   <div className="flex items-center">
-                    <Utensils className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" /> {post.quantity} <T text="servings" /> • <T text={post.foodType} />
-                  </div>
-                  <div className="flex items-center">
                     <Clock className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" /> 
-                    {post.status === 'AVAILABLE' ? `<T text="Expires:" /> ${new Date(post.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}` : `<T text="Updated:" /> ${new Date(post.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}`}
+                    {post.status === 'AVAILABLE' ? (
+                      <><T text="Expires:" /> {new Date(post.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</>
+                    ) : (
+                      <><T text="Updated:" /> {new Date(post.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</>
+                    )}
                   </div>
                 </div>
 

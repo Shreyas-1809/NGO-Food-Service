@@ -482,7 +482,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {isDonor && (
         <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white"><T text="Donor Command Dashboard" /></h3>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white"><T text="Dashboard" /></h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {!showMyUploads ? <T text="Default View: Active NGO claim requests submitted on your food listings." /> : <T text="Toggled View: Managing your uploaded surplus food listings." />}
             </p>
@@ -924,14 +924,17 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
 
                         <div>
-                          <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{post.title}</h4>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">
+                            {user?.businessDetails?.shopName || user?.name || post.donor?.businessName || post.donor?.name || 'Assorted Surplus Batch'}
+                          </h4>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            <T text="Servings" />: <strong className="text-slate-800 dark:text-slate-200">{post.quantity} <T text="Portions" /></strong>
+                            <T text="Posted" />: {new Date(post.createdAt).toLocaleDateString()}
                           </p>
-                        </div>
-                        
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          <T text="Posted" />: {new Date(post.createdAt).toLocaleDateString()}
+                          {post.expiryTime && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              <T text="Expires" />: {new Date(post.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
+                            </p>
+                          )}
                         </div>
 
                         {urgency.level !== 'EXPIRED' && isActive && (

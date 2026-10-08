@@ -7,7 +7,7 @@ import {
 import { calculateDistanceKm } from '../services/mapsService';
 import {
   Search, MapPin, ExternalLink, Building2, ChevronDown,
-  ArrowRight, Globe, Info, X, Phone, Mail, MessageCircle
+  ArrowRight, Globe, Info, X, Phone, Mail, MessageCircle, HeartHandshake, BookOpen, Users, Utensils
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import MapView from './MapView';
@@ -47,23 +47,42 @@ const FindNGOsPage = ({ user }) => {
   const searchNamePlaceholder = useTranslatedString('Search by NGO name...');
   const searchAreaPlaceholder = useTranslatedString('Filter by locality (e.g. Kothrud)...');
 
-  const TYPE_FILTERS = ['All Types', 'NGO / Food Rescue', 'Orphanage', 'Old Age Home'];
+  const TYPE_FILTERS = [
+    'All Types', 'Hunger Relief', 'Food Rescue', 'Education', 
+    'Child Welfare', 'Mid-Day Meals', 'Community Service', 
+    'Volunteering', 'Food', 'Disaster Relief'
+  ];
 
   const matchesType = (ngo, type) => {
     if (type === 'All Types') return true;
     const cat = (ngo.category || '').toLowerCase();
     const causes = (ngo.causes || []).map(c => c.toLowerCase()).join(' ');
     const combined = cat + ' ' + causes;
-    if (type === 'NGO / Food Rescue') {
-      return combined.includes('food') || combined.includes('hunger') || combined.includes('relief') || combined.includes('rescue') || combined.includes('volunteer') || combined.includes('education') || combined.includes('nutrition');
+    const searchType = type.toLowerCase();
+    
+    if (combined.includes(searchType)) return true;
+    
+    if (type === 'Food Rescue' || type === 'Hunger Relief' || type === 'Food' || type === 'Mid-Day Meals') {
+      return combined.includes('food') || combined.includes('hunger') || combined.includes('relief') || combined.includes('rescue') || combined.includes('meal');
     }
-    if (type === 'Orphanage') {
-      return combined.includes('orphan') || combined.includes('child') || combined.includes('youth') || combined.includes('girl');
+    if (type === 'Child Welfare' || type === 'Education') {
+      return combined.includes('child') || combined.includes('youth') || combined.includes('education') || combined.includes('school') || combined.includes('orphan');
     }
-    if (type === 'Old Age Home') {
-      return combined.includes('elder') || combined.includes('senior') || combined.includes('age') || combined.includes('care');
+    if (type === 'Community Service' || type === 'Volunteering' || type === 'Disaster Relief') {
+      return combined.includes('community') || combined.includes('volunteer') || combined.includes('disaster') || combined.includes('welfare');
     }
-    return true;
+    return false;
+  };
+
+  const getNgoIdentity = (name) => {
+    const n = name.toLowerCase();
+    if (n.includes('robin hood')) return { icon: HeartHandshake, color: '#F97316', bg: 'rgba(249, 115, 22, 0.15)' }; // Orange
+    if (n.includes('muktangan')) return { icon: BookOpen, color: '#6366F1', bg: 'rgba(99, 102, 241, 0.15)' }; // Indigo
+    if (n.includes('goonj')) return { icon: Users, color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.15)' }; // Amber
+    if (n.includes('ivolunteer')) return { icon: Users, color: '#38BDF8', bg: 'rgba(56, 189, 248, 0.15)' }; // Cyan
+    if (n.includes('feeding india') || n.includes('zomato')) return { icon: Utensils, color: '#FB923C', bg: 'rgba(251, 146, 60, 0.15)' }; // Orange-400
+    if (n.includes('akshaya patra')) return { icon: Utensils, color: '#A855F7', bg: 'rgba(168, 85, 247, 0.15)' }; // Purple
+    return { icon: Building2, color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' }; // Default Emerald
   };
 
   useEffect(() => {
@@ -110,27 +129,23 @@ const FindNGOsPage = ({ user }) => {
       return matchSearch && matchArea && matchType;
     })
     .sort((a, b) => {
-      if (sortBy === 'Nearest First') {
-        const distA = a.distanceKm !== undefined ? a.distanceKm : 999;
-        const distB = b.distanceKm !== undefined ? b.distanceKm : 999;
-        return distA - distB;
-      }
-      if (sortBy === 'Highest Rated') {
-        return (b.rating || 0) - (a.rating || 0);
-      }
-      if (sortBy === 'Name A-Z') {
-        return a.name.localeCompare(b.name);
-      }
+      const distA = a.distanceKm !== undefined ? a.distanceKm : 999;
+      const distB = b.distanceKm !== undefined ? b.distanceKm : 999;
+      
+      if (sortBy === 'Nearest First') return distA - distB;
+      if (sortBy === 'Farthest First') return distB - distA;
+      if (sortBy === 'Name A-Z') return a.name.localeCompare(b.name);
+      if (sortBy === 'Name Z-A') return b.name.localeCompare(a.name);
       return 0;
     });
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
+    <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-8">
       
       {/* Header */}
-      <div>
+      <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-          <T text="Verified NGO Directory" />
+          <T text="Find NGOs" />
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           <T text="Explore and connect with verified partner organizations, shelters, and food relief centers." />
@@ -138,7 +153,7 @@ const FindNGOsPage = ({ user }) => {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 space-y-3">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 space-y-3 mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           
           {/* Search by Name */}
@@ -146,10 +161,10 @@ const FindNGOsPage = ({ user }) => {
             <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder={searchNamePlaceholder}
+              placeholder={searchNamePlaceholder || "Search by NGO name..."}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -158,10 +173,10 @@ const FindNGOsPage = ({ user }) => {
             <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
             <input
               type="text"
-              placeholder={searchAreaPlaceholder}
+              placeholder={searchAreaPlaceholder || "Filter by locality (e.g. Kothrud)..."}
               value={areaSearch}
               onChange={e => setAreaSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
 
@@ -185,8 +200,9 @@ const FindNGOsPage = ({ user }) => {
             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
           >
             <option value="Nearest First" className="bg-white dark:bg-slate-800"><T text="Nearest First" /></option>
-            <option value="Highest Rated" className="bg-white dark:bg-slate-800"><T text="Highest Rated" /></option>
+            <option value="Farthest First" className="bg-white dark:bg-slate-800"><T text="Farthest First" /></option>
             <option value="Name A-Z" className="bg-white dark:bg-slate-800"><T text="Name A-Z" /></option>
+            <option value="Name Z-A" className="bg-white dark:bg-slate-800"><T text="Name Z-A" /></option>
           </select>
         </div>
       </div>
@@ -209,34 +225,34 @@ const FindNGOsPage = ({ user }) => {
             <div
               key={ngo.id}
               onClick={() => setSelectedNgo(ngo)}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+              className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
             >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    {ngo.logo && !ngo.logo.includes('images.unsplash.com') ? (
-                      <Avatar name={ngo.name} src={ngo.logo} className="w-12 h-12 rounded-full" />
-                    ) : (
-                      <IconCircleBadge icon={Building2} color="green" size="lg" className="shadow-xs" />
-                    )}
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1">
-                        <T text={ngo.name} />
-                      </h3>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-0.5">
-                        <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
-                        {ngo.area || ngo.city} • ~{ngo.distanceKm || 4.2} km
-                      </span>
-                    </div>
+              {/* TOP: Logo, Name, Location */}
+              <div className="flex items-start space-x-4">
+                {ngo.logo && !ngo.logo.includes('images.unsplash.com') ? (
+                  <Avatar name={ngo.name} src={ngo.logo} className="w-12 h-12 rounded-full shrink-0" />
+                ) : (
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-xs" 
+                    style={{ backgroundColor: getNgoIdentity(ngo.name).bg, color: getNgoIdentity(ngo.name).color }}
+                  >
+                    {React.createElement(getNgoIdentity(ngo.name).icon, { className: "w-6 h-6" })}
                   </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-2 leading-tight">
+                    <T text={ngo.name} />
+                  </h3>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-1 truncate">
+                    <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
+                    <span className="truncate">{ngo.area || ngo.city} • ~{ngo.distanceKm?.toFixed(1) || 4.2} km</span>
+                  </span>
                 </div>
+              </div>
 
-                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                  <T text={ngo.description} />
-                </p>
-
-                {/* Causes Badges */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+              {/* MIDDLE: Category tags (flex-1 pushes footer to bottom) */}
+              <div className="flex-1 flex flex-col justify-end mt-4">
+                <div className="flex flex-wrap gap-1.5">
                   {(ngo.causes || []).slice(0, 3).map((cause, idx) => (
                     <span key={idx} className="bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                       <T text={cause} />
@@ -245,8 +261,8 @@ const FindNGOsPage = ({ user }) => {
                 </div>
               </div>
 
-              {/* Card Footer Actions */}
-              <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              {/* BOTTOM: Footer Actions */}
+              <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between shrink-0">
                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors flex items-center whitespace-nowrap">
                   <T text="View Profile" /> <ArrowRight className="w-3 h-3 ml-1 shrink-0" />
                 </span>
@@ -267,11 +283,11 @@ const FindNGOsPage = ({ user }) => {
                       variant="primary"
                       size="sm"
                       onClick={() => setRedirectNgo(ngo)}
-                      className="bg-violet-600 hover:bg-violet-700 text-white"
-                      title="Redirect Surplus Here"
-                      icon={ArrowRight}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      title="Request Food"
+                      icon={Utensils}
                     >
-                      <T text="Redirect" />
+                      <T text="Request Food" />
                     </Button>
                     <Button
                       variant="secondary"
@@ -358,13 +374,13 @@ const FindNGOsPage = ({ user }) => {
                 <div className="flex-1 flex gap-2">
                   <Button
                     variant="primary"
-                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={() => {
                       setRedirectNgo(selectedNgo);
                     }}
-                    icon={ArrowRight}
+                    icon={Utensils}
                   >
-                    <T text="Redirect Surplus" />
+                    <T text="Request Food" />
                   </Button>
                   <Button
                     variant="secondary"

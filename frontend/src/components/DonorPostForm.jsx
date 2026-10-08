@@ -137,6 +137,12 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       setError('Pickup end time must be after start time.');
       return;
     }
+    const now = new Date();
+    const gracePeriod = new Date(now.getTime() - 5 * 60000); // 5 mins grace
+    if (new Date(sharedFields.startTime) < gracePeriod) {
+      setError('Pickup start time cannot be in the past.');
+      return;
+    }
 
     for (let i = 0; i < items.length; i++) {
       if (!items[i].itemName || !items[i].quantity) {
@@ -145,6 +151,10 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       }
       if (new Date(items[i].expiryTime) <= new Date(items[i].preparedTime)) {
         setError(`Expiry time must be after prep time for ${items[i].itemName || 'item ' + (i+1)}.`);
+        return;
+      }
+      if (new Date(items[i].expiryTime) < new Date(sharedFields.endTime)) {
+        setError(`Expiry time must be after or equal to Pickup End time for ${items[i].itemName || 'item ' + (i+1)}.`);
         return;
       }
     }
@@ -232,7 +242,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
   };
 
   return (
-    <div className="w-full bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-h-[90vh] overflow-y-auto relative">
+    <div className="w-full">
       {/* Success Toast */}
       {successToast && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/90 dark:text-emerald-200 px-6 py-3 rounded-full font-bold shadow-xl flex items-center z-50 animate-in slide-in-from-top-4 text-xs sm:text-sm">
@@ -272,17 +282,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
         </div>
       )}
 
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
-            {prefill?.isEdit ? <T text="Edit Surplus Mode" /> : prefill?.targetNgoName ? <T text="Direct Donation Flow" /> : <T text="SURPLUS RESCUE FLOW" />}
-          </span>
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white">
-            {prefill?.isEdit ? <T text="Edit Surplus Food" /> : prefill?.targetNgoName ? <T text={`Donate to ${prefill.targetNgoName}`} /> : <T text="Log Surplus Food" />}
-          </h2>
-        </div>
-      </div>
-      
+
       {error && (
         <div className="bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-300 p-3 rounded-xl mb-4 text-xs font-semibold text-center border border-red-200 dark:border-red-900">
           {error}

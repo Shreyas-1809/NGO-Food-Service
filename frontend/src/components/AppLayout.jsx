@@ -25,10 +25,9 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isOrg = user?.accountType === 'ORGANISATION' || 
-                user?.accountType === 'ORGANIZATION' || 
-                user?.role === 'ORGANISATION' || 
-                user?.role === 'ORGANIZATION' || 
+  const accountType = String(user?.accountType || user?.role || '').toUpperCase();
+  const isOrg = accountType === 'ORGANISATION' || 
+                accountType === 'ORGANIZATION' || 
                 Boolean(user?.orgName);
 
   const searchPlaceholder = useTranslatedString('Search NGOs, locations...');

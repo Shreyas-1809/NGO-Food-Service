@@ -17,12 +17,17 @@ router.get('/donor/my-requests', auth, async (req, res) => {
     const donorFoods = await Food.find({ donorId: req.user.id }).select('_id');
     const foodIds = donorFoods.map(f => f._id);
 
-    const claims = await Claim.find({ foodId: { $in: foodIds } })
+    const claims = await Claim.find({ 
+      foodId: { $in: foodIds },
+      ngoId: { $ne: req.user.id }
+    })
       .populate('ngoId', 'orgName fullName phone email address city')
       .populate('foodId')
       .sort({ createdAt: -1 });
 
-    res.json(claims);
+    const validClaims = claims.filter(c => c.foodId && c.foodId.donorId && c.foodId.donorId.toString() === req.user.id.toString());
+
+    res.json(validClaims);
   } catch (err) {
     console.error('Error fetching donor claim requests:', err.message);
     res.status(500).send('Server Error');

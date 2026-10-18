@@ -26,6 +26,8 @@ export default function ConfirmPickupPage() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [statusAlreadyMoved, setStatusAlreadyMoved] = useState(false);
+  const [code, setCode] = useState('');
+  const [remainingAttempts, setRemainingAttempts] = useState(null);
 
   useEffect(() => {
     if (!token) {
@@ -56,13 +58,21 @@ export default function ConfirmPickupPage() {
     fetchDetails();
   }, [taskId, token]);
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!token || submitting) return;
+    if (!code || code.trim().length !== 4) {
+      setError('Please enter the 4-digit verification code provided by the volunteer.');
+      return;
+    }
 
     try {
       setSubmitting(true);
       setError(null);
-      const res = await axios.post(`${API_BASE}/api/confirm/pickup/${taskId}`, { token });
+      const res = await axios.post(`${API_BASE}/api/confirm/pickup/${taskId}`, {
+        token,
+        code: code.trim()
+      });
       setSuccess(true);
       if (res.data?.food) {
         setTaskData((prev) => ({
@@ -73,10 +83,11 @@ export default function ConfirmPickupPage() {
       }
     } catch (err) {
       console.error('Failed to confirm pickup:', err);
-      setError(
-        err.response?.data?.message || 
-        'Unable to confirm pickup. This link may have already been used or expired.'
-      );
+      const msg = err.response?.data?.message || 'Unable to confirm pickup. Please verify the code.';
+      if (err.response?.data?.remainingAttempts !== undefined) {
+        setRemainingAttempts(err.response.data.remainingAttempts);
+      }
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -196,28 +207,58 @@ export default function ConfirmPickupPage() {
                 )}
               </div>
 
-              {/* Action Button */}
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={submitting}
-                className="w-full py-4 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-950/50 hover:shadow-emerald-900/60 transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Confirming Handover...</span>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-5 h-5" />
-                    <span>Confirm I Handed This to {taskData?.volunteer?.name ? taskData.volunteer.name.split(' ')[0] : 'Volunteer'}</span>
-                  </>
-                )}
-              </button>
+              {/* 4-Digit Handover Code Verification Form */}
+              <form onSubmit={handleConfirm} className="space-y-4">
+                <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-center space-y-2.5">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 block">
+                    Volunteer Handover Verification Code
+                  </span>
+                  <p className="text-xs text-slate-400">
+                    Ask the volunteer for their 4-digit handover code and enter it below:
+                  </p>
+                  <input
+                    id="handover-code-input"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength="4"
+                    autoFocus
+                    placeholder="• • • •"
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.replace(/\D/g, '').slice(0, 4));
+                      setError(null);
+                    }}
+                    className="w-48 mx-auto px-4 py-2.5 bg-slate-900 border-2 border-emerald-500/50 focus:border-emerald-500 rounded-xl text-center font-mono text-2xl font-bold tracking-[0.3em] text-white outline-none shadow-inner transition-all placeholder:text-slate-600"
+                  />
+                  {remainingAttempts !== null && (
+                    <p className="text-[11px] text-amber-400 font-medium">
+                      Attempts remaining: {remainingAttempts} / 5
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting || code.length !== 4}
+                  className="w-full py-4 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-base shadow-lg shadow-emerald-950/50 hover:shadow-emerald-900/60 transition-all flex items-center justify-center gap-2.5 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Verifying Code & Handover...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>Verify Code & Confirm Handover</span>
+                    </>
+                  )}
+                </button>
+              </form>
 
               <p className="text-[11px] text-center text-slate-400 leading-tight">
-                This signed link is valid for a single confirmation only. Once confirmed, the handover cannot be undone.
+                This verification updates the task status to in-transit and notifies the receiving NGO in real time.
               </p>
             </>
           )}

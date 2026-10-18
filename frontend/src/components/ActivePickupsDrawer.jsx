@@ -30,6 +30,7 @@ import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 import Drawer from './ui/Drawer';
 import { T } from '../context/LanguageContext';
 import { formatPickupTime } from '../utils/formatters';
+import { markFoodDelivered } from '../services/donationService';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -37,8 +38,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
   const navigate = useNavigate();
   const [pickups, setPickups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [verifyCode, setVerifyCode] = useState('');
-  const [verifyingId, setVerifyingId] = useState(null);
+  const [deliveryConfirmingId, setDeliveryConfirmingId] = useState(null);
   const [error, setError] = useState('');
   const [editingVolunteer, setEditingVolunteer] = useState({});
   const [volunteerForm, setVolunteerForm] = useState({});
@@ -124,19 +124,27 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
     setTimeout(() => setCopiedToken(null), 2500);
   };
 
-  const handleVerifyCode = async (id) => {
+  const handleConfirmDeliveryReceived = async (pickup) => {
     setError('');
-    setVerifyingId(id);
+    setDeliveryConfirmingId(pickup._id);
     try {
-      await axios.patch(`${API_URL}/api/food/verify-pickup/${id}`, { code: verifyCode }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setVerifyCode('');
-      fetchPickups();
+      // 1. Run client-side markFoodDelivered service
+      markFoodDelivered(pickup._id);
+
+      // 2. Persist COMPLETED status to backend
+      await axios.patch(
+        `${API_URL}/api/food/${pickup._id}/status`,
+        { status: 'COMPLETED' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchPickups(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Verification failed');
+      console.error('Failed to confirm delivery received:', err);
+      // Fallback: open modal if direct update fails
+      setDeliveryModalFood(pickup);
+      setDeliveryModalOpen(true);
     } finally {
-      setVerifyingId(null);
+      setDeliveryConfirmingId(null);
     }
   };
 
@@ -676,7 +684,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                           <button
                             onClick={() => {
                               onClose();
-                              navigate(`/track/${pickup._id}`);
+                              navigate(`/map?donation=${pickup._id}`);
                             }}
                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
                           >
@@ -686,38 +694,34 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                         </div>
                       )}
 
-                      {/* Donor 4-Digit Verification Code Section */}
+                      {/* Status / Final Delivery Confirmation for NGO */}
                       {!isCompleted && (
-                        <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
-                          {!isDonor ? (
-                            <div className="text-center">
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Your Handover 4-Digit Code</span>
-                              <div className="text-2xl font-mono font-bold text-slate-800 dark:text-white tracking-[0.2em] mt-0.5">{pickup.verificationCode || '----'}</div>
-                              <p className="text-[11px] text-slate-400 mt-1">Provide this code to the donor upon pickup if confirming manually.</p>
+                        <div className="space-y-2">
+                          {!isInTransit ? (
+                            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2.5 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                              <Clock className="w-4 h-4 text-amber-500 animate-pulse shrink-0" />
+                              <span>Waiting for donor to verify volunteer</span>
                             </div>
-                          ) : (
-                            <div>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Verify Manual 4-Digit Code</span>
-                              <div className="flex gap-2">
-                                <input 
-                                  type="text" 
-                                  maxLength="4"
-                                  placeholder="4-digit code"
-                                  className="flex-1 px-3 py-1.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-center font-mono tracking-widest text-slate-800 dark:text-white dark:bg-slate-800 font-bold text-xs"
-                                  value={verifyCode}
-                                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
-                                />
-                                <button 
-                                  onClick={() => handleVerifyCode(pickup._id)}
-                                  disabled={verifyCode.length !== 4 || verifyingId === pickup._id}
-                                  className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 transition-colors flex items-center cursor-pointer"
-                                >
-                                  {verifyingId === pickup._id ? 'Verifying...' : <><CheckCircle className="w-3.5 h-3.5 mr-1" /> Verify</>}
-                                </button>
-                              </div>
-                              {error && verifyingId === pickup._id && <p className="text-red-500 text-[11px] mt-1 font-medium">{error}</p>}
-                            </div>
-                          )}
+                          ) : !isDonor ? (
+                            <button
+                              type="button"
+                              onClick={() => handleConfirmDeliveryReceived(pickup)}
+                              disabled={deliveryConfirmingId === pickup._id}
+                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                            >
+                              {deliveryConfirmingId === pickup._id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  <span>Confirming Delivery Received...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-4 h-4" />
+                                  <span>Confirm Delivery Received</span>
+                                </>
+                              )}
+                            </button>
+                          ) : null}
                         </div>
                       )}
                     </div>

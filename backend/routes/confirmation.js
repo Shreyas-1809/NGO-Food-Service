@@ -8,15 +8,15 @@ const { verifyConfirmationToken, buildConfirmationUrls } = require('../utils/con
 // Helper to find food by ID or by Claim ID (supports taskId as food._id or claim._id)
 async function findFoodByTaskId(taskId) {
   let food = await Food.findById(taskId)
-    .populate('donorId', 'orgName fullName phone email address city')
-    .populate('claimantId', 'orgName fullName phone email address city');
+    .populate('donorId', 'orgName fullName phone email address city location')
+    .populate('claimantId', 'orgName fullName phone email address city location');
 
   if (!food) {
     const claim = await Claim.findById(taskId);
     if (claim && claim.foodId) {
       food = await Food.findById(claim.foodId)
-        .populate('donorId', 'orgName fullName phone email address city')
-        .populate('claimantId', 'orgName fullName phone email address city');
+        .populate('donorId', 'orgName fullName phone email address city location')
+        .populate('claimantId', 'orgName fullName phone email address city location');
     }
   }
   return food;
@@ -48,17 +48,23 @@ router.get('/task/:taskId', async (req, res) => {
 
     // Fetch accepted claim for NGO details
     const acceptedClaim = await Claim.findOne({ foodId: food._id, status: { $in: ['ACCEPTED', 'COMPLETED'] } })
-      .populate('ngoId', 'orgName fullName phone email address city')
+      .populate('ngoId', 'orgName fullName phone email address city location')
       .sort({ updatedAt: -1 });
 
     const donorObj = food.donorId || {};
     const ngoObj = acceptedClaim?.ngoId || food.claimantId || {};
 
-    const donorAddress = food.pickupAddress || [donorObj.address, donorObj.city].filter(Boolean).join(', ') || 'Pune Pickup Point';
-    const ngoAddress = [ngoObj.address, ngoObj.city].filter(Boolean).join(', ') || 'Pune NGO Hub';
+    const donorAddress = food.pickupAddress || [donorObj.address, donorObj.city].filter(Boolean).join(', ') || '';
+    const ngoAddress = [ngoObj.address, ngoObj.city].filter(Boolean).join(', ') || '';
 
-    const donorMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(donorAddress)}`;
-    const ngoMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ngoAddress)}`;
+    // Prefer real saved GPS coordinates for navigation if present
+    const hasDonorCoord = food.location?.coordinates && (food.location.coordinates[0] !== 0 || food.location.coordinates[1] !== 0);
+    const donorQuery = hasDonorCoord ? `${food.location.coordinates[1]},${food.location.coordinates[0]}` : donorAddress;
+    const donorMapsUrl = donorQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(donorQuery)}` : '';
+
+    const hasNgoCoord = ngoObj.location?.coordinates && (ngoObj.location.coordinates[0] !== 0 || ngoObj.location.coordinates[1] !== 0);
+    const ngoQuery = hasNgoCoord ? `${ngoObj.location.coordinates[1]},${ngoObj.location.coordinates[0]}` : ngoAddress;
+    const ngoMapsUrl = ngoQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ngoQuery)}` : '';
 
     const links = buildConfirmationUrls(food);
 
@@ -70,6 +76,7 @@ router.get('/task/:taskId', async (req, res) => {
       status: food.status,
       volunteerStatus: food.volunteerStatus || 'pending',
       volunteerDeclineReason: food.volunteerDeclineReason || null,
+      verificationCode: food.verificationCode || null,
       task: {
         id: food._id,
         title: food.title,
@@ -80,6 +87,7 @@ router.get('/task/:taskId', async (req, res) => {
         status: food.status,
         volunteerStatus: food.volunteerStatus || 'pending',
         volunteerDeclineReason: food.volunteerDeclineReason || null,
+        verificationCode: food.verificationCode || null,
         pickupConfirmed: Boolean(food.confirmationTokens?.pickupUsedAt || ['IN_TRANSIT', 'COMPLETED'].includes(food.status)),
         deliveryConfirmed: Boolean(food.confirmationTokens?.deliveryUsedAt || food.status === 'COMPLETED'),
         requestedPickupTime: acceptedClaim?.requestedPickupTime || food.pickupTimeSlot?.start || null,
@@ -168,7 +176,7 @@ router.get('/pickup/:taskId', async (req, res) => {
 // @access  Public (Single-use token required)
 router.post('/pickup/:taskId', async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, code } = req.body;
     if (!token) {
       return res.status(400).json({ success: false, message: 'Missing confirmation token.' });
     }
@@ -194,6 +202,32 @@ router.post('/pickup/:taskId', async (req, res) => {
       });
     }
 
+    // Maximum 5 wrong attempts per donation
+    if ((food.verificationAttempts || 0) >= 5) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many incorrect attempts (maximum 5). Handover verification is locked. Please contact support or your NGO coordinator.'
+      });
+    }
+
+    // Verify 4-digit code provided by volunteer
+    if (food.verificationCode) {
+      const cleanInput = String(code || '').trim();
+      const cleanExpected = String(food.verificationCode).trim();
+      if (!cleanInput || cleanInput !== cleanExpected) {
+        food.verificationAttempts = (food.verificationAttempts || 0) + 1;
+        await food.save();
+        const remaining = Math.max(0, 5 - food.verificationAttempts);
+        return res.status(400).json({
+          success: false,
+          remainingAttempts: remaining,
+          message: remaining > 0
+            ? `Incorrect 4-digit handover code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`
+            : 'Too many incorrect attempts (maximum 5). Handover verification is locked.'
+        });
+      }
+    }
+
     // Mark food as IN_TRANSIT and invalidate the single-use pickup token
     food.status = 'IN_TRANSIT';
     food.volunteerStatus = 'picked_up';
@@ -204,13 +238,29 @@ router.post('/pickup/:taskId', async (req, res) => {
     // Update active claim status / logs
     const acceptedClaim = await Claim.findOne({ foodId: food._id, status: 'ACCEPTED' });
 
-    // Emit live socket updates to all connected views
+    // Emit live socket updates to all connected views (NGO, volunteer, Map page)
     const io = req.app.get('io');
     const emitToUser = req.app.get('emitToUser');
 
     if (io) {
       io.emit('LISTING_UPDATED', food);
-      io.emit('TASK_UPDATED', { taskId: food._id, status: 'IN_TRANSIT', pickupConfirmed: true });
+      io.emit('TASK_UPDATED', {
+        taskId: food._id.toString(),
+        donationId: food._id.toString(),
+        status: 'IN_TRANSIT',
+        volunteerStatus: 'picked_up',
+        pickupConfirmed: true
+      });
+      io.emit('PICKUP_CONFIRMED', {
+        food,
+        taskId: food._id.toString()
+      });
+    }
+
+    if (emitToUser) {
+      if (food.donorId) emitToUser(food.donorId.toString(), 'LISTING_UPDATED', food);
+      if (food.claimantId) emitToUser(food.claimantId.toString(), 'LISTING_UPDATED', food);
+      if (acceptedClaim?.ngoId) emitToUser(acceptedClaim.ngoId.toString(), 'LISTING_UPDATED', food);
     }
 
     // Create notification for recipient NGO

@@ -7,6 +7,7 @@ const Notification = require('../models/Notification');
 const Activity = require('../models/Activity');
 const User = require('../models/User');
 const { generateTokensForFood, buildConfirmationUrls } = require('../utils/confirmationTokens');
+const { geocodeAddressBackend } = require('../utils/geocoder');
 
 // @route   POST /api/food
 // @desc    Create a new food listing
@@ -26,6 +27,35 @@ router.post('/', auth, async (req, res) => {
       computedAutoDeleteAt = new Date(Date.now() + hours * 60 * 60 * 1000);
     }
 
+    let finalLocation = location ? { type: 'Point', coordinates: location.coordinates || [0, 0] } : { type: 'Point', coordinates: [0, 0] };
+    const hasValidCoords = Array.isArray(finalLocation.coordinates) &&
+      finalLocation.coordinates.length >= 2 &&
+      Number.isFinite(Number(finalLocation.coordinates[0])) &&
+      Number.isFinite(Number(finalLocation.coordinates[1])) &&
+      !(Math.abs(Number(finalLocation.coordinates[0])) < 1e-6 && Math.abs(Number(finalLocation.coordinates[1])) < 1e-6);
+
+    if (!hasValidCoords) {
+      // If a donation has no coordinates, geocode the donor's address once when the surplus is posted and save the result
+      let addressToGeocode = pickupAddress;
+      if (!addressToGeocode) {
+        const donorUser = await User.findById(req.user.id).select('address city');
+        addressToGeocode = [donorUser?.address, donorUser?.city].filter(Boolean).join(', ');
+      }
+      if (addressToGeocode) {
+        try {
+          const geoResult = await geocodeAddressBackend(addressToGeocode);
+          if (geoResult && Number.isFinite(geoResult.lat) && Number.isFinite(geoResult.lng)) {
+            finalLocation = {
+              type: 'Point',
+              coordinates: [geoResult.lng, geoResult.lat]
+            };
+          }
+        } catch (geoErr) {
+          console.warn('Backend geocoding failed on food post:', geoErr.message);
+        }
+      }
+    }
+
     const newFood = new Food({
       donorId: req.user.id,
       title,
@@ -38,7 +68,7 @@ router.post('/', auth, async (req, res) => {
       photos: photos || [],
       overallExpiry: overallExpiry || expiryTime,
       autoDeleteAt: computedAutoDeleteAt,
-      location: location ? { type: 'Point', coordinates: location.coordinates || [0, 0] } : { type: 'Point', coordinates: [0, 0] },
+      location: finalLocation,
       pickupAddress,
       pickupTimeSlot
     });
@@ -69,8 +99,8 @@ router.get('/my-listings', auth, async (req, res) => {
 
     // STRICT QUERY-LEVEL SCOPING: Only fetch postings where donorId equals the logged-in user ID
     const foods = await Food.find({ donorId: req.user.id })
-      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
-      .populate('claimantId', 'orgName fullName phone email address city')
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
+      .populate('claimantId', 'orgName fullName phone email address city location')
       .lean()
       .sort({ createdAt: -1 });
 
@@ -194,8 +224,8 @@ router.get('/active-pickups', auth, async (req, res) => {
       ];
     }
     const foods = await Food.find(query)
-      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
-      .populate('claimantId', 'orgName fullName phone email address city')
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
+      .populate('claimantId', 'orgName fullName phone email address city location')
       .sort({ updatedAt: -1 });
     res.json(foods);
   } catch (err) {
@@ -256,8 +286,8 @@ router.get('/:id', auth, async (req, res, next) => {
       return next();
     }
     const food = await Food.findById(req.params.id)
-      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
-      .populate('claimantId', 'orgName fullName phone email address city');
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
+      .populate('claimantId', 'orgName fullName phone email address city location');
     if (!food) {
       return res.status(404).json({ message: 'Food item not found' });
     }
@@ -793,6 +823,11 @@ router.patch('/:id/assign-volunteer', auth, async (req, res) => {
       deliveryUsedAt: null,
       volunteerToken: tokens.volunteerToken
     };
+
+    // Generate one 4-digit handover code per donation when a volunteer is assigned
+    const handoverCode = Math.floor(1000 + Math.random() * 9000).toString();
+    food.verificationCode = handoverCode;
+    food.verificationAttempts = 0;
 
     await food.save();
 

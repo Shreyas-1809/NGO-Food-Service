@@ -131,6 +131,10 @@ input:-webkit-autofill {
 .custom-leaflet-marker div {
   filter: none !important;
 }
+.volunteer-marker {
+  transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s cubic-bezier(0.25, 1, 0.5, 1), left 0.8s cubic-bezier(0.25, 1, 0.5, 1) !important;
+}
 .leaflet-marker-pane, .leaflet-popup-pane {
   filter: none !important;
 }
+

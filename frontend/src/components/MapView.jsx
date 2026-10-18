@@ -3,6 +3,15 @@ import { loadGoogleMaps } from '../services/mapsService';
 import { calculateDistanceKm } from '../services/mapsService';
 import { MapPin, ShieldCheck, Info, Sparkles, ArrowRight } from 'lucide-react';
 
+const isValidCoord = (lat, lng) =>
+  Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+const hasRealCoords = (coords) =>
+  Boolean(coords) &&
+  typeof coords === 'object' &&
+  isValidCoord(coords.lat, coords.lng) &&
+  !(Math.abs(Number(coords.lat)) < 1e-6 && Math.abs(Number(coords.lng)) < 1e-6);
+
 const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = null, orgNgoId = null, redirectNgo = null }) => {
   const mapRef = useRef(null);
   const [apiAvailable, setApiAvailable] = useState(true);
@@ -16,18 +25,23 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
         if (!mapRef.current) return;
         setApiAvailable(true);
 
-        const center = userLocation || { lat: 18.5204, lng: 73.8567 }; // Pune default
+        const firstValidNgo = ngos.find(n => hasRealCoords(n.location));
+        const center = hasRealCoords(userLocation)
+          ? userLocation
+          : (firstValidNgo ? firstValidNgo.location : { lat: 20.5937, lng: 78.9629 });
 
         map = new maps.Map(mapRef.current, {
           center,
-          zoom: 12,
+          zoom: hasRealCoords(userLocation) || firstValidNgo ? 12 : 5,
           styles: [
             { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }
           ]
         });
 
-        // Add Markers for NGOs
+        // Add Markers for NGOs with real coordinates only
         ngos.forEach((ngo) => {
+          if (!hasRealCoords(ngo.location)) return;
+
           const isOwnHub = orgNgoId && ngo.id === orgNgoId;
           const isSurplusClaimant = Boolean(ngo.wantsSurplus);
 
@@ -61,8 +75,8 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
           });
         });
 
-        // Add User Location Marker
-        if (userLocation) {
+        // Add User Location Marker (real device location only)
+        if (hasRealCoords(userLocation)) {
           new maps.Marker({
             position: userLocation,
             map,
@@ -78,9 +92,9 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
           });
         }
 
-        // REDIRECT CONNECTION LINE: Draw polyline from donor → NGO when modal is open
-        if (redirectNgo?.location) {
-          const donorPos = userLocation || center;
+        // REDIRECT CONNECTION LINE: Draw polyline from donor → NGO when real coords exist
+        if (hasRealCoords(redirectNgo?.location) && hasRealCoords(userLocation)) {
+          const donorPos = userLocation;
           const ngoPos = redirectNgo.location;
 
           // Highlight the receiving NGO marker

@@ -2,7 +2,12 @@
 import { MOCK_NGOS } from './mockData';
 
 export const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 3.5;
+  if (!Number.isFinite(Number(lat1)) || !Number.isFinite(Number(lon1)) || !Number.isFinite(Number(lat2)) || !Number.isFinite(Number(lon2))) {
+    return null;
+  }
+  if ((Math.abs(lat1) < 1e-6 && Math.abs(lon1) < 1e-6) || (Math.abs(lat2) < 1e-6 && Math.abs(lon2) < 1e-6)) {
+    return null;
+  }
   const R = 6371; // Earth radius in km
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
@@ -51,7 +56,8 @@ export const calculateMatchScore = (donation, req, distanceKm) => {
   }
 
   // 3. Location / Distance (20%)
-  if (distanceKm <= 3) locationScore = 20;
+  if (distanceKm === null || distanceKm === undefined) locationScore = 10;
+  else if (distanceKm <= 3) locationScore = 20;
   else if (distanceKm <= 7) locationScore = 15;
   else if (distanceKm <= 15) locationScore = 10;
   else locationScore = 5;
@@ -73,11 +79,13 @@ export const calculateMatchScore = (donation, req, distanceKm) => {
 };
 
 export const findSmartMatches = (donation, userLocation = null) => {
-  const donorLat = donation.pickupCoords?.lat || userLocation?.lat || 18.5204;
-  const donorLng = donation.pickupCoords?.lng || userLocation?.lng || 73.8567;
+  const donorLat = donation.pickupCoords?.lat ?? userLocation?.lat;
+  const donorLng = donation.pickupCoords?.lng ?? userLocation?.lng;
 
   const matches = MOCK_NGOS.map((ngo) => {
-    const distKm = calculateHaversineDistance(donorLat, donorLng, ngo.location.lat, ngo.location.lng);
+    const distKm = (donorLat && donorLng && ngo?.location)
+      ? calculateHaversineDistance(donorLat, donorLng, ngo.location.lat, ngo.location.lng)
+      : null;
     const topReq = ngo.currentRequirements[0] || { item: donation.itemName || 'Surplus Supplies', category: donation.category || 'Food', quantity: 40, urgency: 'HIGH' };
 
     const score = calculateMatchScore(donation, topReq, distKm);

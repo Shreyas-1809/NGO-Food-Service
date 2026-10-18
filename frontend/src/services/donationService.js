@@ -68,7 +68,7 @@ export const registerNgo = (ngoData) => {
     city: ngoData.city || 'Pune',
     area: ngoData.area || 'Central Area',
     address: ngoData.address,
-    location: ngoData.location || { lat: 18.5204, lng: 73.8567 },
+    location: ngoData.location || null,
     distanceKm: 3.0,
     phone: ngoData.phone,
     email: ngoData.email,
@@ -159,8 +159,8 @@ export const createDonation = (donationData, user = null) => {
   const donations = getStoredDonations();
   const newId = `DON-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
 
-  // Default coordinates fallback
-  const donorCoords = donationData.pickupCoords || { lat: 18.5204, lng: 73.8567 };
+  // Real saved coordinates only — no mock fallback
+  const donorCoords = donationData.pickupCoords || null;
 
   const newDonation = {
     id: newId,
@@ -181,7 +181,7 @@ export const createDonation = (donationData, user = null) => {
     volunteerName: null,
     volunteerPhone: null,
     volunteerCoords: null,
-    ngoCoords: { lat: 18.5308, lng: 73.8474 }, // Default Helping Hands
+    ngoCoords: null,
     availabilityDate: donationData.availabilityDate || new Date().toISOString().slice(0, 10),
     availabilityTime: donationData.availabilityTime || '14:00 - 18:00',
     urgency: donationData.urgency || 'HIGH',
@@ -218,7 +218,7 @@ export const createDonation = (donationData, user = null) => {
 export const createReceiverRequest = (requestData, user = null) => {
   const requests = getStoredRequests();
   const orgTitle = user?.orgName || user?.name || user?.fullName || 'Helping Hands Foundation';
-  const orgLocation = user?.location || { lat: 18.5308, lng: 73.8474 };
+  const orgLocation = user?.location || null;
   const orgCity = user?.city || 'Pune';
   const orgArea = requestData.area || requestData.location || user?.address || 'Shivajinagar';
 
@@ -276,7 +276,7 @@ export const confirmDonationMatch = (donationId, ngoId, ngoName) => {
         status: d.status === 'CREATED' ? 'MATCHED' : d.status,
         matchedNgoId: ngoId,
         matchedNgoName: ngoName,
-        ngoCoords: matchedNgo?.location || d.ngoCoords || { lat: 18.5308, lng: 73.8474 },
+        ngoCoords: matchedNgo?.location || d.ngoCoords || null,
         trackingTimeline: updatedTimeline
       };
     }
@@ -296,7 +296,7 @@ export const confirmDonationMatch = (donationId, ngoId, ngoName) => {
 };
 
 // Volunteer Actions
-export const assignVolunteerToDonation = (donationId, volunteer = { name: 'Rahul Verma (Rider)', phone: '+91 98233 44112', coords: { lat: 18.5240, lng: 73.8445 } }) => {
+export const assignVolunteerToDonation = (donationId, volunteer = {}) => {
   const donations = getStoredDonations();
   const now = new Date().toISOString();
 
@@ -312,10 +312,10 @@ export const assignVolunteerToDonation = (donationId, volunteer = { name: 'Rahul
       return {
         ...d,
         status: 'VOLUNTEER_ASSIGNED',
-        volunteerId: `vol-${Date.now()}`,
+        volunteerId: volunteer.id || `vol-${Date.now()}`,
         volunteerName: volunteer.name || 'Volunteer Rider',
-        volunteerPhone: volunteer.phone || '+91 98233 44112',
-        volunteerCoords: volunteer.coords || { lat: 18.5240, lng: 73.8445 },
+        volunteerPhone: volunteer.phone || '',
+        volunteerCoords: volunteer.coords || null,
         trackingTimeline: updatedTimeline
       };
     }

@@ -146,7 +146,7 @@ export const reverseGeocodeCoords = async (coords) => {
  */
 export const geocodeAddress = async (address) => {
   if (!address || typeof address !== 'string' || address.trim() === '') {
-    return { lat: 18.5204, lng: 73.8567 };
+    return null;
   }
 
   // 1. Try Google Maps Geocoder if available
@@ -182,7 +182,7 @@ export const geocodeAddress = async (address) => {
     console.warn('[MapsService] Nominatim geocode fallback:', err.message);
   }
 
-  // 3. Known city and Pune area landmarks fallback
+  // 3. Known city and landmark resolution (if geocoder network is unavailable)
   const addrLower = address.toLowerCase();
   if (addrLower.includes('kothrud')) return { lat: 18.5074, lng: 73.8077 };
   if (addrLower.includes('shivajinagar') || addrLower.includes('university')) return { lat: 18.5308, lng: 73.8474 };
@@ -203,18 +203,25 @@ export const geocodeAddress = async (address) => {
   if (addrLower.includes('hyderabad')) return { lat: 17.3850, lng: 78.4867 };
   if (addrLower.includes('bangalore') || addrLower.includes('bengaluru')) return { lat: 12.9716, lng: 77.5946 };
 
-  return { lat: 18.5204, lng: 73.8567 }; // Default Pune Center
+  return null;
 };
 
 /**
  * Direct distance calculator between two lat/lng pairs in Kilometers (Haversine formula)
  */
 export const calculateDistanceKm = (coords1, coords2) => {
-  if (!coords1 || !coords2) return 2.5;
-  const lat1 = coords1.lat ?? coords1.latitude ?? 18.5204;
-  const lng1 = coords1.lng ?? coords1.longitude ?? 73.8567;
-  const lat2 = coords2.lat ?? coords2.latitude ?? 18.5204;
-  const lng2 = coords2.lng ?? coords2.longitude ?? 73.8567;
+  if (!coords1 || !coords2) return null;
+  const lat1 = coords1.lat ?? coords1.latitude;
+  const lng1 = coords1.lng ?? coords1.longitude;
+  const lat2 = coords2.lat ?? coords2.latitude;
+  const lng2 = coords2.lng ?? coords2.longitude;
+
+  if (!Number.isFinite(Number(lat1)) || !Number.isFinite(Number(lng1)) || !Number.isFinite(Number(lat2)) || !Number.isFinite(Number(lng2))) {
+    return null;
+  }
+  if ((Math.abs(lat1) < 1e-6 && Math.abs(lng1) < 1e-6) || (Math.abs(lat2) < 1e-6 && Math.abs(lng2) < 1e-6)) {
+    return null;
+  }
 
   const R = 6371; // Earth radius in km
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -223,17 +230,17 @@ export const calculateDistanceKm = (coords1, coords2) => {
             Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.max(0.2, Math.round(R * c * 10) / 10);
+  return Math.max(0.1, Math.round(R * c * 10) / 10);
 };
 
 /**
  * Route calculation between Donor, Volunteer, and Receiver (3-point delivery chain)
  */
 export const calculateMultiStopRouteInfo = async (donorCoords, volunteerCoords, receiverCoords) => {
-  const d1 = calculateDistanceKm(volunteerCoords || donorCoords, donorCoords);
-  const d2 = calculateDistanceKm(donorCoords, receiverCoords);
+  const d1 = calculateDistanceKm(volunteerCoords || donorCoords, donorCoords) || 0;
+  const d2 = calculateDistanceKm(donorCoords, receiverCoords) || 0;
   const totalKm = Math.round((d1 + d2) * 10) / 10;
-  const totalMins = Math.round(totalKm * 3.2 + 6);
+  const totalMins = Math.max(1, Math.round(totalKm * 3.2 + 6));
 
   return {
     leg1Km: d1,
@@ -241,17 +248,19 @@ export const calculateMultiStopRouteInfo = async (donorCoords, volunteerCoords, 
     totalKm,
     durationMinutes: totalMins,
     durationText: `${totalMins} mins total trip`,
-    donorEta: `${Math.round(d1 * 3 + 4)} mins to donor`,
-    receiverEta: `${Math.round((d1 + d2) * 3 + 6)} mins to receiver`
+    donorEta: `${Math.max(1, Math.round(d1 * 3 + 4))} mins to donor`,
+    receiverEta: `${Math.max(1, Math.round((d1 + d2) * 3 + 6))} mins to receiver`
   };
 };
 
 export const calculateRouteInfo = async (origin, destination) => {
   const dist = calculateDistanceKm(origin, destination);
-  const mins = Math.round(dist * 3 + 5);
+  if (dist === null) return null;
+  const mins = Math.max(1, Math.round(dist * 3 + 5));
   return {
     distanceText: `${dist} km`,
     distanceValueKm: dist,
+    totalKm: dist,
     durationMinutes: mins,
     durationText: `${mins} mins`,
     startAddress: 'Donor Pickup Point',

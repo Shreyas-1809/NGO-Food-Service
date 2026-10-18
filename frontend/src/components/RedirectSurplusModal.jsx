@@ -34,19 +34,36 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
   const targetNgoId = ngo?.id || ngo?.ngoId || ngo?._id || 'ngo-101';
   const targetNgoAddress = ngo?.address || (ngo?.area && ngo?.city ? `${ngo.area}, ${ngo.city}` : ngo?.city || 'Pune Hub');
 
-  // Coords & Distance calculation
-  const donorCoords = userLocation || (user?.location?.coordinates
-    ? { lat: user.location.coordinates[1], lng: user.location.coordinates[0] }
-    : user?.location || { lat: 18.5204, lng: 73.8567 });
+  const isValidCoord = (lat, lng) =>
+    Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
 
-  const receiverCoords = ngo?.location?.lat !== undefined
-    ? ngo.location
-    : (ngo?.location?.coordinates
-      ? { lat: ngo.location.coordinates[1], lng: ngo.location.coordinates[0] }
-      : { lat: 18.5308, lng: 73.8474 });
+  const hasRealCoords = (coords) =>
+    Boolean(coords) &&
+    typeof coords === 'object' &&
+    isValidCoord(coords.lat, coords.lng) &&
+    !(Math.abs(Number(coords.lat)) < 1e-6 && Math.abs(Number(coords.lng)) < 1e-6);
 
-  const distanceKm = ngo?.distanceKm || calculateDistanceKm(donorCoords, receiverCoords);
-  const estTransitMins = Math.round(distanceKm * 3.5 + 5);
+  const extractCoords = (loc) => {
+    if (!loc) return null;
+    if (loc.lat !== undefined && loc.lng !== undefined && isValidCoord(loc.lat, loc.lng)) {
+      return { lat: Number(loc.lat), lng: Number(loc.lng) };
+    }
+    if (loc.coordinates && Array.isArray(loc.coordinates) && loc.coordinates.length >= 2 && isValidCoord(loc.coordinates[1], loc.coordinates[0])) {
+      return { lat: Number(loc.coordinates[1]), lng: Number(loc.coordinates[0]) };
+    }
+    return null;
+  };
+
+  // Coords & Distance calculation (REAL saved data only)
+  const rawDonorCoords = extractCoords(userLocation) || extractCoords(user?.location);
+  const donorCoords = hasRealCoords(rawDonorCoords) ? rawDonorCoords : null;
+
+  const rawReceiverCoords = extractCoords(ngo?.location);
+  const receiverCoords = hasRealCoords(rawReceiverCoords) ? rawReceiverCoords : null;
+
+  const canComputeDistance = Boolean(donorCoords && receiverCoords);
+  const distanceKm = ngo?.distanceKm || (canComputeDistance ? calculateDistanceKm(donorCoords, receiverCoords) : null);
+  const estTransitMins = distanceKm ? Math.round(distanceKm * 3.5 + 5) : null;
 
   useEffect(() => {
     const fetchSurplusBatches = async () => {
@@ -164,7 +181,7 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
     // Record notification
     addNotification({
       title: 'Surplus Redirected 🚀',
-      message: `Allocated "${selectedBatch?.title || 'Surplus Batch'}" directly to ${targetNgoName} (${distanceKm} km away).`,
+      message: `Allocated "${selectedBatch?.title || 'Surplus Batch'}" directly to ${targetNgoName}${distanceKm ? ` (~${distanceKm} km away)` : ''}.`,
       type: 'SUCCESS'
     });
 
@@ -209,7 +226,7 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
                 <Navigation className="w-3.5 h-3.5 mr-1 text-violet-600" /> Dispatch Route Summary
               </span>
               <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
-                ~{distanceKm} km • ~{estTransitMins} mins
+                {distanceKm ? `~${distanceKm} km • ~${estTransitMins} mins` : 'Coordinates Pending'}
               </span>
             </div>
 

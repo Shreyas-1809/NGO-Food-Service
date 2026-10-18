@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+
+function TrackRouteRedirect() {
+  const { id } = useParams();
+  return <Navigate to={id ? `/map?donation=${id}` : '/map'} replace />;
+}
 
 import Dashboard from './components/Dashboard';
 import AppLayout from './components/AppLayout';
@@ -179,9 +184,9 @@ function App() {
                   <Route path="/donor/log-surplus" element={<LogSurplus socket={socket} user={user} token={token} />} />
                   <Route path="/donor/volunteer" element={<VolunteerSection socket={socket} user={user} token={token} />} />
 
-                  {/* Donation Dispatch Tracking */}
-                  <Route path="/track/:id" element={<DonationTrackingPage />} />
-                  <Route path="/track" element={<DonationTrackingPage />} />
+                  {/* Donation Dispatch Tracking Redirects to /map?donation=:id */}
+                  <Route path="/track/:id" element={<TrackRouteRedirect />} />
+                  <Route path="/track" element={<Navigate to="/map" replace />} />
 
                   {/* Fallback to Dashboard */}
                   <Route path="*" element={<Navigate to="/" replace />} />

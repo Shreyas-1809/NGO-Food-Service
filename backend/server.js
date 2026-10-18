@@ -6,6 +6,8 @@ const mongoose = require('mongoose');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const Food = require('./models/Food');
+const { verifyConfirmationToken } = require('./utils/confirmationTokens');
 
 const app = express();
 const server = http.createServer(app);
@@ -60,18 +62,24 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // Client emits 'join_room' with their userId immediately after login.
-  socket.on('join_room', (userId) => {
-    if (userId) {
-      socket.join(`room:${userId}`);
-      console.log(`Socket ${socket.id} joined room:${userId}`);
+  socket.on('join_room', (roomIdOrUserId) => {
+    if (roomIdOrUserId) {
+      const room = String(roomIdOrUserId).startsWith('room:')
+        ? String(roomIdOrUserId)
+        : `room:${roomIdOrUserId}`;
+      socket.join(room);
+      console.log(`Socket ${socket.id} joined ${room}`);
     }
   });
 
   // Client emits 'leave_room' on logout (optional — disconnect also cleans rooms).
-  socket.on('leave_room', (userId) => {
-    if (userId) {
-      socket.leave(`room:${userId}`);
-      console.log(`Socket ${socket.id} left room:${userId}`);
+  socket.on('leave_room', (roomIdOrUserId) => {
+    if (roomIdOrUserId) {
+      const room = String(roomIdOrUserId).startsWith('room:')
+        ? String(roomIdOrUserId)
+        : `room:${roomIdOrUserId}`;
+      socket.leave(room);
+      console.log(`Socket ${socket.id} left ${room}`);
     }
   });
 
@@ -79,10 +87,78 @@ io.on('connection', (socket) => {
     console.log('User disconnected:', socket.id);
   });
 
-  // Relay volunteer location to all connected clients (NGO map view)
-  socket.on('VOLUNTEER_LOCATION', (payload) => {
-    // Broadcast to all OTHER clients so the NGO map can display the marker
-    socket.broadcast.emit('VOLUNTEER_LOCATION', payload);
+  // REAL volunteer GPS updates only.
+  // - The volunteer task page sends { taskId, token, lat, lng, accuracy, timestamp }.
+  // - The token must be the task's VOLUNTEER token (only the assigned volunteer's
+  //   link holder can produce it), so updates from anyone else are ignored.
+  // - The real position is persisted on the donation and re-emitted ONLY to the
+  //   NGO and the donor of that donation (their user rooms).
+  socket.on('VOLUNTEER_LOCATION', async (payload) => {
+    try {
+      const { taskId, token, lat, lng, accuracy, timestamp } = payload || {};
+      if (!taskId || !token) return;
+
+      const latN = Number(lat);
+      const lngN = Number(lng);
+      if (!Number.isFinite(latN) || !Number.isFinite(lngN)) return;
+      if (Math.abs(latN) > 90 || Math.abs(lngN) > 180) return;
+      if (Math.abs(latN) < 1e-6 && Math.abs(lngN) < 1e-6) return; // ignore null island / zero coordinates
+
+      const verification = verifyConfirmationToken(token, 'VOLUNTEER');
+      if (!verification.valid || verification.decoded.taskId !== String(taskId)) return;
+
+      const food = await Food.findById(taskId);
+      if (!food) return;
+
+      // Ignore if token does not match recorded volunteerToken (when set)
+      if (food.confirmationTokens?.volunteerToken && food.confirmationTokens.volunteerToken !== token) {
+        return;
+      }
+
+      // Ignore if this task has no assigned volunteer (or was declined / already completed)
+      const hasAssignedVolunteer = (Array.isArray(food.volunteerAssignments) && food.volunteerAssignments.length > 0) ||
+        Boolean(food.volunteerAssignment && food.volunteerAssignment.name);
+      if (!hasAssignedVolunteer || food.volunteerStatus === 'declined' || food.volunteerStatus === 'delivered' || food.status === 'COMPLETED') {
+        return;
+      }
+
+      const updatedAt = new Date();
+      food.volunteerLiveLocation = {
+        lat: latN,
+        lng: lngN,
+        accuracy: Number.isFinite(Number(accuracy)) ? Number(accuracy) : undefined,
+        updatedAt
+      };
+      await food.save();
+
+      const update = {
+        taskId: food._id.toString(),
+        donationId: food._id.toString(),
+        lat: latN,
+        lng: lngN,
+        accuracy: food.volunteerLiveLocation.accuracy,
+        timestamp: Number.isFinite(Number(timestamp)) ? Number(timestamp) : updatedAt.getTime(),
+        updatedAt: updatedAt.toISOString()
+      };
+
+      // Emit only to the parties of this donation: the donor and the assigned NGO
+      let ngoUserId = food.claimantId ? food.claimantId.toString() : null;
+      if (!ngoUserId) {
+        const Claim = require('./models/Claim');
+        const acceptedClaim = await Claim.findOne({
+          foodId: food._id,
+          status: { $in: ['ACCEPTED', 'IN_TRANSIT'] }
+        });
+        if (acceptedClaim?.ngoId) {
+          ngoUserId = acceptedClaim.ngoId.toString();
+        }
+      }
+
+      if (food.donorId) io.to(`room:${food.donorId.toString()}`).emit('VOLUNTEER_LOCATION', update);
+      if (ngoUserId) io.to(`room:${ngoUserId}`).emit('VOLUNTEER_LOCATION', update);
+    } catch (err) {
+      console.error('VOLUNTEER_LOCATION handling failed:', err.message);
+    }
   });
 });
 

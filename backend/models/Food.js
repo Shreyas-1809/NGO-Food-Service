@@ -16,6 +16,7 @@ const FoodSchema = new mongoose.Schema({
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectionReason: { type: String },
   verificationCode: { type: String },
+  verificationAttempts: { type: Number, default: 0 },
   pickupAddress: { type: String },
   pickupTimeSlot: {
     start: Date,
@@ -56,6 +57,14 @@ const FoodSchema = new mongoose.Schema({
     default: 'pending'
   },
   volunteerDeclineReason: { type: String },
+  // Latest REAL GPS position pushed by the assigned volunteer's device
+  // over the socket (VOLUNTEER_LOCATION). Null until the first update arrives.
+  volunteerLiveLocation: {
+    lat: { type: Number },
+    lng: { type: Number },
+    accuracy: { type: Number },
+    updatedAt: { type: Date }
+  },
   confirmationTokens: {
     pickupToken: { type: String },
     pickupUsedAt: { type: Date },

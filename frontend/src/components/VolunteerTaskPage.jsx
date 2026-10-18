@@ -67,10 +67,12 @@ const VolunteerTaskPage = () => {
       setError(null);
       const res = await axios.get(`${API_URL}/api/confirm/task/${taskId}?token=${token}`);
       setData(res.data);
-      // If already accepted or en route, reflect that in UI immediately
-      if (['accepted', 'en_route'].includes(res.data.task?.volunteerStatus)) {
+      // If already accepted, en route, or picked up (in transit), reflect that in UI immediately
+      const vStatus = res.data.task?.volunteerStatus;
+      const tStatus = res.data.task?.status;
+      if (['accepted', 'en_route', 'picked_up'].includes(vStatus) || tStatus === 'IN_TRANSIT') {
         setActionDone('accepted');
-      } else if (res.data.task?.volunteerStatus === 'declined') {
+      } else if (vStatus === 'declined') {
         setActionDone('declined');
       }
     } catch (err) {
@@ -106,7 +108,9 @@ const VolunteerTaskPage = () => {
             }
           };
         });
-        if (['accepted', 'en_route'].includes(payload.volunteerStatus)) setActionDone('accepted');
+        if (['accepted', 'en_route', 'picked_up'].includes(payload.volunteerStatus) || payload.status === 'IN_TRANSIT') {
+          setActionDone('accepted');
+        }
         if (payload.volunteerStatus === 'declined') setActionDone('declined');
       }
     });
@@ -126,6 +130,9 @@ const VolunteerTaskPage = () => {
             }
           };
         });
+        if (food.status === 'IN_TRANSIT' || ['accepted', 'en_route', 'picked_up'].includes(food.volunteerStatus)) {
+          setActionDone('accepted');
+        }
       }
     });
 
@@ -139,31 +146,38 @@ const VolunteerTaskPage = () => {
 
   const startLocationSharing = () => {
     if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by this device.');
+      setLocationError('Please allow location access');
+      setLocationSharing(false);
       return;
     }
+    if (locationWatchRef.current != null) return; // already sharing
+
     setLocationError(null);
     setLocationSharing(true);
 
     locationWatchRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
+        setLocationError(null);
+        setLocationSharing(true);
+        const { latitude, longitude, accuracy } = position.coords;
         if (socketRef.current?.connected) {
           socketRef.current.emit('VOLUNTEER_LOCATION', {
             taskId,
+            token,
             lat: latitude,
             lng: longitude,
-            volunteerName: data?.volunteer?.name || 'Volunteer',
-            timestamp: Date.now()
+            accuracy,
+            timestamp: position.timestamp || Date.now()
           });
         }
       },
       (err) => {
         console.error('Geolocation error:', err);
-        setLocationError('Unable to get location. Please allow location access in your browser.');
-        setLocationSharing(false);
+        // Denied or unavailable: send nothing and tell the volunteer.
+        stopLocationSharing();
+        setLocationError('Please allow location access');
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 
@@ -174,6 +188,14 @@ const VolunteerTaskPage = () => {
     }
     setLocationSharing(false);
   };
+
+  // Resume real-time sharing when the task is already accepted (e.g. page reload)
+  useEffect(() => {
+    if (actionDone === 'accepted' && !data?.task?.deliveryConfirmed && data?.task?.status !== 'COMPLETED') {
+      startLocationSharing();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionDone, data?.task?.status, data?.task?.deliveryConfirmed]);
 
   // ─── Accept / Decline handlers ──────────────────────────────────────────────
 
@@ -320,6 +342,79 @@ const VolunteerTaskPage = () => {
           )}
         </div>
 
+        {/* ─── 4-DIGIT HANDOVER CODE FOR DONOR VERIFICATION ─── */}
+        {!isDelivered && (data?.verificationCode || data?.task?.verificationCode) && (
+          <div className="bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-slate-900/10 dark:from-emerald-950/40 dark:to-slate-900 border-2 border-emerald-500/40 rounded-3xl p-5 shadow-xs text-center space-y-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">
+              Handover Verification Code
+            </span>
+            <div className="text-3xl sm:text-4xl font-mono font-extrabold text-emerald-700 dark:text-emerald-300 tracking-[0.25em]">
+              {data.verificationCode || data.task?.verificationCode}
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 max-w-sm mx-auto leading-relaxed">
+              Provide this 4-digit code to the donor upon pickup. The donor will enter it on their screen to verify you and confirm handover.
+            </p>
+          </div>
+        )}
+
+        {/* ─── LIVE LOCATION TRACKING BANNER (Always visible when task is accepted and in progress) ─── */}
+        {actionDone === 'accepted' && !isDelivered && (
+          <div className="w-full">
+            {locationError ? (
+              <div className="p-4 bg-red-50 dark:bg-red-950/50 border-2 border-red-400 dark:border-red-700 rounded-3xl flex items-start gap-3.5 shadow-sm">
+                <div className="w-9 h-9 rounded-2xl bg-red-100 dark:bg-red-900/60 text-red-600 dark:text-red-300 flex items-center justify-center shrink-0 mt-0.5">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <h4 className="text-sm font-extrabold text-red-800 dark:text-red-200">
+                    Please allow location access
+                  </h4>
+                  <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">
+                    Live GPS is required so the NGO and donor can track the dispatch in real time. No location updates will be sent until location permissions are granted.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={startLocationSharing}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Retry Location Access</span>
+                  </button>
+                </div>
+              </div>
+            ) : locationSharing ? (
+              <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-200 shadow-xs">
+                <div className="flex items-center gap-2.5 font-bold">
+                  <Radio className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-pulse shrink-0" />
+                  <span>Live GPS Sharing Active</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono">Real-time device tracking</span>
+                  <button
+                    type="button"
+                    onClick={stopLocationSharing}
+                    className="text-[11px] font-bold text-red-500 hover:text-red-700 underline cursor-pointer"
+                  >
+                    Pause
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl flex items-center justify-between text-xs">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">Location sharing is paused.</span>
+                <button
+                  type="button"
+                  onClick={startLocationSharing}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <Navigation className="w-3.5 h-3.5" />
+                  <span>Share Location</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─── ACCEPT / DECLINE SECTION ─────────────────────────────────────── */}
         {!isPickedUp && !isDelivered && (
           <div className="bg-white dark:bg-slate-800 rounded-3xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4">
@@ -349,37 +444,6 @@ const VolunteerTaskPage = () => {
                 <p className="text-xs text-sky-700 dark:text-sky-300">
                   The NGO has been notified. Proceed to the donor pickup location below.
                 </p>
-                {/* Location sharing toggle */}
-                <div className="pt-2 border-t border-sky-200 dark:border-sky-800">
-                  {locationSharing ? (
-                    <div className="flex items-center justify-center gap-2 text-xs text-emerald-700 dark:text-emerald-300 font-semibold">
-                      <Radio className="w-4 h-4 animate-pulse" />
-                      <span>Live location sharing active</span>
-                      <button
-                        type="button"
-                        onClick={stopLocationSharing}
-                        className="ml-2 text-red-500 hover:text-red-700 underline font-bold"
-                      >
-                        Stop
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={startLocationSharing}
-                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Navigation className="w-4 h-4" />
-                      Share My Live Location
-                    </button>
-                  )}
-                  {locationError && (
-                    <p className="text-[11px] text-red-500 mt-1">{locationError}</p>
-                  )}
-                  {!locationSharing && !locationError && (
-                    <p className="text-[11px] text-slate-400 mt-1">Helps the NGO track your progress in real time.</p>
-                  )}
-                </div>
               </div>
             ) : actionDone === 'declined' ? (
               <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-2xl text-center space-y-2">

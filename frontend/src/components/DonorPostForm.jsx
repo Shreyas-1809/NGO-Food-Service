@@ -166,15 +166,29 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     const totalQuantity = processedItems.reduce((acc, curr) => acc + curr.quantity, 0);
     const mainTitle = processedItems.length > 1 ? "Assorted Surplus Batch" : processedItems[0].itemName;
 
-    // Dynamically geocode pickupAddress or fallback to user/Pune coordinates
-    let pickupCoords = { lat: 18.5074, lng: 73.8077 }; // Default Kothrud, Pune
+    // Dynamically geocode pickupAddress or use user's real saved profile coordinates
+    let pickupCoords = null;
+    const userSaved = user?.location;
+    if (userSaved?.coordinates && Array.isArray(userSaved.coordinates) && userSaved.coordinates.length >= 2) {
+      const lng = Number(userSaved.coordinates[0]);
+      const lat = Number(userSaved.coordinates[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && !(Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6)) {
+        pickupCoords = { lat, lng };
+      }
+    } else if (userSaved && Number.isFinite(userSaved.lat) && Number.isFinite(userSaved.lng) && !(Math.abs(userSaved.lat) < 1e-6 && Math.abs(userSaved.lng) < 1e-6)) {
+      pickupCoords = { lat: userSaved.lat, lng: userSaved.lng };
+    }
+
     try {
       if (sharedFields.pickupAddress) {
         const { geocodeAddress } = await import('../services/mapsService');
-        pickupCoords = await geocodeAddress(sharedFields.pickupAddress);
+        const resolved = await geocodeAddress(sharedFields.pickupAddress);
+        if (resolved && Number.isFinite(resolved.lat) && Number.isFinite(resolved.lng)) {
+          pickupCoords = resolved;
+        }
       }
     } catch (geoErr) {
-      console.warn('Geocoding failed, using local Pune coords:', geoErr);
+      console.warn('Geocoding pickupAddress failed:', geoErr);
     }
 
     const newFood = {
@@ -188,7 +202,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       photos: photos,
       autoDeleteValue: autoDeleteValue ? Number(autoDeleteValue) : null,
       autoDeleteUnit: autoDeleteUnit,
-      location: { type: 'Point', coordinates: [pickupCoords.lng, pickupCoords.lat] },
+      ...(pickupCoords ? { location: { type: 'Point', coordinates: [pickupCoords.lng, pickupCoords.lat] } } : {}),
       pickupAddress: sharedFields.pickupAddress,
       pickupTimeSlot: {
         start: new Date(sharedFields.startTime).toISOString(),

@@ -104,7 +104,8 @@ router.get('/me', auth, async (req, res, next) => {
 router.put('/profile', auth, async (req, res) => {
   try {
     const { 
-      fullName, orgName, phone, address, city, pincode, businessName, description 
+      fullName, orgName, phone, address, city, pincode, businessName, description,
+      latitude, longitude, location
     } = req.body;
 
     const user = await User.findById(req.user.id);
@@ -119,11 +120,37 @@ router.put('/profile', auth, async (req, res) => {
     if (businessName !== undefined) user.businessName = businessName;
     if (description !== undefined) user.description = description;
 
+    if (latitude !== undefined && longitude !== undefined) {
+      const lat = Number(latitude);
+      const lng = Number(longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        user.location = {
+          type: 'Point',
+          coordinates: [lng, lat]
+        };
+      }
+    } else if (location && Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
+      const lng = Number(location.coordinates[0]);
+      const lat = Number(location.coordinates[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        user.location = {
+          type: 'Point',
+          coordinates: [lng, lat]
+        };
+      }
+    }
+
     await user.save();
 
     const userObj = user.toObject();
     delete userObj.password;
+    userObj.id = userObj._id.toString();
     userObj.name = userObj.orgName || userObj.fullName;
+
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      emitToUser(user._id.toString(), 'user_updated', { user: userObj });
+    }
 
     res.json(userObj);
   } catch (err) {

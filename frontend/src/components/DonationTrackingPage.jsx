@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import TrackingMapView from './TrackingMapView';
 import DonationCertificateModal from './DonationCertificateModal';
 import DirectContactButtons from './ui/DirectContactButtons';
@@ -32,10 +33,20 @@ const DonationTrackingPage = () => {
   const navigate = useNavigate();
   const [donation, setDonation] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
 
   const [showDeliveryQr, setShowDeliveryQr] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
+
+  // Redirect /track/:id to /map?donation=:id
+  useEffect(() => {
+    if (id) {
+      navigate(`/map?donation=${id}`, { replace: true });
+    } else {
+      navigate('/map', { replace: true });
+    }
+  }, [id, navigate]);
 
   const handleCopy = (text, key) => {
     if (!text) return;
@@ -59,40 +70,47 @@ const DonationTrackingPage = () => {
           const claimingNgo = acceptedClaim?.ngoId || food.claimantId;
           const donorObj = food.donorId;
 
-          // Coordinates conversion with geocoding fallback
+          // Coordinates conversion with geocoding fallback (real saved data only)
+          let donorCoords = null;
           let donorLat = food.location?.coordinates?.[1];
           let donorLng = food.location?.coordinates?.[0];
 
-          // If coordinates are the old mock Bengaluru coordinates [77.5946, 12.9716] or missing, geocode from pickupAddress
-          const isMockBengaluru = Math.abs(donorLat - 12.9716) < 0.1 && Math.abs(donorLng - 77.5946) < 0.1;
-          if (!donorLat || !donorLng || isMockBengaluru) {
-            try {
-              const { geocodeAddress } = await import('../services/mapsService');
-              const resolved = await geocodeAddress(food.pickupAddress || donorObj?.address || 'Kothrud, Pune');
-              donorLat = resolved.lat;
-              donorLng = resolved.lng;
-            } catch (e) {
-              donorLat = 18.5074; // Kothrud, Pune
-              donorLng = 73.8077;
+          if (donorLat && donorLng && !(Math.abs(donorLat) < 1e-6 && Math.abs(donorLng) < 1e-6)) {
+            donorCoords = { lat: Number(donorLat), lng: Number(donorLng) };
+          } else {
+            const addr = food.pickupAddress || donorObj?.address;
+            if (addr) {
+              try {
+                const { geocodeAddress } = await import('../services/mapsService');
+                const resolved = await geocodeAddress(addr);
+                if (resolved && Number.isFinite(resolved.lat) && Number.isFinite(resolved.lng)) {
+                  donorCoords = { lat: resolved.lat, lng: resolved.lng };
+                }
+              } catch (e) {
+                donorCoords = null;
+              }
             }
           }
 
-          const donorCoords = { lat: Number(donorLat) || 18.5074, lng: Number(donorLng) || 73.8077 };
-
-          let ngoLng = claimingNgo?.location?.coordinates?.[0];
+          let ngoCoords = null;
           let ngoLat = claimingNgo?.location?.coordinates?.[1];
-          if (!ngoLat || !ngoLng || (Math.abs(ngoLat - 12.9716) < 0.1 && Math.abs(ngoLng - 77.5946) < 0.1)) {
-            try {
-              const { geocodeAddress } = await import('../services/mapsService');
-              const resolvedNgo = await geocodeAddress(claimingNgo?.address ? `${claimingNgo.address}, ${claimingNgo.city || 'Pune'}` : 'Shivajinagar, Pune');
-              ngoLat = resolvedNgo.lat;
-              ngoLng = resolvedNgo.lng;
-            } catch (e) {
-              ngoLat = 18.5308;
-              ngoLng = 73.8474;
+          let ngoLng = claimingNgo?.location?.coordinates?.[0];
+          if (ngoLat && ngoLng && !(Math.abs(ngoLat) < 1e-6 && Math.abs(ngoLng) < 1e-6)) {
+            ngoCoords = { lat: Number(ngoLat), lng: Number(ngoLng) };
+          } else {
+            const ngoAddr = claimingNgo?.address ? [claimingNgo.address, claimingNgo.city].filter(Boolean).join(', ') : '';
+            if (ngoAddr) {
+              try {
+                const { geocodeAddress } = await import('../services/mapsService');
+                const resolvedNgo = await geocodeAddress(ngoAddr);
+                if (resolvedNgo && Number.isFinite(resolvedNgo.lat) && Number.isFinite(resolvedNgo.lng)) {
+                  ngoCoords = { lat: resolvedNgo.lat, lng: resolvedNgo.lng };
+                }
+              } catch (e) {
+                ngoCoords = null;
+              }
             }
           }
-          const ngoCoords = { lat: Number(ngoLat) || 18.5308, lng: Number(ngoLng) || 73.8474 };
 
           const mappedDonation = {
             id: food._id,
@@ -105,16 +123,17 @@ const DonationTrackingPage = () => {
             donorName: donorObj?.orgName || donorObj?.fullName || 'Food Donor',
             donorPhone: donorObj?.phone || food.donorPhone || '',
             donorEmail: donorObj?.email || food.donorEmail || '',
-            donorAddress: donorObj?.address || 'Donor Address, Pune',
-            pickupLocation: food.pickupAddress || donorObj?.address || 'Pickup Point, Pune',
+            donorAddress: donorObj?.address || '',
+            pickupLocation: food.pickupAddress || donorObj?.address || '',
             pickupCoords: donorCoords,
             ngoCoords: ngoCoords,
             matchedNgoName: claimingNgo?.orgName || claimingNgo?.fullName || 'Verified NGO Partner',
-            matchedNgoAddress: claimingNgo?.address ? [claimingNgo.address, claimingNgo.city].filter(Boolean).join(', ') : 'Registered NGO Distribution Center, Pune',
+            matchedNgoAddress: claimingNgo?.address ? [claimingNgo.address, claimingNgo.city].filter(Boolean).join(', ') : '',
             matchedNgoPhone: claimingNgo?.phone || '',
             matchedNgoEmail: claimingNgo?.email || '',
             assignedVolunteer: food.volunteerAssignment || (food.volunteerAssignments?.[0] || null),
             volunteerAssignments: food.volunteerAssignments || (food.volunteerAssignment ? [food.volunteerAssignment] : []),
+            volunteerLiveLocation: food.volunteerLiveLocation || null,
             verificationCode: food.verificationCode,
             confirmationLinks: food.confirmationLinks,
             confirmationTokens: food.confirmationTokens,
@@ -141,6 +160,49 @@ const DonationTrackingPage = () => {
     fetchDonation();
   }, [fetchDonation]);
 
+  // Real-time live status & volunteer GPS updates via Socket.io
+  useEffect(() => {
+    const socket = io(API_URL, { transports: ['websocket', 'polling'] });
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        const uid = u?._id || u?.id;
+        if (uid) socket.emit('join_room', uid);
+      } catch (e) {}
+    }
+
+    const handleVolunteerLoc = (payload) => {
+      if (!payload) return;
+      const targetId = payload.taskId || payload.donationId;
+      if (targetId && String(targetId) === String(id)) {
+        setDonation(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            volunteerLiveLocation: {
+              lat: Number(payload.lat),
+              lng: Number(payload.lng),
+              accuracy: payload.accuracy,
+              updatedAt: payload.updatedAt || new Date().toISOString()
+            }
+          };
+        });
+      }
+    };
+
+    socket.on('VOLUNTEER_LOCATION', handleVolunteerLoc);
+    socket.on('TASK_UPDATED', fetchDonation);
+    socket.on('LISTING_UPDATED', fetchDonation);
+
+    return () => {
+      socket.off('VOLUNTEER_LOCATION', handleVolunteerLoc);
+      socket.off('TASK_UPDATED', fetchDonation);
+      socket.off('LISTING_UPDATED', fetchDonation);
+      socket.disconnect();
+    };
+  }, [id, fetchDonation]);
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center text-slate-500">
@@ -161,8 +223,6 @@ const DonationTrackingPage = () => {
       </div>
     );
   }
-
-  const [statusLoading, setStatusLoading] = useState(false);
 
   const handleAdvanceStatus = async (nextStatus) => {
     if (!donation?.id || !token) return;

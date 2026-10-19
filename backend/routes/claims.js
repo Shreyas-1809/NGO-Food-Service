@@ -113,7 +113,7 @@ router.patch('/:id/accept', auth, async (req, res) => {
       userId: claim.ngoId,
       type: 'CLAIM_ACCEPTED',
       title: 'Claim Request Accepted! 🤝',
-      message: `${donorName} accepted your claim for "${food.title}". Verification Code: ${code}`,
+      message: `${donorName} accepted your claim for "${food.title}". Please confirm pickup arrangement.`,
       relatedClaimId: claim._id,
       relatedFoodId: food._id,
       stage: 'Accepted — awaiting your confirmation'

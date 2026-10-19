@@ -59,11 +59,25 @@ router.get('/task/:taskId', async (req, res) => {
 
     // Prefer real saved GPS coordinates for navigation if present
     const hasDonorCoord = food.location?.coordinates && (food.location.coordinates[0] !== 0 || food.location.coordinates[1] !== 0);
-    const donorQuery = hasDonorCoord ? `${food.location.coordinates[1]},${food.location.coordinates[0]}` : donorAddress;
+    const donorCoord = hasDonorCoord
+      ? { lat: food.location.coordinates[1], lng: food.location.coordinates[0] }
+      : (donorObj.location?.coordinates && (donorObj.location.coordinates[0] !== 0 || donorObj.location.coordinates[1] !== 0))
+        ? { lat: donorObj.location.coordinates[1], lng: donorObj.location.coordinates[0] }
+        : null;
+    const donorNavUrl = donorCoord
+      ? `https://www.google.com/maps/dir/?api=1&destination=${donorCoord.lat},${donorCoord.lng}&travelmode=driving`
+      : '';
+    const donorQuery = donorCoord ? `${donorCoord.lat},${donorCoord.lng}` : donorAddress;
     const donorMapsUrl = donorQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(donorQuery)}` : '';
 
     const hasNgoCoord = ngoObj.location?.coordinates && (ngoObj.location.coordinates[0] !== 0 || ngoObj.location.coordinates[1] !== 0);
-    const ngoQuery = hasNgoCoord ? `${ngoObj.location.coordinates[1]},${ngoObj.location.coordinates[0]}` : ngoAddress;
+    const ngoCoord = hasNgoCoord
+      ? { lat: ngoObj.location.coordinates[1], lng: ngoObj.location.coordinates[0] }
+      : null;
+    const ngoNavUrl = ngoCoord
+      ? `https://www.google.com/maps/dir/?api=1&destination=${ngoCoord.lat},${ngoCoord.lng}&travelmode=driving`
+      : '';
+    const ngoQuery = ngoCoord ? `${ngoCoord.lat},${ngoCoord.lng}` : ngoAddress;
     const ngoMapsUrl = ngoQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ngoQuery)}` : '';
 
     const links = buildConfirmationUrls(food);
@@ -99,6 +113,8 @@ router.get('/task/:taskId', async (req, res) => {
         phone: donorObj.phone || '',
         email: donorObj.email || '',
         address: donorAddress,
+        location: donorCoord,
+        navUrl: donorNavUrl,
         mapsUrl: donorMapsUrl
       },
       ngo: {
@@ -106,6 +122,8 @@ router.get('/task/:taskId', async (req, res) => {
         phone: ngoObj.phone || '',
         email: ngoObj.email || '',
         address: ngoAddress,
+        location: ngoCoord,
+        navUrl: ngoNavUrl,
         mapsUrl: ngoMapsUrl
       },
       links

@@ -5,13 +5,24 @@ import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+const toLocalISOString = (date = new Date()) => {
+  const d = new Date(date);
+  const pad = (n) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
   const defaultAddress = user?.address || user?.businessDetails?.shopAddress || '';
   
   const [sharedFields, setSharedFields] = useState({
     pickupAddress: defaultAddress,
-    startTime: new Date().toISOString().slice(0, 16),
-    endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
+    startTime: toLocalISOString(new Date()),
+    endTime: toLocalISOString(new Date(Date.now() + 2 * 60 * 60 * 1000))
   });
 
   const createEmptyItem = () => ({
@@ -21,8 +32,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     category: prefill?.category || 'Cooked Meal',
     quantity: prefill?.quantity || '',
     unit: prefill?.unit || 'servings',
-    preparedTime: new Date().toISOString().slice(0, 16),
-    expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+    preparedTime: toLocalISOString(new Date()),
+    expiryTime: toLocalISOString(new Date(Date.now() + 4 * 60 * 60 * 1000))
   });
 
   const [items, setItems] = useState([createEmptyItem()]);
@@ -40,8 +51,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       if (prefill.isEdit) {
         setSharedFields({
           pickupAddress: prefill.pickupAddress || defaultAddress,
-          startTime: prefill.pickupTimeSlot?.start ? new Date(prefill.pickupTimeSlot.start).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-          endTime: prefill.pickupTimeSlot?.end ? new Date(prefill.pickupTimeSlot.end).toISOString().slice(0, 16) : new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 16)
+          startTime: prefill.pickupTimeSlot?.start ? toLocalISOString(new Date(prefill.pickupTimeSlot.start)) : toLocalISOString(new Date()),
+          endTime: prefill.pickupTimeSlot?.end ? toLocalISOString(new Date(prefill.pickupTimeSlot.end)) : toLocalISOString(new Date(Date.now() + 2 * 60 * 60 * 1000))
         });
         
         if (prefill.items && prefill.items.length > 0) {
@@ -52,8 +63,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
             category: item.category || 'Cooked Meal',
             quantity: item.quantity || '',
             unit: item.unit || 'servings',
-            preparedTime: item.preparedTime ? new Date(item.preparedTime).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16),
-            expiryTime: item.expiryTime ? new Date(item.expiryTime).toISOString().slice(0, 16) : new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+            preparedTime: item.preparedTime ? toLocalISOString(new Date(item.preparedTime)) : toLocalISOString(new Date()),
+            expiryTime: item.expiryTime ? toLocalISOString(new Date(item.expiryTime)) : toLocalISOString(new Date(Date.now() + 4 * 60 * 60 * 1000))
           })));
         }
 
@@ -68,8 +79,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
           category: prefill.category || 'Cooked Meal',
           quantity: prefill.quantity || '',
           unit: prefill.unit || 'servings',
-          preparedTime: new Date().toISOString().slice(0, 16),
-          expiryTime: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString().slice(0, 16)
+          preparedTime: toLocalISOString(new Date()),
+          expiryTime: toLocalISOString(new Date(Date.now() + 4 * 60 * 60 * 1000))
         }]);
       }
     }
@@ -91,7 +102,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     else if (value === 'baked_goods') hoursToAdd = 24; // 1 day
     else if (value === 'packaged') hoursToAdd = 720; // 30 days
     
-    newItems[index].expiryTime = new Date(now.getTime() + hoursToAdd * 60 * 60 * 1000).toISOString().slice(0, 16);
+    newItems[index].expiryTime = toLocalISOString(new Date(now.getTime() + hoursToAdd * 60 * 60 * 1000));
     setItems(newItems);
   };
 

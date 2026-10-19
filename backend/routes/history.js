@@ -16,6 +16,31 @@ const mapStatus = (status, declineReason) => {
   return status?.toUpperCase() || 'UNKNOWN';
 };
 
+const isClaimExpired = (claim, food) => {
+  if (!claim || !food) return false;
+  const isDelivered = ['DELIVERED', 'COMPLETED'].includes(food.status?.toUpperCase()) || food.volunteerStatus === 'delivered';
+  if (isDelivered) return false;
+  if (['DECLINED', 'REJECTED', 'CANCELLED'].includes(claim.status?.toUpperCase())) return false;
+
+  const isDeclinedVolunteer = food.volunteerStatus === 'declined' && (!food.volunteerAssignments || food.volunteerAssignments.length === 0);
+
+  let isPastPickup = false;
+  if (claim.requestedPickupTime) {
+    const trimmed = String(claim.requestedPickupTime).trim();
+    const timeMatch = trimmed.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (timeMatch) {
+      const baseDate = claim.createdAt ? new Date(claim.createdAt) : new Date();
+      baseDate.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+      isPastPickup = baseDate.getTime() < Date.now();
+    } else {
+      const d = new Date(trimmed);
+      if (!isNaN(d.getTime())) isPastPickup = d.getTime() < Date.now();
+    }
+  }
+
+  return (claim.status === 'ACCEPTED' || claim.status === 'PENDING') && (isPastPickup || isDeclinedVolunteer);
+};
+
 // @route   GET /api/history
 // @desc    Get aggregated donation and fulfilment history
 // @access  Private
@@ -47,7 +72,8 @@ router.get('/', auth, async (req, res) => {
         if (!food) return; // if food was deleted
 
         const donorName = food.donorId?.orgName || food.donorId?.fullName || 'Donor';
-        const overallStatus = mapStatus(claim.status);
+        const expired = isClaimExpired(claim, food);
+        const overallStatus = expired ? 'EXPIRED' : mapStatus(claim.status);
         
         history.push({
           _id: `claim-${claim._id}`,
@@ -60,8 +86,8 @@ router.get('/', auth, async (req, res) => {
           otherPartyName: donorName,
           otherPartyPhone: food.donorId?.phone || '',
           otherPartyEmail: food.donorId?.email || '',
-          ngoStatus: `Requested (${claim.status})`,
-          donorStatus: claim.status === 'PENDING' ? 'Awaiting Response' : claim.status,
+          ngoStatus: expired ? 'Expired (Not Collected)' : `Requested (${claim.status})`,
+          donorStatus: expired ? 'Expired' : (claim.status === 'PENDING' ? 'Awaiting Response' : claim.status),
           overallStatus,
           rejectionReason: claim.declineReason || food.rejectionReason,
           createdAt: claim.createdAt,
@@ -108,7 +134,8 @@ router.get('/', auth, async (req, res) => {
         if (claims.length > 0) {
           claims.forEach(claim => {
             const ngoName = claim.ngoId?.orgName || claim.ngoId?.fullName || 'NGO';
-            const overallStatus = mapStatus(claim.status);
+            const expired = isClaimExpired(claim, food);
+            const overallStatus = expired ? 'EXPIRED' : mapStatus(claim.status);
 
             history.push({
               _id: `claim-${claim._id}`,
@@ -121,8 +148,8 @@ router.get('/', auth, async (req, res) => {
               otherPartyName: ngoName,
               otherPartyPhone: claim.ngoId?.phone || '',
               otherPartyEmail: claim.ngoId?.email || '',
-              ngoStatus: `Requested (${claim.status})`,
-              donorStatus: claim.status === 'PENDING' ? 'Awaiting Response' : claim.status,
+              ngoStatus: expired ? 'Expired (Not Collected)' : `Requested (${claim.status})`,
+              donorStatus: expired ? 'Expired' : (claim.status === 'PENDING' ? 'Awaiting Response' : claim.status),
               overallStatus,
               rejectionReason: claim.declineReason || food.rejectionReason,
               createdAt: claim.createdAt,

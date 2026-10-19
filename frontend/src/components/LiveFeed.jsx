@@ -101,6 +101,15 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [rejectClaimModalOpen, setRejectClaimModalOpen] = useState(false);
   const [claimToReject, setClaimToReject] = useState(null);
 
+  // localStorage-backed set of claim IDs the donor manually removed from the dashboard
+  // (no backend endpoint exists — removal is purely client-side)
+  const [removedClaimIds, setRemovedClaimIds] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`removedClaims_${user?._id || user?.id || 'donor'}`);
+      return new Set(JSON.parse(stored) || []);
+    } catch { return new Set(); }
+  });
+
   const isOrg = user?.accountType === 'ORGANISATION' || 
                 user?.accountType === 'ORGANIZATION' || 
                 user?.role === 'ORGANISATION' || 
@@ -219,6 +228,24 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       console.error(err);
       throw err; // So the modal catches it
     }
+  };
+
+  // Removes a claim card from the donor dashboard (stored in localStorage).
+  // Does NOT cancel the donation, volunteer assignment, or any notification.
+  const handleRemoveClaim = (claimId) => {
+    const confirmed = window.confirm(
+      'Remove this request from your dashboard? It will stay in History.'
+    );
+    if (!confirmed) return;
+    setRemovedClaimIds(prev => {
+      const next = new Set(prev);
+      next.add(claimId);
+      try {
+        const key = `removedClaims_${user?._id || user?.id || 'donor'}`;
+        localStorage.setItem(key, JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
   };
 
   const handleDeletePosting = async (foodId) => {
@@ -541,32 +568,84 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
       {isDonor && !showMyUploads ? (
         /* VIEW 1: NGO Claim Requests View for Donors */
+        (() => {
+          const now = Date.now();
+          const TWELVE_H = 12 * 60 * 60 * 1000;
+          // Terminal food/claim statuses — push these to History, not the recent view
+          const TERMINAL_FOOD = new Set(['COMPLETED', 'delivered', 'NON_CLAIMED', 'cancelled', 'CANCELLED']);
+          const TERMINAL_CLAIM = new Set(['COMPLETED', 'cancelled', 'CANCELLED']);
+
+          // Helper: is this claim actively in transit (volunteer accepted the pickup)?
+          const isInTransit = (claim) =>
+            claim.status === 'ACCEPTED' && claim.foodId?.volunteerStatus === 'accepted';
+
+          // Helper: reference time for the 12h expiry window.
+          // Priority: requested pickup time → accepted time (updatedAt) → created time.
+          const expiryRefTime = (claim) => {
+            if (claim.requestedPickupTime) {
+              const t = new Date(claim.requestedPickupTime).getTime();
+              if (!isNaN(t)) return t;
+            }
+            if (claim.status === 'ACCEPTED' && claim.updatedAt) {
+              const t = new Date(claim.updatedAt).getTime();
+              if (!isNaN(t)) return t;
+            }
+            return new Date(claim.createdAt).getTime();
+          };
+
+          // Recent claims: active-ish, not terminal, not stale, not manually removed
+          const recentClaims = donorClaims.filter(claim => {
+            // 1. Skip manually removed cards
+            if (removedClaimIds.has(claim._id)) return false;
+
+            const foodStatus = claim.foodId?.status || claim.foodId?.computedStatus;
+            if (foodStatus && TERMINAL_FOOD.has(foodStatus)) return false;
+            if (TERMINAL_CLAIM.has(claim.status)) return false;
+
+            // 2. PENDING / DECLINED / REJECTED: only show if within 12h of creation
+            if (claim.status === 'PENDING' || claim.status === 'DECLINED' || claim.status === 'REJECTED') {
+              const age = now - new Date(claim.createdAt).getTime();
+              if (age > TWELVE_H) return false;
+            }
+
+            // 3. ACCEPTED claims: hide after 12h past expiry reference time,
+            //    UNLESS the volunteer is actively in transit.
+            if (claim.status === 'ACCEPTED') {
+              if (isInTransit(claim)) return true; // always keep in-transit cards
+              const ref = expiryRefTime(claim);
+              if (now - ref > TWELVE_H) return false;
+            }
+
+            return true;
+          });
+
+          return (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-blue-100 dark:border-slate-800 shadow-xs">
             <div>
               <h3 className="text-lg font-extrabold text-[#1d4ed8] dark:text-blue-400 flex items-center gap-2">
                 <Heart className="w-5 h-5 fill-[#2563eb] text-[#2563eb]" />
-                <T text="NGO Claim Requests" /> ({donorClaims.length})
+                <T text="NGO Claim Requests" /> ({recentClaims.length})
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 <T text="Review and manage incoming claim requests from verified NGOs." />
               </p>
             </div>
-            <button
-              onClick={fetchDonorClaims}
+            <a
+              href="/history"
               className="text-xs font-bold text-[#2563eb] hover:underline cursor-pointer"
             >
-              <T text="View All" /> →
-            </button>
+              <T text="View history" /> →
+            </a>
           </div>
 
-          {/* Status Filter Tabs (Matching Screenshot Colors Exactly) */}
-          <div className="flex items-center gap-2 text-xs font-bold">
+          {/* Status Filter Tabs — counts reflect only the visible (non-expired, non-removed) claims */}
+          <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
             {[
-              { id: 'ALL', labelKey: 'All', count: donorClaims.length },
-              { id: 'PENDING', labelKey: 'Pending', count: donorClaims.filter(c => c.status === 'PENDING').length },
-              { id: 'ACCEPTED', labelKey: 'Accepted', count: donorClaims.filter(c => c.status === 'ACCEPTED').length },
-              { id: 'REJECTED', labelKey: 'Rejected', count: donorClaims.filter(c => c.status === 'DECLINED' || c.status === 'REJECTED').length }
+              { id: 'ALL', labelKey: 'All', count: recentClaims.length },
+              { id: 'PENDING', labelKey: 'Pending', count: recentClaims.filter(c => c.status === 'PENDING').length },
+              { id: 'ACCEPTED', labelKey: 'Accepted', count: recentClaims.filter(c => c.status === 'ACCEPTED').length },
+              { id: 'REJECTED', labelKey: 'Rejected', count: recentClaims.filter(c => c.status === 'DECLINED' || c.status === 'REJECTED').length }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -585,7 +664,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           {loadingDonorClaims ? (
             <div className="text-center py-12 text-slate-500"><T text="Loading claim requests..." /></div>
           ) : (() => {
-            const filteredDonorClaims = donorClaims.filter((claim) => {
+            const filteredDonorClaims = recentClaims.filter((claim) => {
               if (donorClaimStatusFilter === 'ALL') return true;
               if (donorClaimStatusFilter === 'PENDING') return claim.status === 'PENDING';
               if (donorClaimStatusFilter === 'ACCEPTED') return claim.status === 'ACCEPTED';
@@ -630,20 +709,35 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     return 'No volunteer assigned yet';
                   })();
 
+                  // Volunteer is actively on the way — don't show remove button
+                  const claimInTransit = isInTransit(claim);
+
                   return (
                     <div key={claim._id} className="bg-white dark:bg-[#0f172a] rounded-2xl p-5 border border-blue-100 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between">
                       <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-extrabold text-slate-900 dark:text-white text-base">
-                            {claim.ngoId?.orgName || claim.ngoId?.fullName || 'tanvi'}
+                        <div className="flex justify-between items-start gap-2">
+                          <h4 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight">
+                            {claim.ngoId?.orgName || claim.ngoId?.fullName || 'NGO'}
                           </h4>
-                          <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                            claim.status === 'ACCEPTED' ? 'bg-[#dcfce7] text-[#166534] dark:bg-emerald-950/60 dark:text-emerald-400' :
-                            claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
-                            'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
-                          }`}>
-                            {claim.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                              claim.status === 'ACCEPTED' ? 'bg-[#dcfce7] text-[#166534] dark:bg-emerald-950/60 dark:text-emerald-400' :
+                              claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
+                              'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
+                            }`}>
+                              {claim.status}
+                            </span>
+                            {/* Trash / Remove button — hidden when volunteer is in transit */}
+                            {!claimInTransit && (
+                              <button
+                                onClick={() => handleRemoveClaim(claim._id)}
+                                title="Remove from dashboard"
+                                className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         <div>
@@ -749,6 +843,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             );
           })()}
         </div>
+          );
+        })()
       ) : isDonor && showMyUploads ? (
         /* VIEW 2: INLINE DONOR POSTINGS & UPLOADS VIEW */
         <div className="space-y-6">

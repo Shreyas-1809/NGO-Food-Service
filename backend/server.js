@@ -40,6 +40,7 @@ const recurringNeedsRoutes = require('./routes/recurringNeeds');
 const historyRoutes = require('./routes/history');
 const confirmationRoutes = require('./routes/confirmation');
 const translateRoutes = require('./routes/translate');
+const mapsRoutes = require('./routes/maps'); // Google Maps proxy (key stays server-side)
 app.use('/api/auth', authRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
@@ -50,6 +51,7 @@ app.use('/api/recurring-needs', recurringNeedsRoutes);
 app.use('/api/history', historyRoutes);
 app.use('/api/confirm', confirmationRoutes);
 app.use('/api/translate', translateRoutes);
+app.use('/api/maps', mapsRoutes);
 
 // ---------------------------------------------------------------------------
 // Socket.io — User rooms for targeted (private) notifications
@@ -156,6 +158,7 @@ io.on('connection', (socket) => {
 
       if (food.donorId) io.to(`room:${food.donorId.toString()}`).emit('VOLUNTEER_LOCATION', update);
       if (ngoUserId) io.to(`room:${ngoUserId}`).emit('VOLUNTEER_LOCATION', update);
+      io.to(`room:${food._id.toString()}`).emit('VOLUNTEER_LOCATION', update);
     } catch (err) {
       console.error('VOLUNTEER_LOCATION handling failed:', err.message);
     }

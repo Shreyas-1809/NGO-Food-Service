@@ -37,7 +37,30 @@ async function geocodeAddressBackend(address) {
 
   const cleanAddr = address.trim();
 
-  // 1. Try Nominatim (OpenStreetMap)
+  // 1. Try Google Maps Geocoding API if configured
+  const gkey = process.env.GOOGLE_MAPS_API_KEY;
+  if (gkey) {
+    try {
+      const gurl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(cleanAddr)}&key=${gkey}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const res = await fetch(gurl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.status === 'OK' && Array.isArray(data.results) && data.results.length > 0) {
+          const loc = data.results[0].geometry?.location;
+          if (loc && Number.isFinite(loc.lat) && Number.isFinite(loc.lng)) {
+            return { lat: loc.lat, lng: loc.lng };
+          }
+        }
+      }
+    } catch (err) {
+      // Fall through to Nominatim
+    }
+  }
+
+  // 2. Try Nominatim (OpenStreetMap)
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanAddr)}&limit=1`;
     const controller = new AbortController();

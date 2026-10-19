@@ -15,7 +15,13 @@ router.get('/:userId', auth, async (req, res) => {
     const notifications = await Notification.find({
       userId: req.params.userId,
       dismissedBy: { $ne: req.user.id }
-    }).sort({ createdAt: -1 });
+    })
+      .populate('relatedFoodId')
+      .populate({
+        path: 'relatedClaimId',
+        populate: { path: 'foodId' }
+      })
+      .sort({ createdAt: -1 });
     res.json(notifications);
   } catch (err) {
     console.error('Error fetching notifications:', err.message);

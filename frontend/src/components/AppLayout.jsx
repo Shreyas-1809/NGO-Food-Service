@@ -48,8 +48,22 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
         const res = await axios.get(`${API_URL}/api/notifications/${uid}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const unreadBackend = (res.data || []).filter(n => !n.read).length;
-        setUnreadCount(unreadBackend);
+        const now = Date.now();
+        const HIGH_TYPES = new Set(['CLAIM_REQUEST', 'CLAIM_DECLINED', 'NGO_CONFIRMED']);
+        const TERMINAL = new Set(['delivered', 'COMPLETED', 'cancelled', 'CANCELLED', 'expired', 'NON_CLAIMED']);
+        const highUnread = (res.data || []).filter(n => {
+          if (n.read) return false;
+          const foodStatus = n.relatedFoodId?.status || n.relatedFoodId?.computedStatus;
+          if (foodStatus && TERMINAL.has(foodStatus)) return false;
+          if (HIGH_TYPES.has(n.type)) return true;
+          // CLAIM_ACCEPTED becomes HIGH when pickup time is overdue
+          if (n.type === 'CLAIM_ACCEPTED') {
+            const pt = n.relatedFoodId?.pickupTime || n.relatedFoodId?.expiryTime;
+            return pt && new Date(pt) < new Date(now);
+          }
+          return false;
+        }).length;
+        setUnreadCount(highUnread);
       } else {
         setUnreadCount(0);
       }

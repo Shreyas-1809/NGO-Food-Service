@@ -345,7 +345,107 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
     }
   };
 
-  const unreadList = notifications.filter(n => !n.read);
+  // ─── Notification filtering (Task 1) ───────────────────────────────────────
+  const visibleNotifications = React.useMemo(() => {
+    const now = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+    const TWENTY_FOUR_HOURS = 24 * ONE_HOUR;
+
+    // HIGH priority types (always show unless terminal donation)
+    const HIGH_TYPES = new Set(['CLAIM_REQUEST', 'CLAIM_DECLINED', 'NGO_CONFIRMED']);
+    // LOW priority types (subject to age/read filtering)
+    const LOW_TYPES  = new Set(['CLAIM_ACCEPTED', 'PICKUP_CONFIRMED']);
+
+    // Terminal donation statuses — hide all notifications for these
+    const TERMINAL_STATUSES = new Set(['delivered', 'COMPLETED', 'cancelled', 'CANCELLED', 'expired', 'NON_CLAIMED']);
+
+    const getPriority = (n) => {
+      if (HIGH_TYPES.has(n.type)) return 'HIGH';
+      // NGO_CONFIRMED still needing action is HIGH; after action it stays HIGH anyway
+      // Pickup time overdue without pickup => HIGH
+      if (n.type === 'CLAIM_ACCEPTED') {
+        const pickupTime = n.relatedFoodId?.pickupTime || n.relatedFoodId?.expiryTime;
+        if (pickupTime && new Date(pickupTime) < new Date(now)) return 'HIGH';
+      }
+      if (LOW_TYPES.has(n.type)) return 'LOW';
+      // Unrecognised types: treat as HIGH so we never silently drop them
+      return 'HIGH';
+    };
+
+    // Strip any 4-digit verification code from the message text
+    const stripVerificationCode = (msg) => {
+      if (!msg) return msg;
+      return msg
+        .replace(/\b(verification|handover|pickup)?\s*code[:\s]?\s*\d{4}\b/gi, '')
+        .replace(/\s*4-digit code:?\s*\d{4}/gi, '')
+        .replace(/\(code:?\s*\d{4}\)/gi, '')
+        .trim();
+    };
+
+    // 1. Scrub verification codes from messages
+    let list = notifications.map(n => ({
+      ...n,
+      message: stripVerificationCode(n.message),
+    }));
+
+    // 2. Hide notifications whose donation is in a terminal state
+    list = list.filter(n => {
+      const foodStatus = n.relatedFoodId?.status || n.relatedFoodId?.computedStatus;
+      const claimStatus = n.relatedClaimId?.status;
+      if (foodStatus && TERMINAL_STATUSES.has(foodStatus)) return false;
+      if (claimStatus && (claimStatus === 'COMPLETED' || claimStatus === 'cancelled')) return false;
+      // PICKUP_CONFIRMED means delivered — hide unless it's the cert button notification
+      if (n.type === 'PICKUP_CONFIRMED') {
+        // Keep for 24 h so donors can see the certificate button, then hide
+        const age = now - new Date(n.createdAt).getTime();
+        return age < TWENTY_FOUR_HOURS;
+      }
+      return true;
+    });
+
+    // 3. Keep only the LATEST notification per donation (relatedFoodId._id)
+    const latestPerDonation = new Map(); // donationKey -> notification
+    const noDonationKey = []; // notifications without a donation reference
+    list.forEach(n => {
+      const donationKey = n.relatedFoodId?._id || n.relatedFoodId;
+      if (!donationKey) {
+        noDonationKey.push(n);
+        return;
+      }
+      const existing = latestPerDonation.get(donationKey);
+      if (!existing || new Date(n.createdAt) > new Date(existing.createdAt)) {
+        latestPerDonation.set(donationKey, n);
+      }
+    });
+    list = [...latestPerDonation.values(), ...noDonationKey];
+
+    // 4. Apply age/read thresholds for LOW priority
+    list = list.filter(n => {
+      const priority = getPriority(n);
+      if (priority === 'HIGH') return true;
+      const age = now - new Date(n.createdAt).getTime();
+      if (n.read && age > ONE_HOUR) return false;  // read LOW older than 1 h
+      if (!n.read && age > TWENTY_FOUR_HOURS) return false; // unread LOW older than 24 h
+      return true;
+    });
+
+    // 5. Sort: HIGH first (unread before read), then LOW; within each group newest first
+    list.sort((a, b) => {
+      const pA = getPriority(a);
+      const pB = getPriority(b);
+      if (pA !== pB) return pA === 'HIGH' ? -1 : 1;
+      if (a.read !== b.read) return a.read ? 1 : -1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    return { list, getPriority };
+  }, [notifications]);
+
+  const { list: filteredNotifications, getPriority } = visibleNotifications;
+
+  // Header badge counts only HIGH unread
+  const highUnreadList = filteredNotifications.filter(n => !n.read && getPriority(n) === 'HIGH');
+  const unreadList = filteredNotifications.filter(n => !n.read);
 
   return (
     <Drawer
@@ -359,10 +459,10 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       <div className="flex flex-col h-full space-y-3 relative">
 
       {/* Quick Action Bar (Mark all read & Clear all) */}
-      {notifications.length > 0 && !selectedClaim && (
+      {filteredNotifications.length > 0 && !selectedClaim && (
         <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/70 dark:bg-slate-900/40 text-[11px]">
           <span className="text-slate-500 dark:text-slate-400 font-medium">
-            {unreadList.length} <T text="unread" /> • {notifications.length} <T text="total" />
+            {highUnreadList.length > 0 ? <><span className="text-rose-600 font-bold">{highUnreadList.length} urgent</span> • </> : null}{unreadList.length} <T text="unread" /> • {filteredNotifications.length} <T text="total" />
           </span>
           <div className="flex gap-2">
             {unreadList.length > 0 && (
@@ -640,7 +740,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             <div className="w-6 h-6 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
             <span>Loading notifications...</span>
           </div>
-        ) : notifications.length === 0 ? (
+        ) : filteredNotifications.length === 0 ? (
           <EmptyState
             icon={Bell}
             message="No active notifications"
@@ -655,7 +755,14 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
           />
         ) : (
           <div className="space-y-3">
-            {notifications.map(note => {
+            {/* Group header for HIGH priority if there are any HIGH items */}
+            {filteredNotifications.some(n => getPriority(n) === 'HIGH') && filteredNotifications.some(n => getPriority(n) === 'LOW') && (
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-rose-500 dark:text-rose-400 px-1 mt-1">⚡ Needs Action</p>
+            )}
+            {filteredNotifications.map((note, noteIdx) => {
+              // Insert LOW group header before first LOW item
+              const prevNote = noteIdx > 0 ? filteredNotifications[noteIdx - 1] : null;
+              const showLowHeader = getPriority(note) === 'LOW' && (!prevNote || getPriority(prevNote) === 'HIGH');
               const stageLabel = note.stage || (
                 note.type === 'CLAIM_REQUEST' ? 'Awaiting your decision' :
                 note.type === 'CLAIM_ACCEPTED' ? 'Accepted — awaiting NGO confirmation' :
@@ -673,8 +780,11 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
               const isActing = actionInProgress[note._id];
 
               return (
+                <React.Fragment key={note._id}>
+                {showLowHeader && (
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1 mt-2">Updates</p>
+                )}
                 <div
-                  key={note._id}
                   onClick={() => handleNotificationClick(note)}
                   className={`p-3.5 rounded-2xl border transition-all space-y-2.5 relative group cursor-pointer ${
                     note.read
@@ -763,6 +873,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     )}
                   </div>
                 </div>
+                </React.Fragment>
               );
             })}
           </div>

@@ -276,6 +276,15 @@ const VolunteerTaskPage = () => {
   const isDelivered = task.status === 'COMPLETED' || task.deliveryConfirmed;
   const volunteerStatus = task.volunteerStatus || 'pending';
 
+  const donorCoords = (donor?.location?.lat && donor?.location?.lng) ? donor.location : null;
+  const ngoCoords = (ngo?.location?.lat && ngo?.location?.lng) ? ngo.location : null;
+
+  const donorNavUrl = donor?.navUrl || (donorCoords ? `https://www.google.com/maps/dir/?api=1&destination=${donorCoords.lat},${donorCoords.lng}&travelmode=driving` : '');
+  const donorPinUrl = donorCoords ? `https://www.google.com/maps/search/?api=1&query=${donorCoords.lat},${donorCoords.lng}` : (donor?.mapsUrl || '');
+
+  const ngoNavUrl = ngo?.navUrl || (ngoCoords ? `https://www.google.com/maps/dir/?api=1&destination=${ngoCoords.lat},${ngoCoords.lng}&travelmode=driving` : '');
+  const ngoPinUrl = ngoCoords ? `https://www.google.com/maps/search/?api=1&query=${ngoCoords.lat},${ngoCoords.lng}` : (ngo?.mapsUrl || '');
+
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 py-6 px-4 sm:px-6 flex flex-col items-center">
       <div className="w-full max-w-lg space-y-4">
@@ -514,6 +523,35 @@ const VolunteerTaskPage = () => {
           </div>
         )}
 
+        {/* ─── PROMINENT GOOGLE MAPS NAVIGATION BANNER ─── */}
+        {!isDelivered && (
+          <div className="w-full">
+            {!isPickedUp && donorNavUrl ? (
+              <a
+                href={donorNavUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>Navigate to Donor (Google Maps)</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </a>
+            ) : isPickedUp && ngoNavUrl ? (
+              <a
+                href={ngoNavUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>Navigate to NGO (Google Maps)</span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </a>
+            ) : null}
+          </div>
+        )}
+
         {/* STEP 1: DONOR PICKUP POINT */}
         <div className={`bg-white dark:bg-slate-800 rounded-3xl p-5 border shadow-xs space-y-3 transition-all ${
           isPickedUp ? 'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/30' : 'border-slate-200 dark:border-slate-700'
@@ -540,16 +578,30 @@ const VolunteerTaskPage = () => {
             </p>
           </div>
 
-          <div className="flex gap-2 pt-1">
-            <a
-              href={donor.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-            >
-              <Navigation className="w-3.5 h-3.5" />
-              <span>Open in Google Maps</span>
-            </a>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {donorNavUrl ? (
+              <a
+                href={donorNavUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 min-w-[140px] py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Navigate to donor</span>
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+            ) : null}
+            {donorPinUrl ? (
+              <a
+                href={donorPinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                <span>View Pin</span>
+              </a>
+            ) : null}
             {donor.phone && (
               <a
                 href={`tel:${donor.phone.replace(/[^0-9+]/g, '')}`}
@@ -616,16 +668,30 @@ const VolunteerTaskPage = () => {
             </p>
           </div>
 
-          <div className="flex gap-2 pt-1">
-            <a
-              href={ngo.mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 py-2.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-            >
-              <Navigation className="w-3.5 h-3.5" />
-              <span>Open in Google Maps</span>
-            </a>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {ngoNavUrl ? (
+              <a
+                href={ngoNavUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 min-w-[140px] py-2.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                <span>Navigate to NGO</span>
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+            ) : null}
+            {ngoPinUrl ? (
+              <a
+                href={ngoPinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="py-2.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                <span>View Pin</span>
+              </a>
+            ) : null}
             {ngo.phone && (
               <a
                 href={`tel:${ngo.phone.replace(/[^0-9+]/g, '')}`}

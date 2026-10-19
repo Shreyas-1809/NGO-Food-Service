@@ -78,21 +78,26 @@ export const calculateMatchScore = (donation, req, distanceKm) => {
   return Math.min(99, Math.max(45, totalScore));
 };
 
-export const findSmartMatches = (donation, userLocation = null) => {
+export const findSmartMatches = (donation, userLocation = null, ngosList = null) => {
   const donorLat = donation.pickupCoords?.lat ?? userLocation?.lat;
   const donorLng = donation.pickupCoords?.lng ?? userLocation?.lng;
 
-  const matches = MOCK_NGOS.map((ngo) => {
-    const distKm = (donorLat && donorLng && ngo?.location)
-      ? calculateHaversineDistance(donorLat, donorLng, ngo.location.lat, ngo.location.lng)
-      : null;
-    const topReq = ngo.currentRequirements[0] || { item: donation.itemName || 'Surplus Supplies', category: donation.category || 'Food', quantity: 40, urgency: 'HIGH' };
+  const list = Array.isArray(ngosList) && ngosList.length > 0 ? ngosList : MOCK_NGOS;
+
+  const matches = list.map((ngo) => {
+    const ngoLat = ngo.lat ?? ngo.location?.lat;
+    const ngoLng = ngo.lng ?? ngo.location?.lng;
+    const distKm = (donorLat && donorLng && ngoLat && ngoLng)
+      ? calculateHaversineDistance(donorLat, donorLng, ngoLat, ngoLng)
+      : (ngo.distanceKm ?? null);
+    const requirements = ngo.activeNeeds || ngo.currentRequirements || [];
+    const topReq = requirements[0] || { item: donation.itemName || 'Surplus Supplies', category: donation.category || 'Food', quantity: 40, urgency: 'HIGH' };
 
     const score = calculateMatchScore(donation, topReq, distKm);
 
     return {
-      ngoId: ngo.id,
-      ngoName: ngo.name,
+      ngoId: ngo.id || ngo._id,
+      ngoName: ngo.name || ngo.orgName,
       verified: ngo.verified,
       addressVerified: ngo.addressVerified,
       logo: ngo.logo,

@@ -159,4 +159,40 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
+// @route  GET /api/auth/organizations
+// @desc   Get all registered organisations with real-time active needs
+// @access Public (or authenticated)
+router.get('/organizations', async (req, res) => {
+  try {
+    const orgs = await User.find({ accountType: 'ORGANISATION' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    const Need = require('../models/Need');
+
+    const orgsWithNeeds = await Promise.all(
+      orgs.map(async (org) => {
+        const activeNeeds = await Need.find({
+          ngoId: org._id,
+          status: 'ACTIVE'
+        }).sort({ createdAt: -1 }).limit(10);
+
+        const orgObj = org.toObject();
+        orgObj.id = orgObj._id.toString();
+        orgObj.name = orgObj.orgName || orgObj.fullName || 'Registered Organisation';
+        orgObj.activeNeeds = activeNeeds;
+        orgObj.activeNeedsCount = activeNeeds.length;
+        orgObj.verified = Boolean(org.verified);
+        return orgObj;
+      })
+    );
+
+    res.json(orgsWithNeeds);
+  } catch (err) {
+    console.error('Fetch registered organizations error:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 module.exports = router;
+

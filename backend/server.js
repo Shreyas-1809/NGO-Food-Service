@@ -41,6 +41,7 @@ const historyRoutes = require('./routes/history');
 const confirmationRoutes = require('./routes/confirmation');
 const translateRoutes = require('./routes/translate');
 const mapsRoutes = require('./routes/maps'); // Google Maps proxy (key stays server-side)
+const profileClaimsRoutes = require('./routes/profileClaims');
 app.use('/api/auth', authRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/food', foodRoutes);
@@ -52,6 +53,7 @@ app.use('/api/history', historyRoutes);
 app.use('/api/confirm', confirmationRoutes);
 app.use('/api/translate', translateRoutes);
 app.use('/api/maps', mapsRoutes);
+app.use('/api/profile-claims', profileClaimsRoutes);
 
 // ---------------------------------------------------------------------------
 // Socket.io — User rooms for targeted (private) notifications

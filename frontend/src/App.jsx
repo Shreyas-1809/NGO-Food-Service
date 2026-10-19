@@ -21,6 +21,7 @@ import FindNGOsPage from './components/FindNGOsPage';
 import MapPage from './components/MapPage';
 import NGOProfilePage from './components/NGOProfilePage';
 import DonationTrackingPage from './components/DonationTrackingPage';
+import NGORequirementsPage from './components/NGORequirementsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import VolunteerTaskPage from './components/VolunteerTaskPage';
 import ConfirmPickupPage from './components/ConfirmPickupPage';
@@ -178,6 +179,8 @@ function App() {
                   <Route path="/ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />
+                  <Route path="/ngo-requests" element={<NGORequirementsPage user={user} token={token} socket={socket} />} />
+                  <Route path="/requirements" element={<Navigate to="/ngo-requests" replace />} />
 
                   {/* Direct Donate Flow */}
                   <Route path="/donate" element={<Dashboard socket={socket} user={user} token={token} autoOpenDonate={true} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />} />

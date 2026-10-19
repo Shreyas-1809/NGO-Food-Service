@@ -1,18 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  fetchNGOs,
+  fetchRegisteredNGOs,
+  fetchDiscoverNGOs,
   AVAILABLE_CITIES,
   AVAILABLE_CAUSES
 } from '../services/ngoDirectoryService';
 import { calculateDistanceKm } from '../services/mapsService';
 import {
   Search, MapPin, ExternalLink, Building2, ChevronDown,
-  ArrowRight, Globe, Info, X, Phone, Mail, MessageCircle
+  ArrowRight, Globe, Info, X, Phone, Mail, MessageCircle,
+  ShieldCheck, AlertTriangle, RefreshCw, Share2, HeartHandshake,
+  Layers, CheckCircle, Clock, Sparkles
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import MapView from './MapView';
 import RedirectSurplusModal from './RedirectSurplusModal';
 import ContactNgoModal from './ContactNgoModal';
+import ClaimProfileModal from './ClaimProfileModal';
+import InviteOrgModal from './InviteOrgModal';
+import AdminClaimsModal from './AdminClaimsModal';
 import Avatar from './ui/Avatar';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
@@ -22,21 +27,41 @@ import EmptyStateNoResults from './illustrations/EmptyStateNoResults';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
 const FindNGOsPage = ({ user }) => {
-  const [ngos, setNgos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [areaSearch, setAreaSearch] = useState('');
-  const [selectedCity, setSelectedCity] = useState('Pune');
-  const [selectedCause, setSelectedCause] = useState('');
-  const [selectedType, setSelectedType] = useState('All Types');
-  const [sortBy, setSortBy] = useState('Nearest First');
-  const [selectedNgo, setSelectedNgo] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // URL state synchronization
+  const currentTab = searchParams.get('tab') === 'discover' ? 'discover' : 'registered';
+  const urlSearchTerm = searchParams.get('q') || searchParams.get('search') || '';
+  const selectedCity = searchParams.get('city') || 'All Cities';
+  const selectedCategory = searchParams.get('category') || 'All Categories';
+  const sortBy = searchParams.get('sort') || 'Nearest';
+
+  // Search input state: local value for immediate typing & focus, debounced value for filtering
+  const [inputValue, setInputValue] = useState(urlSearchTerm);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearchTerm);
+  const searchInputRef = React.useRef(null);
+  const lastSyncedUrlSearchRef = React.useRef(urlSearchTerm);
+  const isTypingRef = React.useRef(false);
+
+  // Local data states
+  const [registeredNgos, setRegisteredNgos] = useState([]);
+  const [discoverNgos, setDiscoverNgos] = useState([]);
+  const [loadingRegistered, setLoadingRegistered] = useState(true);
+  const [loadingDiscover, setLoadingDiscover] = useState(false);
+  const [registeredError, setRegisteredError] = useState(null);
+  const [discoverError, setDiscoverError] = useState(null);
+
+  // User location for real distance calculation
   const [userLocation, setUserLocation] = useState(null);
-  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
-  const [contactMenuOpenId, setContactMenuOpenId] = useState(null);
+
+  // Active modals & drawers
+  const [selectedNgo, setSelectedNgo] = useState(null);
+  const [claimNgo, setClaimNgo] = useState(null);
+  const [inviteNgo, setInviteNgo] = useState(null);
   const [redirectNgo, setRedirectNgo] = useState(null);
   const [contactNgo, setContactNgo] = useState(null);
-  const navigate = useNavigate();
+  const [showAdminClaims, setShowAdminClaims] = useState(false);
 
   const isOrg = user?.accountType === 'ORGANISATION' || 
                 user?.accountType === 'ORGANIZATION' || 
@@ -44,136 +69,345 @@ const FindNGOsPage = ({ user }) => {
                 user?.role === 'ORGANIZATION' || 
                 Boolean(user?.orgName);
 
-  const searchNamePlaceholder = useTranslatedString('Search by NGO name...');
-  const searchAreaPlaceholder = useTranslatedString('Filter by locality (e.g. Kothrud)...');
+  // Update URL search parameters helper
+  const updateUrlParam = useCallback((key, value) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (key === 'q' || key === 'search') {
+        const trimmed = (value || '').trim();
+        const currentQ = next.get('q') || next.get('search') || '';
+        if (currentQ === trimmed) return prev;
+        if (!trimmed) {
+          next.delete('q');
+          next.delete('search');
+        } else {
+          next.delete('search');
+          next.set('q', trimmed);
+        }
+      } else {
+        if (!value || value === 'All Categories' || value === 'All Cities' || (key === 'tab' && value === 'registered') || (key === 'sort' && value === 'Nearest')) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
-  const TYPE_FILTERS = ['All Types', 'NGO / Food Rescue', 'Orphanage', 'Old Age Home'];
+  // Sync input value ONLY when URL search query changes externally (e.g. from top bar search, suggestion click, or back/forward)
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('search') || '';
+    if (q !== lastSyncedUrlSearchRef.current) {
+      lastSyncedUrlSearchRef.current = q;
+      setInputValue(q);
+      setDebouncedSearch(q);
+    }
+  }, [searchParams]);
 
-  const matchesType = (ngo, type) => {
-    if (type === 'All Types') return true;
-    const cat = (ngo.category || '').toLowerCase();
-    const causes = (ngo.causes || []).map(c => c.toLowerCase()).join(' ');
-    const combined = cat + ' ' + causes;
-    if (type === 'NGO / Food Rescue') {
-      return combined.includes('food') || combined.includes('hunger') || combined.includes('relief') || combined.includes('rescue') || combined.includes('volunteer') || combined.includes('education') || combined.includes('nutrition');
-    }
-    if (type === 'Orphanage') {
-      return combined.includes('orphan') || combined.includes('child') || combined.includes('youth') || combined.includes('girl');
-    }
-    if (type === 'Old Age Home') {
-      return combined.includes('elder') || combined.includes('senior') || combined.includes('age') || combined.includes('care');
-    }
-    return true;
-  };
+  // 300 ms debounce for live filtering and URL sync without losing input focus
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(inputValue);
+      lastSyncedUrlSearchRef.current = (inputValue || '').trim();
+      updateUrlParam('q', inputValue);
+      isTypingRef.current = false;
+    }, 300);
 
+    return () => clearTimeout(timer);
+  }, [inputValue, updateUrlParam]);
+
+  // Centralized clear search handler with explicit focus retention
+  const handleClearSearch = useCallback(() => {
+    setInputValue('');
+    setDebouncedSearch('');
+    lastSyncedUrlSearchRef.current = '';
+    updateUrlParam('q', '');
+    searchInputRef.current?.focus();
+  }, [updateUrlParam]);
+
+  // Request browser location for real distances
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
-        (err) => console.log('Location access not granted:', err.message)
+        (err) => {
+          console.log('Location access not granted for distance calculation:', err.message);
+        }
       );
     }
   }, []);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchNGOs({ city: selectedCity, cause: selectedCause });
-        setNgos(data);
-      } catch (err) {
-        console.error('Error fetching NGOs:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, [selectedCity, selectedCause]);
+  // 1. Fetch Registered NGOs (Tier 1) from real DB
+  const loadRegisteredNGOs = useCallback(async () => {
+    setLoadingRegistered(true);
+    setRegisteredError(null);
+    try {
+      const data = await fetchRegisteredNGOs();
+      setRegisteredNgos(data);
+    } catch (err) {
+      console.error('Failed to load registered NGOs:', err);
+      setRegisteredError('Unable to load registered organisations. Please check backend connection.');
+    } finally {
+      setLoadingRegistered(false);
+    }
+  }, []);
 
-  const filteredNgos = ngos
-    .map(ngo => {
-      let distanceKm = ngo.distanceKm;
-      if (userLocation && ngo.location?.lat && ngo.location?.lng) {
-        distanceKm = calculateDistanceKm(userLocation.lat, userLocation.lng, ngo.location.lat, ngo.location.lng);
+  useEffect(() => {
+    loadRegisteredNGOs();
+  }, [loadRegisteredNGOs]);
+
+  // 2. Fetch Discover NGOs (Tier 2) from real public directory (OpenStreetMap)
+  const loadDiscoverNGOs = useCallback(async () => {
+    setLoadingDiscover(true);
+    setDiscoverError(null);
+    try {
+      const data = await fetchDiscoverNGOs({
+        city: selectedCity === 'All Cities' ? '' : selectedCity,
+        lat: userLocation?.lat || null,
+        lng: userLocation?.lng || null,
+        registeredOrgs: registeredNgos
+      });
+      setDiscoverNgos(data);
+    } catch (err) {
+      console.error('Failed to load discover NGOs:', err);
+      setDiscoverError(err.message || 'Unable to fetch public directory. Please retry.');
+    } finally {
+      setLoadingDiscover(false);
+    }
+  }, [selectedCity, userLocation, registeredNgos]);
+
+  useEffect(() => {
+    if (currentTab === 'discover') {
+      loadDiscoverNGOs();
+    }
+  }, [currentTab, selectedCity, loadDiscoverNGOs]);
+
+  // Filter and sort items for the active tab
+  const activeList = useMemo(() => {
+    const sourceList = currentTab === 'registered' ? registeredNgos : discoverNgos;
+
+    // Attach accurate real distance
+    const withDistance = sourceList.map(item => {
+      let distanceKm = item.distanceKm;
+      if (userLocation && item.lat && item.lng) {
+        distanceKm = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
       }
-      return { ...ngo, distanceKm };
-    })
-    .filter(ngo => {
-      const matchSearch =
-        ngo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ngo.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (ngo.causes && ngo.causes.some(c => c.toLowerCase().includes(searchTerm.toLowerCase())));
-      const matchArea = !areaSearch || (ngo.area && ngo.area.toLowerCase().includes(areaSearch.toLowerCase()));
-      const matchType = matchesType(ngo, selectedType);
-      return matchSearch && matchArea && matchType;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'Nearest First') {
-        const distA = a.distanceKm !== undefined ? a.distanceKm : 999;
-        const distB = b.distanceKm !== undefined ? b.distanceKm : 999;
+      return { ...item, distanceKm };
+    });
+
+    // Apply Search Term
+    const term = debouncedSearch.trim().toLowerCase();
+    const filtered = withDistance.filter(ngo => {
+      const name = (ngo.name || '').toLowerCase();
+      const addr = (ngo.address || '').toLowerCase();
+      const area = (ngo.area || '').toLowerCase();
+      const city = (ngo.city || '').toLowerCase();
+      const desc = (ngo.description || '').toLowerCase();
+      const cat = (ngo.category || '').toLowerCase();
+
+      // Check active needs keywords for registered NGOs
+      const needsMatch = (ngo.activeNeeds || []).some(n => 
+        (n.title || '').toLowerCase().includes(term) || 
+        (n.category || '').toLowerCase().includes(term) ||
+        (n.item || '').toLowerCase().includes(term)
+      );
+
+      // Check categories in accepted food types or support areas
+      const categoriesMatch = cat.includes(term) ||
+        (Array.isArray(ngo.foodTypesAccepted) && ngo.foodTypesAccepted.some(c => c.toLowerCase().includes(term))) ||
+        (Array.isArray(ngo.areasOfSupport) && ngo.areasOfSupport.some(c => c.toLowerCase().includes(term))) ||
+        needsMatch;
+
+      const matchesSearch = !term || 
+        name.includes(term) || 
+        desc.includes(term) ||
+        addr.includes(term) || 
+        area.includes(term) || 
+        city.includes(term) || 
+        categoriesMatch;
+
+      // Category filter
+      let matchesCat = true;
+      if (selectedCategory && selectedCategory !== 'All Categories') {
+        const catTarget = selectedCategory.toLowerCase();
+        matchesCat = cat.includes(catTarget) || 
+          desc.includes(catTarget) ||
+          (ngo.activeNeeds || []).some(n => (n.category || '').toLowerCase().includes(catTarget));
+      }
+
+      // City filter
+      let matchesCity = true;
+      if (selectedCity && selectedCity !== 'All Cities') {
+        const cityTarget = selectedCity.toLowerCase();
+        matchesCity = city.includes(cityTarget) ||
+                      addr.includes(cityTarget) ||
+                      area.includes(cityTarget);
+      }
+
+      return matchesSearch && matchesCat && matchesCity;
+    });
+
+    // Sort
+    return filtered.sort((a, b) => {
+      if (sortBy === 'Nearest') {
+        const distA = a.distanceKm !== null && a.distanceKm !== undefined ? a.distanceKm : 999999;
+        const distB = b.distanceKm !== null && b.distanceKm !== undefined ? b.distanceKm : 999999;
         return distA - distB;
       }
-      if (sortBy === 'Highest Rated') {
-        return (b.rating || 0) - (a.rating || 0);
-      }
-      if (sortBy === 'Name A-Z') {
-        return a.name.localeCompare(b.name);
+      if (sortBy === 'A-Z') {
+        return (a.name || '').localeCompare(b.name || '');
       }
       return 0;
     });
+  }, [currentTab, registeredNgos, discoverNgos, userLocation, debouncedSearch, selectedCategory, selectedCity, sortBy]);
+
+  const isLoading = currentTab === 'registered' ? loadingRegistered : loadingDiscover;
+  const currentError = currentTab === 'registered' ? registeredError : discoverError;
+  const retryAction = currentTab === 'registered' ? loadRegisteredNGOs : loadDiscoverNGOs;
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
+    <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200">
       
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-          <T text="Verified NGO Directory" />
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          <T text="Explore and connect with verified partner organizations, shelters, and food relief centers." />
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <Building2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+            <T text="Find Organisations" />
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+            <T text="Connect with registered partners fulfilling live needs, or discover local charities, food banks, and shelters nearby." />
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+          {/* Admin Claims Review Button */}
+          <button
+            onClick={() => setShowAdminClaims(true)}
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50 transition-all cursor-pointer shadow-2xs"
+            title="Review claims from unverified organisations"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Review Claims</span>
+          </button>
+
+          {/* Tab Switcher */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+            <button
+              onClick={() => updateUrlParam('tab', 'registered')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                currentTab === 'registered'
+                  ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>On FoodBridge</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                currentTab === 'registered'
+                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+              }`}>
+                {registeredNgos.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => updateUrlParam('tab', 'discover')}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                currentTab === 'discover'
+                  ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Discover NGOs nearby</span>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
+                currentTab === 'discover'
+                  ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+              }`}>
+                {discoverNgos.length}
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 space-y-3">
+      {/* Tier 2 Disclaimer Banner */}
+      {currentTab === 'discover' && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:border-amber-500/20 rounded-2xl flex items-start space-x-3 text-amber-800 dark:text-amber-300 text-xs animate-in slide-in-from-top-2 duration-200">
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+          <div className="space-y-0.5">
+            <p className="font-semibold">
+              <T text="These organisations are listed from public sources and are not verified or affiliated with FoodBridge." />
+            </p>
+            <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+              Information shown is retrieved live from OpenStreetMap. You can invite them to join FoodBridge or claim an unverified profile if you represent them.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Filter & Search Bar */}
+      <div className="bg-white dark:bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 dark:border-slate-700 space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           
-          {/* Search by Name */}
+          {/* Keyword Search */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
             <input
+              ref={searchInputRef}
               type="text"
-              placeholder={searchNamePlaceholder}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="Search by name, cause or area"
+              value={inputValue}
+              onChange={e => {
+                isTypingRef.current = true;
+                setInputValue(e.target.value);
+              }}
+              className="w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
             />
+            {inputValue && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-600/60 transition-colors cursor-pointer"
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          {/* Search by Area */}
+          {/* City / Location Filter */}
           <div className="relative">
             <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-            <input
-              type="text"
-              placeholder={searchAreaPlaceholder}
-              value={areaSearch}
-              onChange={e => setAreaSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
+            <select
+              value={selectedCity}
+              onChange={e => updateUrlParam('city', e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all"
+            >
+              {AVAILABLE_CITIES.map(c => (
+                <option key={c} value={c} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Type Filter */}
+          {/* Category Filter */}
           <select
-            value={selectedType}
-            onChange={e => setSelectedType(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            value={selectedCategory}
+            onChange={e => updateUrlParam('category', e.target.value)}
+            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all"
           >
-            {TYPE_FILTERS.map(t => (
-              <option key={t} value={t} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                <T text={t} />
+            {AVAILABLE_CAUSES.map(cat => (
+              <option key={cat} value={cat} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                {cat}
               </option>
             ))}
           </select>
@@ -181,199 +415,514 @@ const FindNGOsPage = ({ user }) => {
           {/* Sort Filter */}
           <select
             value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+            onChange={e => updateUrlParam('sort', e.target.value)}
+            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all"
           >
-            <option value="Nearest First" className="bg-white dark:bg-slate-800"><T text="Nearest First" /></option>
-            <option value="Highest Rated" className="bg-white dark:bg-slate-800"><T text="Highest Rated" /></option>
-            <option value="Name A-Z" className="bg-white dark:bg-slate-800"><T text="Name A-Z" /></option>
+            <option value="Nearest" className="bg-white dark:bg-slate-800">Nearest First</option>
+            <option value="A-Z" className="bg-white dark:bg-slate-800">Name (A–Z)</option>
           </select>
+        </div>
+
+        {/* Results Count & Attributions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700/60 gap-2">
+          <span>
+            Showing <strong className="text-slate-900 dark:text-white font-bold">{activeList.length}</strong> organisations {selectedCity !== 'All Cities' ? `in ${selectedCity}` : ''}
+          </span>
+          {currentTab === 'discover' && (
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              Data source: {import.meta.env.VITE_PLACES_API_KEY ? 'Google Places API' : 'OpenStreetMap (© OpenStreetMap contributors)'}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Grid of NGOs */}
-      {loading ? (
-        <div className="py-16 text-center text-slate-400 text-sm">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
-          <T text="Loading NGO directory..." />
-        </div>
-      ) : filteredNgos.length === 0 ? (
-        <EmptyState
-          illustration={EmptyStateNoResults}
-          message={<T text="No organisations found matching your filters." />}
-          description={<T text="Try adjusting your search terms, cause filter, or locality to discover nearby verified food relief partners." />}
-        />
-      ) : (
+      {/* Content Area */}
+      {isLoading ? (
+        /* Skeleton Loading Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredNgos.map(ngo => (
-            <div
-              key={ngo.id}
-              onClick={() => setSelectedNgo(ngo)}
-              className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-emerald-500/60 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    {ngo.logo && !ngo.logo.includes('images.unsplash.com') ? (
-                      <Avatar name={ngo.name} src={ngo.logo} className="w-12 h-12 rounded-full" />
-                    ) : (
-                      <IconCircleBadge icon={Building2} color="green" size="lg" className="shadow-xs" />
-                    )}
-                    <div>
-                      <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 line-clamp-1">
-                        <T text={ngo.name} />
-                      </h3>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-0.5">
-                        <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
-                        {ngo.area || ngo.city} • ~{ngo.distanceKm || 4.2} km
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                  <T text={ngo.description} />
-                </p>
-
-                {/* Causes Badges */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {(ngo.causes || []).slice(0, 3).map((cause, idx) => (
-                    <span key={idx} className="bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-                      <T text={cause} />
-                    </span>
-                  ))}
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="bg-white dark:bg-slate-800/80 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/80 space-y-4 animate-pulse">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-slate-700"></div>
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-3/4"></div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-md w-1/2"></div>
                 </div>
               </div>
-
-              {/* Card Footer Actions */}
-              <div className="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors flex items-center whitespace-nowrap">
-                  <T text="View Profile" /> <ArrowRight className="w-3 h-3 ml-1 shrink-0" />
-                </span>
-
-                {!isOrg ? (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } });
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-[10px] shadow-sm shadow-emerald-600/20 transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    <T text="Donate" />
-                  </button>
-                ) : (
-                  <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => setRedirectNgo(ngo)}
-                      className="bg-violet-600 hover:bg-violet-700 text-white"
-                      title="Redirect Surplus Here"
-                      icon={ArrowRight}
-                    >
-                      <T text="Redirect" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setContactNgo(ngo)}
-                      title="Contact NGO"
-                      icon={Phone}
-                    >
-                      <T text="Contact" />
-                    </Button>
-                  </div>
-                )}
+              <div className="h-10 bg-slate-100 dark:bg-slate-700/50 rounded-xl"></div>
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between">
+                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+                <div className="h-7 bg-slate-200 dark:bg-slate-700 rounded-lg w-20"></div>
               </div>
             </div>
           ))}
         </div>
+      ) : currentError ? (
+        /* Error State with Retry Button */
+        <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-2xl border border-red-200 dark:border-red-900/50 space-y-4">
+          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-slate-900 dark:text-white text-base">
+              Failed to load directory data
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+              {currentError}
+            </p>
+          </div>
+          <button
+            onClick={retryAction}
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span>Retry Connection</span>
+          </button>
+        </div>
+      ) : activeList.length === 0 ? (
+        /* Empty / No Results State */
+        <EmptyState
+          illustration={EmptyStateNoResults}
+          message={
+            debouncedSearch || selectedCategory !== 'All Categories'
+              ? "No organisations found matching your filters."
+              : currentTab === 'registered'
+              ? (selectedCity !== 'All Cities'
+                ? `No registered FoodBridge organisations found in ${selectedCity} yet.`
+                : `No registered FoodBridge organisations found yet.`)
+              : (selectedCity !== 'All Cities'
+                ? `No public organisations found in ${selectedCity}.`
+                : `No public organisations found.`)
+          }
+          description={
+            currentTab === 'registered'
+              ? "Be the first to onboard! Invite nearby charities and food banks to join FoodBridge, or switch to the 'Discover NGOs nearby' tab."
+              : "Try adjusting your search terms or selecting another city."
+          }
+        />
+      ) : (
+        /* Cards Grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activeList.map(ngo => {
+            const isRegisteredTier = ngo.isRegistered && ngo.tier === 1;
+
+            return (
+              <div
+                key={ngo.id}
+                onClick={() => setSelectedNgo(ngo)}
+                className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/90 dark:border-slate-700/80 hover:border-emerald-500/60 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+              >
+                <div className="space-y-3.5">
+                  {/* Card Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center space-x-3 min-w-0">
+                      <div className="relative shrink-0">
+                        <Avatar name={ngo.name} className="w-12 h-12 rounded-2xl text-sm font-bold shadow-xs" />
+                        {isRegisteredTier && ngo.verified && (
+                          <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-0.5 rounded-full ring-2 ring-white dark:ring-slate-800" title="Verified FoodBridge Partner">
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                            {ngo.name}
+                          </h3>
+                        </div>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-0.5 truncate">
+                          <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
+                          <span className="truncate">{ngo.area || ngo.city}</span>
+                          {ngo.distanceKm !== null && ngo.distanceKm !== undefined && (
+                            <span className="ml-1 text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">
+                              • ~{ngo.distanceKm.toFixed(1)} km away
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    {isRegisteredTier ? (
+                      ngo.verified ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 shrink-0">
+                          Registered
+                        </span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                        Not on FoodBridge yet
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description or Category */}
+                  <div className="space-y-1.5">
+                    {ngo.category && (
+                      <span className="inline-block bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                        {ngo.category}
+                      </span>
+                    )}
+                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                      {ngo.description || (
+                        isRegisteredTier 
+                          ? 'Registered partner organization dedicated to community food assistance and zero hunger.'
+                          : `Publicly listed charitable organisation located in ${ngo.city}.`
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Tier 1 Feature: Live Active Needs Feed on Card */}
+                  {isRegisteredTier && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-emerald-500" />
+                          Live Needs ({ngo.activeNeedsCount || 0})
+                        </span>
+                        {ngo.activeNeedsCount > 0 && (
+                          <span className="text-[10px] font-extrabold text-red-500 uppercase">
+                            Urgent
+                          </span>
+                        )}
+                      </div>
+
+                      {ngo.activeNeeds && ngo.activeNeeds.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {ngo.activeNeeds.slice(0, 2).map((need, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200/60 dark:border-slate-600/60 text-xs">
+                              <div className="truncate mr-2">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                                  {need.title}
+                                </span>
+                                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  Needed: {need.quantity} {need.unit}
+                                </span>
+                              </div>
+                              {!isOrg && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate('/donate', { state: { prefill: { targetNgoName: ngo.name, needTitle: need.title, needId: need._id } } });
+                                  }}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg shrink-0 transition-all cursor-pointer"
+                                >
+                                  Fulfil
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                          No active shortages posted at this moment.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Tier 2: Public Contact & Source Details */}
+                  {!isRegisteredTier && (
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                      {ngo.phone && (
+                        <div className="flex items-center gap-1.5">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span>{ngo.phone}</span>
+                        </div>
+                      )}
+                      {ngo.website && (
+                        <div className="flex items-center gap-1.5 truncate">
+                          <Globe className="w-3 h-3 text-slate-400 shrink-0" />
+                          <a 
+                            href={ngo.website.startsWith('http') ? ngo.website : `https://${ngo.website}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="text-emerald-600 dark:text-emerald-400 hover:underline truncate"
+                          >
+                            {ngo.website.replace(/^https?:\/\//, '')}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                  {/* Card Actions Footer */}
+                  <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/80">
+                    {isRegisteredTier ? (
+                      /* Tier 1 Actions */
+                      <div className="flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/ngo/${ngo.id}`);
+                          }}
+                          className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center cursor-pointer"
+                        >
+                          View Profile <ArrowRight className="w-3 h-3 ml-1" />
+                        </button>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => setContactNgo(ngo)}
+                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                            title="Message this organisation"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Message</span>
+                          </button>
+
+                          {!isOrg ? (
+                            <button
+                              onClick={() => navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } })}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <HeartHandshake className="w-3.5 h-3.5" />
+                              <span>Donate</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setRedirectNgo(ngo)}
+                              className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                            >
+                              Redirect
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Tier 2 Actions (Discover NGOs) */
+                      <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-1.5">
+                          {ngo.website && (
+                            <a
+                              href={ngo.website.startsWith('http') ? ngo.website : `https://${ngo.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>Visit website</span>
+                            </a>
+                          )}
+
+                          {ngo.phone ? (
+                            <a
+                              href={`tel:${ngo.phone}`}
+                              className="flex-1 text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
+                            >
+                              <Phone className="w-3 h-3" />
+                              <span>Call</span>
+                            </a>
+                          ) : ngo.email ? (
+                            <a
+                              href={`mailto:${ngo.email}`}
+                              className="flex-1 text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
+                            >
+                              <Mail className="w-3 h-3" />
+                              <span>Email</span>
+                            </a>
+                          ) : null}
+
+                          <button
+                            onClick={() => setInviteNgo(ngo)}
+                            className="flex-1 py-1.5 px-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-xl text-xs font-bold transition-all inline-flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Share2 className="w-3 h-3" />
+                            <span>Invite to join</span>
+                          </button>
+                        </div>
+
+                        {/* Claim this profile button */}
+                        <button
+                          onClick={() => setClaimNgo(ngo)}
+                          className="w-full py-2 px-3 text-center text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>Claim this profile</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {/* Selected NGO Detail Drawer / Modal */}
+      {/* Detail Drawer for Selected Organisation */}
       <Drawer
         isOpen={!!selectedNgo}
         onClose={() => setSelectedNgo(null)}
-        title={<T text="Organisation Details" />}
+        title={selectedNgo?.isRegistered ? "Registered Organisation Profile" : "Public Organisation Details"}
       >
         {selectedNgo && (
           <div className="space-y-6 flex flex-col h-full justify-between">
             <div className="space-y-6">
               <div className="flex items-center space-x-4">
-                <Avatar name={selectedNgo.name} src={selectedNgo.logo} className="w-16 h-16 rounded-2xl text-xl" />
-                <div>
-                  <h4 className="font-extrabold text-base text-slate-900 dark:text-white"><T text={selectedNgo.name} /></h4>
+                <Avatar name={selectedNgo.name} className="w-16 h-16 rounded-2xl text-xl font-bold" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-extrabold text-base text-slate-900 dark:text-white truncate">
+                      {selectedNgo.name}
+                    </h4>
+                  </div>
+                  {selectedNgo.isRegistered ? (
+                    <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      {selectedNgo.verified ? <ShieldCheck className="w-3.5 h-3.5" /> : null}
+                      {selectedNgo.verified ? 'Verified FoodBridge Partner' : 'Registered Organisation'}
+                    </span>
+                  ) : (
+                    <span className="inline-block mt-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                      Not on FoodBridge yet
+                    </span>
+                  )}
                   <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center mt-1">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400" />
+                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
                     {selectedNgo.address || `${selectedNgo.area}, ${selectedNgo.city}`}
                   </p>
                 </div>
               </div>
 
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                <T text={selectedNgo.description} />
-              </p>
+              {/* Description */}
+              <div className="space-y-1.5">
+                <h5 className="font-bold text-xs uppercase tracking-wider text-slate-400">About</h5>
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {selectedNgo.description || (
+                    selectedNgo.isRegistered 
+                      ? 'Registered partner organisation actively working on food surplus redistribution and community support.'
+                      : 'This organisation is listed from public OpenStreetMap directories. If you represent them, claim this profile to list verified needs.'
+                  )}
+                </p>
+              </div>
 
-              {/* Contact Information */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-700/40 rounded-2xl border border-slate-200/80 dark:border-slate-600 space-y-2.5 text-xs">
-                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider"><T text="Contact Channels" /></h5>
+              {/* Active Needs (Tier 1 Only) */}
+              {selectedNgo.isRegistered && (
+                <div className="space-y-2">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+                    Live Needs ({selectedNgo.activeNeedsCount || 0})
+                  </h5>
+                  {selectedNgo.activeNeeds && selectedNgo.activeNeeds.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedNgo.activeNeeds.map((need, idx) => (
+                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-xs text-slate-900 dark:text-white">{need.title}</p>
+                            <p className="text-[11px] text-slate-500">{need.quantity} {need.unit} • Urgency: {need.urgency}</p>
+                          </div>
+                          {!isOrg && (
+                            <button
+                              onClick={() => {
+                                setSelectedNgo(null);
+                                navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name, needTitle: need.title, needId: need._id } } });
+                              }}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                            >
+                              Fulfil Need
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">No active shortages currently posted.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Public Contact Channels */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5 text-xs">
+                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+                  Contact Information
+                </h5>
                 {selectedNgo.phone && (
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 text-emerald-500" /><T text="Phone" /></span>
+                    <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 text-emerald-500" /> Phone</span>
                     <a href={`tel:${selectedNgo.phone}`} className="font-bold hover:underline">{selectedNgo.phone}</a>
                   </div>
                 )}
                 {selectedNgo.email && (
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 text-blue-500" /><T text="Email" /></span>
+                    <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 text-blue-500" /> Email</span>
                     <a href={`mailto:${selectedNgo.email}`} className="font-bold hover:underline">{selectedNgo.email}</a>
                   </div>
                 )}
                 {selectedNgo.website && (
                   <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Globe className="w-3.5 h-3.5 mr-2 text-purple-500" /><T text="Portal" /></span>
-                    <a href={selectedNgo.website} target="_blank" rel="noreferrer" className="font-bold text-emerald-600 hover:underline truncate max-w-[160px]">
-                      <T text="Visit" /> ↗
+                    <span className="flex items-center"><Globe className="w-3.5 h-3.5 mr-2 text-purple-500" /> Website</span>
+                    <a 
+                      href={selectedNgo.website.startsWith('http') ? selectedNgo.website : `https://${selectedNgo.website}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline truncate max-w-[180px]"
+                    >
+                      Visit Website ↗
                     </a>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Action Bar */}
-            <div className="pt-4 mt-6 border-t border-slate-100 dark:border-slate-700 flex gap-2">
-              {!isOrg ? (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => {
-                    setSelectedNgo(null);
-                    navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name } } });
-                  }}
-                  icon={ArrowRight}
-                >
-                  <T text="Donate Food" />
-                </Button>
-              ) : (
-                <div className="flex-1 flex gap-2">
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+              {selectedNgo.isRegistered ? (
+                !isOrg ? (
                   <Button
                     variant="primary"
-                    className="flex-1 bg-violet-600 hover:bg-violet-700 text-white"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                     onClick={() => {
-                      setRedirectNgo(selectedNgo);
+                      setSelectedNgo(null);
+                      navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name } } });
                     }}
                     icon={ArrowRight}
                   >
-                    <T text="Redirect Surplus" />
+                    Donate to {selectedNgo.name}
                   </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+                    onClick={() => {
+                      const ngo = selectedNgo;
+                      setSelectedNgo(null);
+                      setRedirectNgo(ngo);
+                    }}
+                    icon={ArrowRight}
+                  >
+                    Redirect Surplus Here
+                  </Button>
+                )
+              ) : (
+                <div className="space-y-2">
                   <Button
                     variant="secondary"
+                    className="w-full"
                     onClick={() => {
-                      setContactNgo(selectedNgo);
+                      const ngo = selectedNgo;
+                      setSelectedNgo(null);
+                      setInviteNgo(ngo);
                     }}
-                    icon={Phone}
+                    icon={Share2}
                   >
-                    <T text="Contact" />
+                    Invite to FoodBridge
+                  </Button>
+                  <Button
+                    variant="primary"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={() => {
+                      const ngo = selectedNgo;
+                      setSelectedNgo(null);
+                      setClaimNgo(ngo);
+                    }}
+                    icon={ShieldCheck}
+                  >
+                    Claim this Profile
                   </Button>
                 </div>
               )}
@@ -382,9 +931,38 @@ const FindNGOsPage = ({ user }) => {
         )}
       </Drawer>
 
-      {/* Modals */}
+      {/* Claim Profile Modal */}
+      {claimNgo && (
+        <ClaimProfileModal
+          ngo={claimNgo}
+          onClose={() => setClaimNgo(null)}
+          onSuccess={() => {
+            loadRegisteredNGOs();
+          }}
+        />
+      )}
+
+      {/* Invite Modal */}
+      {inviteNgo && (
+        <InviteOrgModal
+          ngo={inviteNgo}
+          onClose={() => setInviteNgo(null)}
+        />
+      )}
+
+      {/* Contact & Redirect Modals */}
       {contactNgo && <ContactNgoModal ngo={contactNgo} onClose={() => setContactNgo(null)} />}
       {redirectNgo && <RedirectSurplusModal ngo={redirectNgo} user={user} onClose={() => setRedirectNgo(null)} />}
+
+      {/* Admin Claims Review Modal */}
+      {showAdminClaims && (
+        <AdminClaimsModal
+          onClose={() => setShowAdminClaims(false)}
+          onClaimApproved={() => {
+            loadRegisteredNGOs();
+          }}
+        />
+      )}
     </div>
   );
 };

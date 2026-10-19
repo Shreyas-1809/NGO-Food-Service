@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import {
   MapPin,
@@ -20,9 +20,11 @@ import {
   UserCheck,
   ShieldCheck,
   Heart,
-  HandHeart
+  HandHeart,
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
 import EmptyStateNoRequests from './illustrations/EmptyStateNoRequests';
 import EmptyStateNoShortages from './illustrations/EmptyStateNoShortages';
@@ -325,6 +327,39 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       }
     };
 
+    const handleNeedCreated = (newNeed) => {
+      if (!newNeed || newNeed.status !== 'ACTIVE') return;
+      setActiveNeeds(prev => {
+        const id = newNeed._id || newNeed.id;
+        if (prev.some(n => (n._id || n.id) === id)) return prev;
+        return [newNeed, ...prev];
+      });
+      if (isOrg) fetchMyNeeds();
+    };
+
+    const handleNeedUpdated = (updatedNeed) => {
+      if (!updatedNeed) return;
+      const id = updatedNeed._id || updatedNeed.id;
+      setActiveNeeds(prev => {
+        if (updatedNeed.status !== 'ACTIVE') {
+          return prev.filter(n => (n._id || n.id) !== id);
+        }
+        const index = prev.findIndex(n => (n._id || n.id) === id);
+        if (index === -1) return [updatedNeed, ...prev];
+        const next = [...prev];
+        next[index] = updatedNeed;
+        return next;
+      });
+      if (isOrg) fetchMyNeeds();
+    };
+
+    const handleNeedDeleted = (deletedData) => {
+      const id = deletedData?._id || deletedData?.id;
+      if (!id) return;
+      setActiveNeeds(prev => prev.filter(n => (n._id || n.id) !== id));
+      if (isOrg) fetchMyNeeds();
+    };
+
     if (socket && typeof socket.on === 'function') {
       socket.on('NEW_FOOD_LISTING', handleNewListing);
       socket.on('LISTING_UPDATED', handleUpdateListing);
@@ -334,6 +369,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       socket.on('CLAIM_REQUEST_RECEIVED', handleClaimRequestReceived);
       socket.on('CLAIM_ACCEPTED', handleClaimAccepted);
       socket.on('CLAIM_DECLINED', handleClaimDeclined);
+      socket.on('NEED_CREATED', handleNeedCreated);
+      socket.on('NEW_NEED_LISTING', handleNeedCreated);
+      socket.on('NEED_UPDATED', handleNeedUpdated);
+      socket.on('NEED_DELETED', handleNeedDeleted);
     }
 
     return () => {
@@ -346,9 +385,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         socket.off('CLAIM_REQUEST_RECEIVED', handleClaimRequestReceived);
         socket.off('CLAIM_ACCEPTED', handleClaimAccepted);
         socket.off('CLAIM_DECLINED', handleClaimDeclined);
+        socket.off('NEED_CREATED', handleNeedCreated);
+        socket.off('NEW_NEED_LISTING', handleNeedCreated);
+        socket.off('NEED_UPDATED', handleNeedUpdated);
+        socket.off('NEED_DELETED', handleNeedDeleted);
       }
     };
-  }, [socket, token, selectedListing, isDonor, user]);
+  }, [socket, token, selectedListing, isDonor, user, isOrg]);
 
   const handleClaim = async (id) => {
     if (user?.accountType !== 'ORGANISATION' && user?.accountType !== 'ORGANIZATION') {
@@ -390,13 +433,31 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     }
   };
 
-  // Fetch real needs from backend for match scoring
+  // Real active shortages from backend
   const [activeNeeds, setActiveNeeds] = useState([]);
+  const [loadingActiveNeeds, setLoadingActiveNeeds] = useState(true);
+  const [activeNeedsError, setActiveNeedsError] = useState(null);
+
+  const fetchActiveNeeds = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/api/needs`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      setActiveNeeds(res.data || []);
+      setActiveNeedsError(null);
+    } catch (err) {
+      console.error('Failed to fetch active shortages:', err);
+      setActiveNeedsError('Failed to load active shortages. Please try again.');
+    } finally {
+      setLoadingActiveNeeds(false);
+    }
+  }, [token]);
+
   useEffect(() => {
-    axios.get(`${API_URL}/api/needs`)
-      .then(res => setActiveNeeds(res.data || []))
-      .catch(() => {}); // Silently fail — match badges are non-critical
-  }, []);
+    fetchActiveNeeds();
+    const interval = setInterval(fetchActiveNeeds, 8000);
+    return () => clearInterval(interval);
+  }, [fetchActiveNeeds]);
 
   // Keep a memoized normalized list for scoring
   const storedRequests = useMemo(() => activeNeeds.map(n => ({
@@ -620,7 +681,197 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           });
 
           return (
-        <div className="space-y-4">
+        <div className="space-y-8">
+          {/* SECTION 1: LIVE NGO SHORTAGES & DEMANDS */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 shadow-xs">
+              <div>
+                <div className="inline-flex items-center space-x-1.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span><T text="Active Organisation Demands" /></span>
+                </div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Package className="w-5 h-5 text-amber-500" />
+                  <T text="Live NGO Shortages" /> ({activeNeeds.length})
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <T text="Active food shortages posted by verified NGOs and distribution hubs. Donate directly to fulfill their immediate needs." />
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
+                <button
+                  onClick={fetchActiveNeeds}
+                  className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 p-2 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Refresh active shortages"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span><T text="Refresh" /></span>
+                </button>
+                <Link
+                  to="/ngo-requests"
+                  className="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+                >
+                  <span><T text="View All" /></span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Shortages Grid / Loading / Error / Empty state */}
+            {loadingActiveNeeds ? (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 border border-slate-200 dark:border-slate-700 text-center text-slate-500 text-xs">
+                <T text="Loading active organisation shortages..." />
+              </div>
+            ) : activeNeedsError ? (
+              <div className="bg-red-50 dark:bg-red-950/40 rounded-2xl p-6 border border-red-200 dark:border-red-900 text-center text-xs text-red-600 dark:text-red-400 flex flex-col items-center gap-2">
+                <p>{activeNeedsError}</p>
+                <button
+                  onClick={fetchActiveNeeds}
+                  className="px-3 py-1.5 bg-red-600 text-white rounded-lg font-bold text-xs hover:bg-red-700 cursor-pointer"
+                >
+                  <T text="Retry" />
+                </button>
+              </div>
+            ) : activeNeeds.length === 0 ? (
+              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
+                <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
+                <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                  <T text="No Active NGO Shortages" />
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  <T text="There are currently no active shortages posted by organisations. When an organisation publishes a food need, it will appear here in real time." />
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {activeNeeds.map(need => {
+                  const orgName = need.ngoId?.orgName || need.ngoId?.fullName || 'Verified NGO';
+                  const city = need.ngoId?.city || '';
+                  const isUrgent = need.urgency === 'HIGH' || need.urgency === 'High / Urgent Deficit';
+                  const postedTime = new Date(need.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                  return (
+                    <div
+                      key={need._id}
+                      className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            {need.category || 'Food'} Deficit
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                            isUrgent
+                              ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-900'
+                              : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/80 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-900'
+                          }`}>
+                            {isUrgent ? '🔴 Urgent' : '🟡 Moderate'}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">
+                            {need.title}
+                          </h4>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            <T text="Needed Quantity" />:{' '}
+                            <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
+                              {need.quantity} {need.unit || 'servings'}
+                            </strong>
+                          </div>
+                        </div>
+
+                        {/* Organisation info */}
+                        <div className="p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/80 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center truncate">
+                              <Building2 className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" />
+                              <span className="truncate">{orgName}</span>
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded shrink-0">
+                              ✓ Verified
+                            </span>
+                          </div>
+                          {city && (
+                            <p className="text-slate-400 dark:text-slate-500 flex items-center text-[11px] truncate">
+                              <MapPin className="w-3 h-3 mr-1 shrink-0" />
+                              {city}
+                            </p>
+                          )}
+                        </div>
+
+                        {need.description && (
+                          <p className="text-xs italic text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 line-clamp-2">
+                            "{need.description}"
+                          </p>
+                        )}
+
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span><T text="Posted" />: {postedTime}</span>
+                          </span>
+                          <span className="font-extrabold text-emerald-600 uppercase text-[10px]">
+                            {need.status}
+                          </span>
+                        </div>
+                      </div>
+
+
+                      {/* Action Button: Donate / Fulfil this need */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+                        <button
+                          onClick={async () => {
+                            if (!token) {
+                              alert('Please log in to donate.');
+                              return;
+                            }
+                            try {
+                              await axios.post(
+                                `${API_URL}/api/needs/${need._id}/commit`,
+                                {},
+                                { headers: { Authorization: `Bearer ${token}` } }
+                              );
+                              navigate('/donate', {
+                                state: {
+                                  prefill: {
+                                    needId: need._id,
+                                    foodType: need.title,
+                                    quantity: need.quantity,
+                                    unit: need.unit || 'servings',
+                                    targetNgoId: need.ngoId?._id || need.ngoId,
+                                    targetNgoName: orgName
+                                  }
+                                }
+                              });
+                            } catch (err) {
+                              if (err.response?.status === 409) {
+                                alert('This shortage need has already been taken by another donor.');
+                                // Remove card immediately from the feed
+                                setActiveNeeds(prev => prev.filter(n => (n._id || n.id) !== need._id));
+                              } else {
+                                alert(err.response?.data?.message || 'Failed to commit. Please try again.');
+                              }
+                            }
+                          }}
+                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <Utensils className="w-3.5 h-3.5" />
+                          <span><T text="Donate / Fulfil this need" /></span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: NGO CLAIM REQUESTS (ON YOUR DONATIONS) */}
+          <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-blue-100 dark:border-slate-800 shadow-xs">
             <div>
               <h3 className="text-lg font-extrabold text-[#1d4ed8] dark:text-blue-400 flex items-center gap-2">
@@ -843,6 +1094,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             );
           })()}
         </div>
+      </div>
           );
         })()
       ) : isDonor && showMyUploads ? (

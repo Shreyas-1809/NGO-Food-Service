@@ -34,13 +34,26 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
 
 
 
-  const handleClosePostForm = () => {
+  const handleClosePostForm = async (wasSubmitted = false) => {
+    // If donor committed to a need but closed the form WITHOUT submitting, unclaim it
+    const needId = prefillData?.needId;
+    if (needId && token && !wasSubmitted) {
+      try {
+        await fetch(`${API_URL}/api/needs/${needId}/unclaim`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+        });
+      } catch (e) {
+        // Best-effort; don't block the close
+      }
+    }
     setShowPostForm(false);
     setPrefillData(null);
     if (location.pathname === '/donate') {
       navigate('/', { replace: true });
     }
   };
+
 
   const handleEditPosting = (post) => {
     if (post.isNewPostSignal) {
@@ -162,7 +175,7 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
                 user={user}
                 token={token}
                 prefill={prefillData}
-                onSuccess={handleClosePostForm}
+                onSuccess={() => handleClosePostForm(true)}
               />
             </div>
           </div>

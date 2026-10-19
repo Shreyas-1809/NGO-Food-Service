@@ -44,7 +44,16 @@ router.post('/', auth, async (req, res) => {
       details: `Title: ${title}, Quantity: ${quantity} ${unit || 'servings'}`
     });
 
-    res.status(201).json(need);
+    const populatedNeed = await Need.findById(need._id)
+      .populate('ngoId', 'orgName fullName phone email address city location');
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('NEED_CREATED', populatedNeed);
+      io.emit('NEW_NEED_LISTING', populatedNeed);
+    }
+
+    res.status(201).json(populatedNeed);
   } catch (err) {
     console.error('Error creating shortage request:', err);
     if (err.name === 'ValidationError') {
@@ -89,6 +98,62 @@ router.get('/my-needs', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/needs/:id/commit
+// @desc    Commit to fulfilling a shortage (Donor only, atomic lock)
+// @access  Private
+router.post('/:id/commit', auth, async (req, res) => {
+  try {
+    const need = await Need.findOneAndUpdate(
+      { _id: req.params.id, status: 'ACTIVE' },
+      { status: 'CLAIMED', donorId: req.user.id, claimedAt: new Date() },
+      { new: true }
+    ).populate('ngoId', 'orgName fullName phone email address city location');
+
+    if (!need) {
+      const existing = await Need.findById(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ message: 'Shortage request not found' });
+      }
+      return res.status(409).json({ message: 'This shortage need has already been taken by another donor or fulfilled.' });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('NEED_UPDATED', need);
+    }
+
+    res.json(need);
+  } catch (err) {
+    console.error('Error committing to shortage:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   POST /api/needs/:id/unclaim
+// @desc    Release commitment if donor cancels donation form
+// @access  Private
+router.post('/:id/unclaim', auth, async (req, res) => {
+  try {
+    const need = await Need.findOneAndUpdate(
+      { _id: req.params.id, donorId: req.user.id, status: { $in: ['CLAIMED', 'IN_PROGRESS'] } },
+      { status: 'ACTIVE', donorId: null, claimedAt: null, fulfilledFoodId: null },
+      { new: true }
+    ).populate('ngoId', 'orgName fullName phone email address city location');
+
+    if (need) {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('NEED_UPDATED', need);
+      }
+    }
+
+    res.json(need || { message: 'Shortage released' });
+  } catch (err) {
+    console.error('Error unclaiming shortage:', err);
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
 // @route   PATCH /api/needs/:id
 // @desc    Edit a shortage request
 // @access  Private (Organisation/NGO only)
@@ -98,7 +163,7 @@ router.patch('/:id', auth, async (req, res) => {
     if (!need) {
       return res.status(404).json({ message: 'Shortage request not found' });
     }
-    if (need.ngoId.toString() !== req.user.id) {
+    if (need.ngoId.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
@@ -110,11 +175,27 @@ router.patch('/:id', auth, async (req, res) => {
     if (unit) need.unit = unit;
     if (urgency) need.urgency = urgency;
     if (description !== undefined) need.description = description;
-    if (status) need.status = status;
+    if (status) {
+      need.status = status;
+      if (status === 'FULFILLED') {
+        need.fulfilledAt = new Date();
+      } else if (status === 'ACTIVE') {
+        need.fulfilledAt = undefined;
+      }
+    }
     if (neededByDate) need.neededByDate = new Date(neededByDate);
 
     await need.save();
-    res.json(need);
+
+    const populatedNeed = await Need.findById(need._id)
+      .populate('ngoId', 'orgName fullName phone email address city location');
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('NEED_UPDATED', populatedNeed);
+    }
+
+    res.json(populatedNeed);
   } catch (err) {
     console.error('Error updating shortage request:', err);
     if (err.name === 'ValidationError') {
@@ -133,16 +214,22 @@ router.delete('/:id', auth, async (req, res) => {
     if (!need) {
       return res.status(404).json({ message: 'Shortage request not found' });
     }
-    if (need.ngoId.toString() !== req.user.id) {
+    if (need.ngoId.toString() !== req.user.id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
     await Need.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Shortage request removed' });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('NEED_DELETED', { _id: req.params.id, id: req.params.id });
+    }
+
+    res.json({ message: 'Shortage request removed', _id: req.params.id, id: req.params.id });
   } catch (err) {
     console.error('Error deleting shortage request:', err);
     res.status(500).json({ message: 'Server Error' });
   }
 });
 
-module.exports = router;
+module.exports = router;

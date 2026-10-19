@@ -27,10 +27,9 @@ import WorkflowNav from './WorkflowNav';
 import ContactNgoModal from './ContactNgoModal';
 import RedirectSurplusModal from './RedirectSurplusModal';
 
-const NGORequirementsPage = ({ user, token: tokenProp }) => {
+const NGORequirementsPage = ({ user, token: tokenProp, socket }) => {
   const token = tokenProp || localStorage.getItem('token');
   const [requests, setRequests] = useState([]);
-  const [ngos, setNgos] = useState([]);
   const [contactNgo, setContactNgo] = useState(null);
   const [redirectNgo, setRedirectNgo] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -56,8 +55,6 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
   const [requestsError, setRequestsError] = useState(null);
 
   const syncData = useCallback(async () => {
-    setLoadingRequests(true);
-    setRequestsError(null);
     try {
       // Fetch all active needs (ALL tab) and org's own needs (MY tab) in parallel
       const [allRes, myRes] = await Promise.all([
@@ -72,7 +69,7 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
         id: n._id,
         _id: n._id,
         ngoId: n.ngoId?._id || n.ngoId,
-        ngoName: n.ngoId?.orgName || n.ngoId?.fullName || orgName || 'NGO',
+        ngoName: n.ngoId?.orgName || n.ngoId?.fullName || (isOrg ? orgName : 'Verified NGO'),
         item: n.title,
         category: n.category || 'Food',
         quantity: n.quantity,
@@ -81,15 +78,17 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
         requiredBy: n.neededByDate,
         description: n.description || '',
         status: n.status || 'ACTIVE',
-        createdAt: n.createdAt
+        createdAt: n.createdAt,
+        city: n.ngoId?.city || '',
+        address: n.ngoId?.address || '',
+        contactPhone: n.ngoId?.phone || ''
       });
 
       // For MY tab, use the my-needs endpoint for precision
       const myNeeds = (isOrg ? myRes.data : []).map(normalize);
-      const allNeeds = allRes.data.map(normalize);
+      const allNeeds = (allRes.data || []).map(normalize);
 
       // Merge: for MY tab we'll use myNeeds, for ALL tab use allNeeds
-      // We combine both so we have a single state array and filter
       const combined = [...allNeeds];
       // Ensure own needs are present (may overlap with allNeeds)
       myNeeds.forEach(my => {
@@ -97,6 +96,7 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
       });
 
       setRequests(combined);
+      setRequestsError(null);
     } catch (err) {
       console.error('Failed to load shortage requests:', err);
       setRequestsError('Failed to load shortage requests. Please try again.');
@@ -107,7 +107,31 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
 
   useEffect(() => {
     syncData();
+    // 8-second polling fallback ensures cross-role sync
+    const interval = setInterval(syncData, 8000);
+    return () => clearInterval(interval);
   }, [syncData]);
+
+  // Realtime Socket.io listeners
+  useEffect(() => {
+    if (!socket || typeof socket.on !== 'function') return;
+
+    const handleRealtimeUpdate = () => {
+      syncData();
+    };
+
+    socket.on('NEED_CREATED', handleRealtimeUpdate);
+    socket.on('NEW_NEED_LISTING', handleRealtimeUpdate);
+    socket.on('NEED_UPDATED', handleRealtimeUpdate);
+    socket.on('NEED_DELETED', handleRealtimeUpdate);
+
+    return () => {
+      socket.off('NEED_CREATED', handleRealtimeUpdate);
+      socket.off('NEW_NEED_LISTING', handleRealtimeUpdate);
+      socket.off('NEED_UPDATED', handleRealtimeUpdate);
+      socket.off('NEED_DELETED', handleRealtimeUpdate);
+    };
+  }, [socket, syncData]);
 
   const handleDonateForRequirement = (req) => {
     navigate('/donate', {
@@ -191,17 +215,15 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
     )
     : [];
 
-  const generalRequests = activeTab === 'MY' ? myPostings : requests.filter(req => {
-    if (selectedCategory !== 'ALL' && req.category !== selectedCategory) return false;
-    if (selectedUrgency !== 'ALL' && (req.urgency !== selectedUrgency && req.priority !== selectedUrgency)) return false;
-    return true;
-  });
-
-  // For "ALL" tab for org: sort org's own first
+  // For "ALL" tab: donors only see ACTIVE; orgs see all (own postings may be fulfilled)
   const filteredAndSortedRequests = activeTab === 'ALL' ? (() => {
-    let result = [...requests];
-    if (selectedCategory !== 'ALL') result = result.filter(r => r.category === selectedCategory);
-    if (selectedUrgency !== 'ALL') result = result.filter(r => r.urgency === selectedUrgency || r.priority === selectedUrgency);
+    let result = requests.filter(r => {
+      // Non-org donors: only show ACTIVE shortages
+      if (!isOrg && r.status !== 'ACTIVE') return false;
+      if (selectedCategory !== 'ALL' && r.category !== selectedCategory) return false;
+      if (selectedUrgency !== 'ALL' && (r.urgency !== selectedUrgency && r.priority !== selectedUrgency)) return false;
+      return true;
+    });
     if (isOrg) {
       // Sort org's own postings first
       result.sort((a, b) => {
@@ -214,6 +236,7 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
   })() : myPostings;
 
   const displayRequests = filteredAndSortedRequests;
+
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
@@ -297,12 +320,39 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
         </div>
       )}
 
+      {/* Error state */}
+      {requestsError && (
+        <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-2xl text-center text-xs text-red-600 dark:text-red-400">
+          <p>{requestsError}</p>
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loadingRequests && displayRequests.length === 0 && (
+        <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">
+          <p className="text-sm font-semibold">Loading shortage requests...</p>
+        </div>
+      )}
+
       {/* Empty State for My Postings */}
-      {activeTab === 'MY' && myPostings.length === 0 && (
+      {activeTab === 'MY' && myPostings.length === 0 && !loadingRequests && (
         <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400">
           <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
           <p className="font-bold text-sm text-slate-700 dark:text-slate-200 mb-1">No postings yet</p>
           <p className="text-xs">Use "Post a Need" from the dashboard sidebar to publish your first shortage.</p>
+        </div>
+      )}
+
+      {/* Empty State for All Shortages */}
+      {activeTab === 'ALL' && displayRequests.length === 0 && !loadingRequests && (
+        <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 p-8 space-y-3">
+          <Package className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
+          <h3 className="font-bold text-base text-slate-800 dark:text-slate-200">No Shortage Requests Found</h3>
+          <p className="text-xs max-w-md mx-auto">
+            {selectedCategory !== 'ALL' || selectedUrgency !== 'ALL'
+              ? 'No shortage requests match the selected filters. Try changing or resetting your filters.'
+              : 'There are currently no active shortage requests posted by organisations. Check back soon!'}
+          </p>
         </div>
       )}
 
@@ -361,16 +411,18 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-slate-900 dark:text-white flex items-center truncate mr-2">
                       <Building2 className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" />
-                      <span className="truncate">{req.ngoName || 'Helping Hands Foundation'}</span>
+                      <span className="truncate">{req.ngoName || 'Organisation'}</span>
                     </span>
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded shrink-0">
                       ✓ Verified
                     </span>
                   </div>
-                  <p className="text-slate-500 dark:text-slate-400 flex items-center truncate">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
-                    {req.area || req.location || 'Shivajinagar'}, {req.city || 'Pune'}
-                  </p>
+                  {(req.address || req.city) && (
+                    <p className="text-slate-500 dark:text-slate-400 flex items-center truncate">
+                      <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
+                      {[req.address, req.city].filter(Boolean).join(', ')}
+                    </p>
+                  )}
                 </div>
 
                 {/* Quantitative Supply Stats - Editable for My Postings */}
@@ -410,19 +462,23 @@ const NGORequirementsPage = ({ user, token: tokenProp }) => {
                     </div>
                   ) : null}
 
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center text-slate-500 dark:text-slate-400">
-                      <Users className="w-3.5 h-3.5 mr-1 text-teal-600" /> Feeding Capacity:
-                    </span>
-                    <strong className="text-slate-900 dark:text-white">{req.beneficiaries || 120} people</strong>
-                  </div>
+                  {req.beneficiaries ? (
+                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                      <span className="flex items-center text-slate-500 dark:text-slate-400">
+                        <Users className="w-3.5 h-3.5 mr-1 text-teal-600" /> Feeding Capacity:
+                      </span>
+                      <strong className="text-slate-900 dark:text-white">{req.beneficiaries} people</strong>
+                    </div>
+                  ) : null}
 
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center text-slate-500 dark:text-slate-400">
-                      <Calendar className="w-3.5 h-3.5 mr-1 text-blue-600" /> Needed By:
-                    </span>
-                    <strong className="text-slate-900 dark:text-white">{req.requiredBy || 'Today'}</strong>
-                  </div>
+                  {req.requiredBy && (
+                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                      <span className="flex items-center text-slate-500 dark:text-slate-400">
+                        <Calendar className="w-3.5 h-3.5 mr-1 text-blue-600" /> Needed By:
+                      </span>
+                      <strong className="text-slate-900 dark:text-white">{new Date(req.requiredBy).toLocaleDateString()}</strong>
+                    </div>
+                  )}
                 </div>
 
                 {req.description && (

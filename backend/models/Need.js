@@ -33,8 +33,22 @@ const NeedSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['ACTIVE', 'FULFILLED', 'CANCELLED'],
+    enum: ['ACTIVE', 'CLAIMED', 'IN_PROGRESS', 'FULFILLED', 'CANCELLED', 'ARCHIVED'],
     default: 'ACTIVE'
+  },
+  donorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  fulfilledFoodId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Food'
+  },
+  claimedAt: {
+    type: Date
+  },
+  fulfilledAt: {
+    type: Date
   },
   neededByDate: {
     type: Date

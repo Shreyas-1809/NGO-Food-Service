@@ -30,7 +30,8 @@ const UserSchema = new mongoose.Schema({
       type: [Number],
       default: [0, 0] // Default [longitude, latitude]
     }
-  }
+  },
+  verified: { type: Boolean, default: false }
 }, { timestamps: true });
 
 UserSchema.index({ location: '2dsphere' }, { sparse: true });

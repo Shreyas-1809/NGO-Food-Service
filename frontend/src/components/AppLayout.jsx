@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { 
   Heart, LayoutDashboard, Package, Search, FileText, 
-  BarChart3, MessageSquare, Settings, LogOut, Sun, Moon, Bell, ArrowLeft, Menu, X, Map as MapIcon
+  BarChart3, MessageSquare, Settings, LogOut, Sun, Moon, Bell, ArrowLeft, Menu, X, Map as MapIcon,
+  ShieldCheck, MapPin
 } from 'lucide-react';
 import { T, useLanguage, useTranslatedString } from '../context/LanguageContext';
+import { fetchRegisteredNGOs } from '../services/ngoDirectoryService';
 
 import MyPostingsDrawer from './MyPostingsDrawer';
 import MyShortagesDrawer from './MyShortagesDrawer';
@@ -24,6 +26,80 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
   const [unreadCount, setUnreadCount] = useState(0);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Top-bar search state & live suggestions
+  const [topSearchTerm, setTopSearchTerm] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [registeredOrgs, setRegisteredOrgs] = useState([]);
+  const searchDropdownRef = useRef(null);
+
+  // Sync top-bar search value when on /ngos or /find-ngos
+  useEffect(() => {
+    if (location.pathname === '/ngos' || location.pathname === '/find-ngos') {
+      const params = new URLSearchParams(location.search);
+      const q = params.get('q') || params.get('search') || '';
+      setTopSearchTerm(q);
+    }
+  }, [location.pathname, location.search]);
+
+  // Preload registered organisations for instant live suggestions
+  useEffect(() => {
+    fetchRegisteredNGOs()
+      .then(data => setRegisteredOrgs(Array.isArray(data) ? data : []))
+      .catch(err => console.error('Failed to load registered orgs for top search:', err));
+  }, []);
+
+  // Close suggestions when clicking outside or pressing Escape
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (searchDropdownRef.current && !searchDropdownRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setShowSuggestions(false);
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Filter matching suggestions
+  const matchingOrgs = useMemo(() => {
+    const term = topSearchTerm.trim().toLowerCase();
+    if (!term) return [];
+    return registeredOrgs.filter(org => {
+      const name = (org.name || org.orgName || '').toLowerCase();
+      const city = (org.city || '').toLowerCase();
+      const addr = (org.address || '').toLowerCase();
+      const area = (org.area || '').toLowerCase();
+      const cat = (org.category || '').toLowerCase();
+      const desc = (org.description || '').toLowerCase();
+      return name.includes(term) || city.includes(term) || addr.includes(term) || area.includes(term) || cat.includes(term) || desc.includes(term);
+    }).slice(0, 6);
+  }, [topSearchTerm, registeredOrgs]);
+
+  // Navigate to /ngos?q=<query> on submit
+  const handleTopSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    setShowSuggestions(false);
+    const query = topSearchTerm.trim();
+    if (query) {
+      navigate(`/ngos?q=${encodeURIComponent(query)}`);
+    } else {
+      navigate('/ngos');
+    }
+  };
+
+  const handleSuggestionClick = (org) => {
+    setShowSuggestions(false);
+    const orgName = org.name || org.orgName || '';
+    setTopSearchTerm(orgName);
+    navigate(`/ngos?q=${encodeURIComponent(orgName)}`);
+  };
 
   const isOrg = user?.accountType === 'ORGANISATION' || 
                 user?.accountType === 'ORGANIZATION' || 
@@ -121,17 +197,18 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
         <span><T text="Dashboard" /></span>
       </Link>
 
-      <button
-        onClick={() => { setActiveDrawer(activeDrawer === 'POSTINGS' ? null : 'POSTINGS'); closeMobileMenu(); }}
-        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${
-          activeDrawer === 'POSTINGS'
-            ? 'bg-emerald-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400'
+      <Link
+        to="/ngo-requests"
+        onClick={closeMobileMenu}
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all ${
+          location.pathname === '/ngo-requests'
+            ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold shadow-xs'
             : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
         }`}
       >
         <Package className="w-4 h-4 shrink-0" strokeWidth={1.75} />
         <span><T text="NGO Requests" /></span>
-      </button>
+      </Link>
 
       <Link
         to="/ngos"
@@ -283,20 +360,111 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
                 <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
               </button>
             )}
-            <div className="hidden sm:block text-sm font-bold text-slate-800 dark:text-slate-100">
+            <div className="hidden xl:block text-sm font-bold text-slate-800 dark:text-slate-100">
               {location.pathname === '/' ? <T text="Home" /> : <T text={location.pathname.replace('/', '').replace('-', ' ').toUpperCase()} fallback="Page" />}
             </div>
           </div>
 
           {/* CENTER: Search */}
-          <div className="flex-1 max-w-xl px-2 sm:px-6 hidden md:block">
-            <div className="relative group w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors" strokeWidth={1.75} />
-              <input 
-                type="text" 
-                placeholder={searchPlaceholder || "Search NGOs, locations..."} 
-                className="w-full h-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-full pl-10 pr-4 text-sm font-semibold text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all"
-              />
+          <div className="flex-1 max-w-xl px-1 sm:px-4 min-w-0">
+            <div ref={searchDropdownRef} className="relative group w-full">
+              <form onSubmit={handleTopSearchSubmit} className="relative w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" strokeWidth={1.75} />
+                <input 
+                  type="text" 
+                  value={topSearchTerm}
+                  onChange={(e) => {
+                    setTopSearchTerm(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (topSearchTerm.trim().length > 0) setShowSuggestions(true);
+                  }}
+                  placeholder={searchPlaceholder || "Search NGOs, locations..."} 
+                  className="w-full h-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-full pl-10 pr-9 text-sm font-semibold text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all"
+                />
+                {topSearchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTopSearchTerm('');
+                      setShowSuggestions(false);
+                      if (location.pathname === '/ngos' || location.pathname === '/find-ngos') {
+                        navigate('/ngos');
+                      }
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </form>
+
+              {/* Live Suggestions Dropdown */}
+              {showSuggestions && topSearchTerm.trim().length > 0 && (
+                <div className="absolute top-12 left-0 right-0 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200/90 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="p-2 border-b border-slate-100 dark:border-slate-700/60 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-3">
+                    <span>Registered Organisations</span>
+                    <span className="text-[10px] lowercase font-normal">{matchingOrgs.length} matching</span>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700/50 max-h-72 overflow-y-auto">
+                    {matchingOrgs.length > 0 ? (
+                      matchingOrgs.map((org) => (
+                        <div
+                          key={org.id || org._id}
+                          onClick={() => handleSuggestionClick(org)}
+                          className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer flex items-center justify-between group/item"
+                        >
+                          <div className="flex items-center space-x-3 min-w-0">
+                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                              {(org.name || 'O').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-xs text-slate-900 dark:text-white truncate group-hover/item:text-emerald-600 dark:group-hover/item:text-emerald-400 transition-colors">
+                                  {org.name}
+                                </span>
+                                {org.verified && (
+                                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" title="Verified Partner" />
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center truncate mt-0.5">
+                                <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
+                                <span className="truncate">{org.area || org.city || 'Pune'}</span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {org.activeNeedsCount > 0 ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0 ml-2">
+                              {org.activeNeedsCount} need{org.activeNeedsCount > 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity ml-2">
+                              View in NGOs →
+                            </span>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                        No registered organisations match "<strong className="text-slate-700 dark:text-slate-300">{topSearchTerm}</strong>"
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Press Enter Footer */}
+                  <div 
+                    onClick={handleTopSearchSubmit}
+                    className="p-2.5 bg-slate-50 dark:bg-slate-700/40 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-700 cursor-pointer px-4 transition-colors"
+                  >
+                    <span>Press Enter to search all organisations for "<span className="font-bold">{topSearchTerm}</span>"</span>
+                    <span>↵</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

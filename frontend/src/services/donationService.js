@@ -46,12 +46,20 @@ export const getStoredDonations = () => {
 export const getStoredNgos = () => {
   try {
     const data = localStorage.getItem(NGOS_STORAGE_KEY);
-    if (data) return JSON.parse(data);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(n => 
+          !['ngo-101', 'ngo-102', 'ngo-103', 'ngo-104', 'ngo-105'].includes(n.id) &&
+          !n.name?.toLowerCase().includes('robin hood') &&
+          !n.name?.toLowerCase().includes('feeding india')
+        );
+      }
+    }
   } catch (e) {
     console.error('Failed to read stored NGOs:', e);
   }
-  localStorage.setItem(NGOS_STORAGE_KEY, JSON.stringify(MOCK_NGOS));
-  return MOCK_NGOS;
+  return [];
 };
 
 export const registerNgo = (ngoData) => {

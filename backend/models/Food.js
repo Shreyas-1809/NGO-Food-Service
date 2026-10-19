@@ -13,6 +13,8 @@ const FoodSchema = new mongoose.Schema({
     default: 'AVAILABLE' 
   },
   claimantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  fulfilledNeedId: { type: mongoose.Schema.Types.ObjectId, ref: 'Need' },
+  targetNgoId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectionReason: { type: String },
   verificationCode: { type: String },

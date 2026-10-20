@@ -137,6 +137,8 @@ const NGORequirementsPage = ({ user, token: tokenProp, socket }) => {
     navigate('/donate', {
       state: {
         prefill: {
+          needId: req.id || req._id,
+          requirementId: req.id || req._id,
           foodType: req.item,
           quantity: req.quantity,
           unit: req.unit,

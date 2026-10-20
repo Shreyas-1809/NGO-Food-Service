@@ -9,12 +9,19 @@ const FoodSchema = new mongoose.Schema({
   expiryTime: { type: Date, required: true },
   status: { 
     type: String, 
-    enum: ['AVAILABLE', 'ACTIVE', 'ACCEPTED', 'CLAIMED', 'IN_TRANSIT', 'REJECTED', 'DECLINED', 'NON_CLAIMED', 'COMPLETED'], 
+    enum: ['AVAILABLE', 'ACTIVE', 'PENDING', 'ACCEPTED', 'CLAIMED', 'IN_TRANSIT', 'REJECTED', 'DECLINED', 'NON_CLAIMED', 'COMPLETED', 'CANCELLED'], 
     default: 'AVAILABLE' 
+  },
+  visibility: {
+    type: String,
+    enum: ['PUBLIC', 'TARGETED'],
+    default: 'PUBLIC'
   },
   claimantId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   fulfilledNeedId: { type: mongoose.Schema.Types.ObjectId, ref: 'Need' },
+  requirementId: { type: mongoose.Schema.Types.ObjectId, ref: 'Need' },
   targetNgoId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  targetOrganisationId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   rejectionReason: { type: String },
   verificationCode: { type: String },

@@ -18,7 +18,30 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only donors can post food' });
     }
 
-    const { title, quantity, foodType, preparedTime, expiryTime, items, photos, overallExpiry, location, pickupAddress, pickupTimeSlot, autoDeleteValue, autoDeleteUnit, autoDeleteAt: explicitAutoDeleteAt } = req.body;
+    const {
+      title, quantity, foodType, preparedTime, expiryTime, items, photos,
+      overallExpiry, location, pickupAddress, pickupTimeSlot, autoDeleteValue,
+      autoDeleteUnit, autoDeleteAt: explicitAutoDeleteAt,
+      requirementId, needId
+    } = req.body;
+
+    const targetNeedId = requirementId || needId;
+    let validatedNeed = null;
+    let targetOrgId = null;
+    let donationVisibility = 'PUBLIC';
+    let initialStatus = 'AVAILABLE';
+
+    if (targetNeedId) {
+      const Need = require('../models/Need');
+      validatedNeed = await Need.findById(targetNeedId);
+      if (!validatedNeed) {
+        return res.status(404).json({ message: 'Referenced requirement/need not found' });
+      }
+      // Security: Target organisation ID is COPIED strictly from the requirement's owner on the backend
+      targetOrgId = validatedNeed.ngoId;
+      donationVisibility = 'TARGETED';
+      initialStatus = 'PENDING';
+    }
 
     let computedAutoDeleteAt = explicitAutoDeleteAt ? new Date(explicitAutoDeleteAt) : null;
     if (!computedAutoDeleteAt && autoDeleteValue && Number(autoDeleteValue) > 0) {
@@ -35,7 +58,6 @@ router.post('/', auth, async (req, res) => {
       !(Math.abs(Number(finalLocation.coordinates[0])) < 1e-6 && Math.abs(Number(finalLocation.coordinates[1])) < 1e-6);
 
     if (!hasValidCoords) {
-      // If a donation has no coordinates, geocode the donor's address once when the surplus is posted and save the result
       let addressToGeocode = pickupAddress;
       if (!addressToGeocode) {
         const donorUser = await User.findById(req.user.id).select('address city');
@@ -63,7 +85,12 @@ router.post('/', auth, async (req, res) => {
       foodType,
       preparedTime,
       expiryTime,
-      status: 'AVAILABLE',
+      status: initialStatus,
+      visibility: donationVisibility,
+      targetOrganisationId: targetOrgId,
+      targetNgoId: targetOrgId,
+      requirementId: validatedNeed ? validatedNeed._id : undefined,
+      fulfilledNeedId: validatedNeed ? validatedNeed._id : undefined,
       items: items || [],
       photos: photos || [],
       overallExpiry: overallExpiry || expiryTime,
@@ -74,11 +101,53 @@ router.post('/', auth, async (req, res) => {
     });
 
     const food = await newFood.save();
-    
-    // Alert NGOs via socket.io:
+
+    // Link the need if this is a targeted donation fulfilling a requirement
+    if (validatedNeed) {
+      validatedNeed.fulfilledFoodId = food._id;
+      validatedNeed.donorId = req.user.id;
+      if (validatedNeed.status === 'ACTIVE') {
+        validatedNeed.status = 'CLAIMED';
+        validatedNeed.claimedAt = new Date();
+      }
+      await validatedNeed.save();
+    }
+
     const io = req.app.get('io');
-    if (io) {
-      io.emit('NEW_FOOD_LISTING', food);
+    const emitToUser = req.app.get('emitToUser');
+
+    if (donationVisibility === 'TARGETED' && targetOrgId) {
+      // Create a private notification specifically for the target organisation
+      const donorUser = await User.findById(req.user.id).select('fullName orgName phone email');
+      const donorName = donorUser?.fullName || donorUser?.orgName || 'A donor';
+      const notification = new Notification({
+        userId: targetOrgId,
+        type: 'INFO',
+        title: `Targeted Donation Received for "${validatedNeed.title}"`,
+        message: `${donorName} offered food donation "${title}" (${quantity} ${items?.[0]?.unit || 'servings'}) specifically for your shortage requirement "${validatedNeed.title}".`,
+        relatedFoodId: food._id,
+        stage: 'Awaiting your review'
+      });
+      await notification.save();
+
+      // STRICT PRIVATE REALTIME EMIT: emit ONLY to the target organisation's room and donor's room
+      if (emitToUser) {
+        emitToUser(targetOrgId, 'TARGETED_DONATION_RECEIVED', food);
+        emitToUser(targetOrgId, 'NEW_NOTIFICATION', {
+          ...notification.toObject(),
+          foodId: food
+        });
+        emitToUser(req.user.id, 'DONATION_CREATED', food);
+      }
+      if (io && validatedNeed) {
+        // Notify of need update so other donors see it as claimed
+        io.emit('NEED_UPDATED', validatedNeed);
+      }
+    } else {
+      // PUBLIC SURPLUS: Broadcast to open Surplus Feed
+      if (io) {
+        io.emit('NEW_FOOD_LISTING', food);
+      }
     }
 
     res.json(food);
@@ -101,6 +170,10 @@ router.get('/my-listings', auth, async (req, res) => {
     const foods = await Food.find({ donorId: req.user.id })
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
       .populate('claimantId', 'orgName fullName phone email address city location')
+      .populate('targetOrganisationId', 'orgName fullName phone email address city location')
+      .populate('targetNgoId', 'orgName fullName phone email address city location')
+      .populate('requirementId')
+      .populate('fulfilledNeedId')
       .lean()
       .sort({ createdAt: -1 });
 
@@ -169,20 +242,72 @@ router.get('/my-listings', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/food/incoming
+// @desc    Get targeted donations for current organisation
+// @access  Private (Organisation only)
+router.get('/incoming', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'ORGANISATION' && req.user.accountType !== 'ORGANIZATION') {
+      return res.status(403).json({ message: 'Only organisations can access incoming targeted donations' });
+    }
+
+    const donations = await Food.find({
+      $or: [
+        { targetOrganisationId: req.user.id },
+        { targetNgoId: req.user.id }
+      ],
+      visibility: 'TARGETED'
+    })
+      .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
+      .populate('fulfilledNeedId')
+      .populate('requirementId')
+      .sort({ createdAt: -1 });
+
+    res.json(donations);
+  } catch (err) {
+    console.error('Error fetching incoming targeted donations:', err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
 // @route   GET /api/food
-// @desc    Get all available food listings
+// @desc    Get all available public surplus food listings
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
     const now = new Date();
-    const foods = await Food.find({
+    // Rule: The Surplus Feed shows only PUBLIC (untargeted) surplus and non-expired items
+    const query = {
       status: { $in: ['AVAILABLE', 'ACTIVE'] },
-      $or: [
-        { autoDeleteAt: { $exists: false } },
-        { autoDeleteAt: null },
-        { autoDeleteAt: { $gt: now } }
+      visibility: { $ne: 'TARGETED' },
+      targetOrganisationId: { $in: [null, undefined] },
+      targetNgoId: { $in: [null, undefined] },
+      $and: [
+        {
+          $or: [
+            { autoDeleteAt: { $exists: false } },
+            { autoDeleteAt: null },
+            { autoDeleteAt: { $gt: now } }
+          ]
+        },
+        {
+          $or: [
+            { expiryTime: { $exists: false } },
+            { expiryTime: null },
+            { expiryTime: { $gt: now } }
+          ]
+        },
+        {
+          $or: [
+            { overallExpiry: { $exists: false } },
+            { overallExpiry: null },
+            { overallExpiry: { $gt: now } }
+          ]
+        }
       ]
-    })
+    };
+
+    const foods = await Food.find(query)
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails')
       .sort({ createdAt: -1 });
 
@@ -277,7 +402,7 @@ router.get('/:id/certificate', async (req, res) => {
 });
 
 // @route   GET /api/food/:id
-// @desc    Get single food listing by ID
+// @desc    Get single food listing by ID (Strict Authorization Enforced)
 // @access  Private
 router.get('/:id', auth, async (req, res, next) => {
   try {
@@ -287,10 +412,36 @@ router.get('/:id', auth, async (req, res, next) => {
     }
     const food = await Food.findById(req.params.id)
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
-      .populate('claimantId', 'orgName fullName phone email address city location');
+      .populate('claimantId', 'orgName fullName phone email address city location')
+      .populate('targetOrganisationId', 'orgName fullName phone email address city location')
+      .populate('targetNgoId', 'orgName fullName phone email address city location')
+      .populate('requirementId')
+      .populate('fulfilledNeedId');
+
     if (!food) {
       return res.status(404).json({ message: 'Food item not found' });
     }
+
+    // STRICT SECURITY RULE: If targeted, only the target org, donor, or admin may access it
+    const isTargeted = food.visibility === 'TARGETED' || food.targetOrganisationId || food.targetNgoId;
+    if (isTargeted) {
+      const currentUserId = req.user.id.toString();
+      const donorUserId = (food.donorId?._id || food.donorId)?.toString();
+      const targetOrgUserId = (food.targetOrganisationId?._id || food.targetOrganisationId || food.targetNgoId?._id || food.targetNgoId)?.toString();
+      const claimantUserId = (food.claimantId?._id || food.claimantId)?.toString();
+      const isAdmin = req.user.accountType === 'ADMIN' || req.user.role === 'ADMIN';
+
+      const isAuthorized =
+        isAdmin ||
+        currentUserId === donorUserId ||
+        currentUserId === targetOrgUserId ||
+        currentUserId === claimantUserId;
+
+      if (!isAuthorized) {
+        return res.status(403).json({ message: 'Forbidden: You do not have permission to view this targeted donation.' });
+      }
+    }
+
     const foodObj = food.toObject();
     const claims = await Claim.find({ foodId: food._id })
       .populate('ngoId', 'orgName fullName phone email address city location')
@@ -316,6 +467,14 @@ router.post('/:id/claim', auth, async (req, res) => {
     const food = await Food.findById(req.params.id);
     if (!food || (food.status !== 'AVAILABLE' && food.status !== 'ACTIVE')) {
       return res.status(400).json({ message: 'Food not available' });
+    }
+
+    // Security guard: Prevent other NGOs from claiming a targeted donation
+    if (food.visibility === 'TARGETED' && (food.targetOrganisationId || food.targetNgoId)) {
+      const targetOrg = (food.targetOrganisationId || food.targetNgoId).toString();
+      if (targetOrg !== req.user.id.toString()) {
+        return res.status(403).json({ message: 'Forbidden: You cannot claim a donation targeted to another organisation.' });
+      }
     }
 
     // Check if user already has a pending claim for this food
@@ -408,8 +567,10 @@ router.post('/:id/claim', auth, async (req, res) => {
         claimId: newClaim._id
       });
 
-      // Broadcast listing update to all NGOs browsing the feed (public event, not private)
-      req.app.get('io').emit('LISTING_UPDATED', food);
+      // Broadcast listing update to all NGOs browsing the feed (only if untargeted)
+      if (food.visibility !== 'TARGETED') {
+        req.app.get('io').emit('LISTING_UPDATED', food);
+      }
     }
 
     res.json(newClaim);
@@ -419,17 +580,101 @@ router.post('/:id/claim', auth, async (req, res) => {
   }
 });
 
+// @route   PATCH /api/food/:id/accept-targeted
+// @desc    Accept a targeted donation (Target Organisation only)
+// @access  Private
+router.patch('/:id/accept-targeted', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'ORGANISATION' && req.user.accountType !== 'ORGANIZATION') {
+      return res.status(403).json({ message: 'Only organisations can accept targeted donations' });
+    }
+
+    const food = await Food.findById(req.params.id);
+    if (!food) {
+      return res.status(404).json({ message: 'Donation not found' });
+    }
+
+    const targetOrgId = (food.targetOrganisationId || food.targetNgoId)?.toString();
+    if (food.visibility !== 'TARGETED' || targetOrgId !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Forbidden: You are not the target organisation for this donation.' });
+    }
+
+    if (food.status !== 'PENDING' && food.status !== 'AVAILABLE' && food.status !== 'ACTIVE') {
+      return res.status(400).json({ message: `Donation cannot be accepted in its current state (${food.status})` });
+    }
+
+    food.status = 'ACCEPTED';
+    food.claimantId = req.user.id;
+
+    // Generate pickup and delivery confirmation tokens
+    generateTokensForFood(food);
+    await food.save();
+
+    // If tied to a requirement, update requirement to IN_PROGRESS
+    if (food.requirementId || food.fulfilledNeedId) {
+      const Need = require('../models/Need');
+      await Need.updateOne(
+        { _id: food.requirementId || food.fulfilledNeedId },
+        { status: 'IN_PROGRESS', donorId: food.donorId, fulfilledFoodId: food._id }
+      );
+    }
+
+    const ngoUser = await User.findById(req.user.id).select('orgName fullName phone email address city');
+    const ngoName = ngoUser?.orgName || ngoUser?.fullName || 'Target Organisation';
+
+    const notification = new Notification({
+      userId: food.donorId,
+      type: 'CLAIM_ACCEPTED',
+      title: 'Donation Accepted!',
+      relatedFoodId: food._id,
+      message: `${ngoName} accepted your targeted food donation "${food.title}". Next step: Volunteer pickup assignment or direct handover.`,
+      stage: 'Accepted by Organisation'
+    });
+    await notification.save();
+
+    const emitToUser = req.app.get('emitToUser');
+    if (emitToUser) {
+      emitToUser(food.donorId, 'NEW_NOTIFICATION', {
+        ...notification.toObject(),
+        userId: food.donorId.toString(),
+        foodTitle: food.title
+      });
+      emitToUser(food.donorId, 'TARGETED_DONATION_ACCEPTED', food);
+      emitToUser(req.user.id, 'TARGETED_DONATION_ACCEPTED', food);
+      emitToUser(food.donorId, 'LISTING_UPDATED', food);
+      emitToUser(req.user.id, 'LISTING_UPDATED', food);
+    }
+
+    res.json(food);
+  } catch (err) {
+    console.error('Error accepting targeted donation:', err);
+    res.status(500).json({ message: err.message || 'Server Error' });
+  }
+});
+
 // @route   PATCH /api/food/:id/reject
 // @desc    Reject a food listing (NGO only)
 // @access  Private
 router.patch('/:id/reject', auth, async (req, res) => {
   try {
-    if (req.user.accountType !== 'ORGANISATION') {
+    if (req.user.accountType !== 'ORGANISATION' && req.user.accountType !== 'ORGANIZATION') {
       return res.status(403).json({ message: 'Only organisations can reject food' });
     }
     const food = await Food.findById(req.params.id);
-    if (!food || (food.status !== 'AVAILABLE' && food.status !== 'ACTIVE')) {
-      return res.status(400).json({ message: 'Food not available' });
+    if (!food) {
+      return res.status(404).json({ message: 'Food not found' });
+    }
+
+    const isTargeted = food.visibility === 'TARGETED' || food.targetOrganisationId || food.targetNgoId;
+    if (isTargeted) {
+      const targetOrgId = (food.targetOrganisationId || food.targetNgoId)?.toString();
+      if (targetOrgId !== req.user.id.toString()) {
+        return res.status(403).json({ message: 'Forbidden: You cannot reject a donation targeted to another organisation.' });
+      }
+    }
+
+    if (!['AVAILABLE', 'ACTIVE', 'PENDING'].includes(food.status)) {
+      return res.status(400).json({ message: `Food not available for rejection (current status: ${food.status})` });
     }
 
     const { reason, notes } = req.body;
@@ -443,6 +688,19 @@ router.patch('/:id/reject', auth, async (req, res) => {
     food.rejectedBy = req.user.id;
     food.rejectionReason = fullReason;
     await food.save();
+
+    // If linked to a requirement, reopen the requirement so others can fulfill it
+    if (food.requirementId || food.fulfilledNeedId) {
+      const Need = require('../models/Need');
+      const need = await Need.findOneAndUpdate(
+        { _id: food.requirementId || food.fulfilledNeedId },
+        { status: 'ACTIVE', donorId: null, fulfilledFoodId: null, claimedAt: null },
+        { new: true }
+      );
+      if (need && req.app.get('io')) {
+        req.app.get('io').emit('NEED_UPDATED', need);
+      }
+    }
 
     // Log Activity for NGO
     const activity = new Activity({
@@ -472,7 +730,12 @@ router.patch('/:id/reject', auth, async (req, res) => {
         userId: food.donorId.toString(),
         foodTitle: food.title
       });
-      // Broadcast listing update so it disappears from other NGOs' feeds
+      emitToUser(food.donorId, 'LISTING_UPDATED', food);
+      emitToUser(req.user.id, 'LISTING_UPDATED', food);
+    }
+
+    // Only broadcast to everyone if it was public
+    if (!isTargeted && req.app.get('io')) {
       req.app.get('io').emit('LISTING_UPDATED', food);
     }
 

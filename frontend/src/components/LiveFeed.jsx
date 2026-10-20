@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Heart,
   HandHeart,
+  HeartHandshake,
   ArrowRight,
   RefreshCw
 } from 'lucide-react';
@@ -131,6 +132,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [showMyShortages, setShowMyShortages] = useState(false);
   const [myNeeds, setMyNeeds] = useState([]);
   const [loadingMyNeeds, setLoadingMyNeeds] = useState(false);
+  const [incomingDonations, setIncomingDonations] = useState([]);
+  const [loadingIncoming, setLoadingIncoming] = useState(false);
 
   const setPresetTime = (minutesToAdd) => {
     const d = new Date(Date.now() + minutesToAdd * 60 * 1000);
@@ -184,6 +187,21 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     }
   };
 
+  const fetchIncomingDonations = useCallback(async () => {
+    if (!isOrg || !token) return;
+    setLoadingIncoming(true);
+    try {
+      const res = await axios.get(`${API_URL}/api/food/incoming`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setIncomingDonations(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch incoming targeted donations:', err);
+    } finally {
+      setLoadingIncoming(false);
+    }
+  }, [isOrg, token]);
+
   useEffect(() => {
     if (isDonor) {
       fetchDonorClaims();
@@ -192,8 +210,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       }
     } else if (isOrg) {
       fetchMyNeeds();
+      fetchIncomingDonations();
     }
-  }, [user, token, isDonor, isOrg, showMyUploads]);
+  }, [user, token, isDonor, isOrg, showMyUploads, fetchIncomingDonations]);
 
   const handleAcceptClaim = async (claimId, claimData = null) => {
     try {
@@ -229,6 +248,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     } catch (err) {
       console.error(err);
       throw err; // So the modal catches it
+    }
+  };
+
+  const handleAcceptTargetedDonation = async (foodId) => {
+    try {
+      await axios.patch(`${API_URL}/api/food/${foodId}/accept-targeted`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Targeted donation accepted! Pickup tokens generated.');
+      fetchIncomingDonations();
+      fetchMyNeeds();
+    } catch (err) {
+      console.error('Failed to accept targeted donation:', err);
+      alert(err.response?.data?.message || 'Failed to accept targeted donation');
     }
   };
 
@@ -283,9 +316,29 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     fetchListings();
 
     const handleNewListing = (listing) => {
-      setListings((prev) => [listing, ...prev]);
+      if (!listing) return;
+      // Never add targeted donations to public surplus feed
+      if (listing.visibility === 'TARGETED' || listing.targetOrganisationId || listing.targetNgoId) {
+        return;
+      }
+      // Never add expired items to active surplus feed
+      const expiry = listing.expiryTime || listing.overallExpiry;
+      if (expiry && new Date(expiry).getTime() <= Date.now()) {
+        return;
+      }
+      setListings((prev) => {
+        const id = listing._id || listing.id;
+        if (prev.some(l => (l._id || l.id) === id)) return prev;
+        return [listing, ...prev];
+      });
     };
     const handleUpdateListing = (updatedListing) => {
+      if (!updatedListing) return;
+      // If listing became targeted or expired, remove it from public listings
+      if (updatedListing.visibility === 'TARGETED' || updatedListing.targetOrganisationId || updatedListing.targetNgoId) {
+        setListings((prev) => prev.filter(l => (l._id || l.id) !== (updatedListing._id || updatedListing.id)));
+        return;
+      }
       setListings((prev) =>
         prev.map(l => l._id === updatedListing._id ? updatedListing : l)
       );
@@ -360,6 +413,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       if (isOrg) fetchMyNeeds();
     };
 
+    const handleTargetedDonationReceived = () => {
+      if (isOrg) fetchIncomingDonations();
+    };
+
+    const handleTargetedDonationAccepted = () => {
+      if (isOrg) fetchIncomingDonations();
+      if (isDonor) {
+        fetchDonorPostings();
+        fetchDonorClaims();
+      }
+    };
+
     if (socket && typeof socket.on === 'function') {
       socket.on('NEW_FOOD_LISTING', handleNewListing);
       socket.on('LISTING_UPDATED', handleUpdateListing);
@@ -373,6 +438,8 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       socket.on('NEW_NEED_LISTING', handleNeedCreated);
       socket.on('NEED_UPDATED', handleNeedUpdated);
       socket.on('NEED_DELETED', handleNeedDeleted);
+      socket.on('TARGETED_DONATION_RECEIVED', handleTargetedDonationReceived);
+      socket.on('TARGETED_DONATION_ACCEPTED', handleTargetedDonationAccepted);
     }
 
     return () => {
@@ -389,9 +456,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         socket.off('NEW_NEED_LISTING', handleNeedCreated);
         socket.off('NEED_UPDATED', handleNeedUpdated);
         socket.off('NEED_DELETED', handleNeedDeleted);
+        socket.off('TARGETED_DONATION_RECEIVED', handleTargetedDonationReceived);
+        socket.off('TARGETED_DONATION_ACCEPTED', handleTargetedDonationAccepted);
       }
     };
-  }, [socket, token, selectedListing, isDonor, user, isOrg]);
+  }, [socket, token, selectedListing, isDonor, user, isOrg, fetchIncomingDonations]);
 
   const handleClaim = async (id) => {
     if (user?.accountType !== 'ORGANISATION' && user?.accountType !== 'ORGANIZATION') {
@@ -459,19 +528,32 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     return () => clearInterval(interval);
   }, [fetchActiveNeeds]);
 
-  // Keep a memoized normalized list for scoring
-  const storedRequests = useMemo(() => activeNeeds.map(n => ({
-    id: n._id,
-    ngoId: n.ngoId,
+  // Only match against the viewer's own needs if an organisation is browsing
+  const relevantNeeds = isOrg ? myNeeds : activeNeeds;
+  const storedRequests = useMemo(() => (relevantNeeds || []).map(n => ({
+    id: n._id || n.id,
+    ngoId: n.ngoId?._id || n.ngoId,
+    ngoName: isOrg ? (user?.orgName || user?.fullName || 'Your Organisation') : (n.ngoId?.orgName || n.ngoId?.fullName || 'Verified NGO'),
     item: n.title,
     category: n.category || 'Food',
     quantity: n.quantity,
     unit: n.unit || 'servings',
     urgency: n.urgency
-  })), [activeNeeds]);
+  })), [isOrg, myNeeds, activeNeeds, user]);
 
   // Compute matched shortage for a given listing
   const getListingMatch = (listing) => {
+    // If this listing was created specifically for a requirement, reference that exact requirement
+    const reqTitle = listing.requirementId?.title || listing.fulfilledNeedId?.title;
+    if (reqTitle) {
+      return {
+        item: reqTitle,
+        quantity: listing.requirementId?.quantity || listing.fulfilledNeedId?.quantity || listing.quantity,
+        unit: listing.requirementId?.unit || listing.fulfilledNeedId?.unit || 'Portions',
+        ngoName: isOrg ? 'Your Requirement' : (listing.targetOrganisationId?.orgName || 'Organisation Need')
+      };
+    }
+
     if (!storedRequests || storedRequests.length === 0) return null;
     const title = listing.title || '';
     const firstItem = listing.items?.[0]?.itemName || '';
@@ -518,6 +600,16 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
   const sortedAndFilteredListings = useMemo(() => {
     let result = [...listings];
+
+    // Filter out expired surplus from active feed
+    const now = Date.now();
+    result = result.filter(l => {
+      const expiry = l.expiryTime || l.overallExpiry;
+      if (expiry && new Date(expiry).getTime() <= now) {
+        return false;
+      }
+      return true;
+    });
 
     // Filter by Category
     if (filter !== 'ALL') {
@@ -1464,6 +1556,112 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       ) : (
         /* Regular Surplus Feed View */
         <>
+          {/* Direct Donations for Your Needs (Organisation Only) */}
+          {isOrg && incomingDonations.length > 0 && (
+            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 shadow-xs space-y-4 animate-in fade-in">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-base font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+                    <HeartHandshake className="w-5 h-5 text-emerald-600" />
+                    <T text="Direct Donations for Your Requirements" /> ({incomingDonations.length})
+                  </h3>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    <T text="These food donations were offered directly by donors to fulfill your posted shortage requirements." />
+                  </p>
+                </div>
+                <button
+                  onClick={fetchIncomingDonations}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 p-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span><T text="Refresh" /></span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {incomingDonations.map(donation => {
+                  const reqName = donation.requirementId?.title || donation.fulfilledNeedId?.title || 'Your Requirement';
+                  const donorName = donation.donorId?.fullName || donation.donorId?.orgName || 'Generous Donor';
+                  const portions = donation.quantity || 0;
+                  const unit = donation.items?.[0]?.unit || 'Portions';
+                  const status = donation.status;
+
+                  return (
+                    <div
+                      key={donation._id}
+                      className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-emerald-300 dark:border-emerald-700/60 shadow-xs flex flex-col justify-between space-y-3"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-start">
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                            {donation.foodType || 'VEG'}
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                            status === 'PENDING' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
+                            status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
+                            'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                          }`}>
+                            {status}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
+                            {donation.title}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            <strong className="text-slate-700 dark:text-slate-300">{portions} {unit}</strong> • {donorName}
+                          </p>
+                        </div>
+
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-100 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300">
+                          <strong className="font-bold"><T text="Fulfills" />:</strong> {reqName}
+                        </div>
+
+                        {donation.pickupAddress && (
+                          <div className="flex items-center text-slate-500 dark:text-slate-400 text-xs">
+                            <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0 text-slate-400" />
+                            <span className="line-clamp-1">{donation.pickupAddress}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Controls */}
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+                        {status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setListingToReject(donation);
+                                setRejectModalOpen(true);
+                              }}
+                              className="flex-1 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span><T text="Reject" /></span>
+                            </button>
+                            <button
+                              onClick={() => handleAcceptTargetedDonation(donation._id)}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span><T text="Accept" /></span>
+                            </button>
+                          </>
+                        )}
+                        {status === 'ACCEPTED' && (
+                          <div className="w-full text-center py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-lg">
+                            <T text="Accepted • Active in Pickups" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Clean Header & Filters */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
             <div>
@@ -1982,7 +2180,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         }}
         donation={listingToReject}
         token={token}
-        onSuccess={() => {}}
+        onSuccess={() => {
+          if (isOrg) {
+            fetchIncomingDonations();
+            fetchMyNeeds();
+          }
+        }}
       />
 
       {/* Reject Claim Modal (For Donors) */}

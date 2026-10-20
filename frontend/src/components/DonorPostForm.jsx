@@ -135,8 +135,11 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
     setItems(items.filter(item => item.id !== idToRemove));
   };
 
+  const isSubmittingRef = React.useRef(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmittingRef.current || isSubmitting) return;
     setError('');
     
     // Validation
@@ -160,6 +163,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       }
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     const processedItems = items.map(item => ({
@@ -202,6 +206,8 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       console.warn('Geocoding pickupAddress failed:', geoErr);
     }
 
+    const targetNeedId = prefill?.requirementId || prefill?.needId;
+
     const newFood = {
       title: mainTitle,
       quantity: totalQuantity,
@@ -213,6 +219,7 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       photos: photos,
       autoDeleteValue: autoDeleteValue ? Number(autoDeleteValue) : null,
       autoDeleteUnit: autoDeleteUnit,
+      ...(targetNeedId ? { requirementId: targetNeedId, needId: targetNeedId } : {}),
       ...(pickupCoords ? { location: { type: 'Point', coordinates: [pickupCoords.lng, pickupCoords.lat] } } : {}),
       pickupAddress: sharedFields.pickupAddress,
       pickupTimeSlot: {
@@ -234,12 +241,14 @@ const DonorPostForm = ({ socket, user, token, prefill = null, onSuccess }) => {
       
       setSuccessToast(true);
       setTimeout(() => {
+        isSubmittingRef.current = false;
         setIsSubmitting(false);
         setSuccessToast(false);
         if (onSuccess) onSuccess();
       }, 1500); // Wait 1.5s to show toast before closing
     } catch (err) {
       console.error("Submit Error:", err);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       
       if (err.response) {

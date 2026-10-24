@@ -10,3 +10,5 @@ import VolunteerTaskPage from '../../components/VolunteerTaskPage';
 export default function VolunteerSection({ socket, user, token }) {
   return <VolunteerTaskPage socket={socket} user={user} token={token} />;
 }
+
+

@@ -1,6 +1,6 @@
 // Donation Service: Manages Donations, Requests, Volunteer Logistics, NGO Directory, and Real-time Tracking
 
-import { MOCK_INITIAL_DONATIONS, MOCK_NOTIFICATIONS, MOCK_NGOS } from './mockData';
+import { MOCK_INITIAL_DONATIONS, MOCK_NOTIFICATIONS } from './mockData';
 
 const DONATIONS_STORAGE_KEY = 'donor_bridge_donations_v1';
 const REQUESTS_STORAGE_KEY = 'donor_bridge_requests_v1';

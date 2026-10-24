@@ -17,8 +17,6 @@ import {
   XCircle,
   Building2,
   Mail,
-  UserCheck,
-  ShieldCheck,
   Heart,
   HandHeart,
   HeartHandshake,
@@ -29,7 +27,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import EmptyState from './ui/EmptyState';
 import EmptyStateNoRequests from './illustrations/EmptyStateNoRequests';
 import EmptyStateNoShortages from './illustrations/EmptyStateNoShortages';
-import DeliverySuccessIllustration from './illustrations/DeliverySuccessIllustration';
+
 import RejectDonationModal from './RejectDonationModal';
 
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
@@ -52,7 +50,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [selectedListing, setSelectedListing] = useState(null);
   const [claimStatus, setClaimStatus] = useState('IDLE'); // 'IDLE', 'FORM', 'SUCCESS'
   const [claimMessage, setClaimMessage] = useState('');
-  const [tick, setTick] = useState(0);
+  const [,setTick] = useState(0);
 
   const searchDishesPlaceholder = useTranslatedString("Search dishes or items...");
   const tCatVeg = useTranslatedString('category.veg');
@@ -133,7 +131,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
   const [myNeeds, setMyNeeds] = useState([]);
   const [loadingMyNeeds, setLoadingMyNeeds] = useState(false);
   const [incomingDonations, setIncomingDonations] = useState([]);
-  const [loadingIncoming, setLoadingIncoming] = useState(false);
+  const [,setLoadingIncoming] = useState(false);
 
   const setPresetTime = (minutesToAdd) => {
     const d = new Date(Date.now() + minutesToAdd * 60 * 1000);
@@ -141,7 +139,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     if (claimFormError) setClaimFormError('');
   };
 
-  const fetchDonorClaims = async () => {
+const fetchDonorClaims = useCallback(async () => {
     if (!isDonor || !token) return;
     setLoadingDonorClaims(true);
     try {
@@ -154,9 +152,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     } finally {
       setLoadingDonorClaims(false);
     }
-  };
+  }, [isDonor, token]);
 
-  const fetchDonorPostings = async () => {
+const fetchDonorPostings = useCallback(async () => {
     if (!isDonor || !token) return;
     setLoadingDonorPostings(true);
     try {
@@ -170,9 +168,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     } finally {
       setLoadingDonorPostings(false);
     }
-  };
+  }, [isDonor, token]);
 
-  const fetchMyNeeds = async () => {
+const fetchMyNeeds = useCallback(async () => {
     if (!isOrg || !token) return;
     setLoadingMyNeeds(true);
     try {
@@ -185,7 +183,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     } finally {
       setLoadingMyNeeds(false);
     }
-  };
+  }, [isOrg, token]);
 
   const fetchIncomingDonations = useCallback(async () => {
     if (!isOrg || !token) return;
@@ -212,9 +210,19 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       fetchMyNeeds();
       fetchIncomingDonations();
     }
-  }, [user, token, isDonor, isOrg, showMyUploads, fetchIncomingDonations]);
+  }, [
+	user,
+	token,
+	isDonor,
+	isOrg,
+	showMyUploads,
+	fetchIncomingDonations,
+	fetchMyNeeds,
+	fetchDonorClaims,
+	fetchDonorPostings
+]);
 
-  const handleAcceptClaim = async (claimId, claimData = null) => {
+  const handleAcceptClaim = async (claimId, _claimData = null) => {
     try {
       const res = await axios.patch(`${API_URL}/api/claims/${claimId}/accept`, {}, {
         headers: { Authorization: `Bearer ${token}` }
@@ -224,7 +232,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       alert(`Claim request accepted successfully! Verification Code: ${code || 'Generated'}`);
 
       // Two-way sync notification
-      const donorName = user?.orgName || user?.fullName || user?.name || 'Donor';
+      
       fetchDonorClaims();
       fetchDonorPostings();
     } catch (err) {
@@ -283,22 +291,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     });
   };
 
-  const handleDeletePosting = async (foodId) => {
-    if (!window.confirm('Are you sure you want to delete this food posting?')) return;
-    try {
-      await axios.delete(`${API_URL}/api/food/${foodId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchDonorPostings();
-      const res = await axios.get(`${API_URL}/api/food`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setListings(res.data || []);
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || 'Failed to delete posting');
-    }
-  };
+  
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -460,7 +453,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         socket.off('TARGETED_DONATION_ACCEPTED', handleTargetedDonationAccepted);
       }
     };
-  }, [socket, token, selectedListing, isDonor, user, isOrg, fetchIncomingDonations]);
+  }, [
+	socket,
+	token,
+	selectedListing,
+	isDonor,
+	user,
+	isOrg,
+	fetchIncomingDonations,
+	fetchDonorClaims,
+	fetchMyNeeds,
+	fetchDonorPostings
+]);
 
   const handleClaim = async (id) => {
     if (user?.accountType !== 'ORGANISATION' && user?.accountType !== 'ORGANIZATION') {
@@ -483,7 +487,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     const authToken = token || localStorage.getItem('token');
 
     try {
-      const res = await axios.post(`${API_URL}/api/food/${id}/claim`, {
+      await axios.post(`${API_URL}/api/food/${id}/claim`, {
         message: trimmedMsg,
         requestedPickupTime: claimTime
       }, {
@@ -528,6 +532,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     return () => clearInterval(interval);
   }, [fetchActiveNeeds]);
 
+  useEffect(() => {
+    const handler = () => fetchActiveNeeds();
+    window.addEventListener('REFRESH_LIVE_FEED', handler);
+    return () => window.removeEventListener('REFRESH_LIVE_FEED', handler);
+  }, [fetchActiveNeeds]);
+
   // Only match against the viewer's own needs if an organisation is browsing
   const relevantNeeds = isOrg ? myNeeds : activeNeeds;
   const storedRequests = useMemo(() => (relevantNeeds || []).map(n => ({
@@ -539,7 +549,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     quantity: n.quantity,
     unit: n.unit || 'servings',
     urgency: n.urgency
-  })), [isOrg, myNeeds, activeNeeds, user]);
+  })), [
+	isOrg,
+	user,
+	relevantNeeds
+]);
 
   // Compute matched shortage for a given listing
   const getListingMatch = (listing) => {
@@ -579,24 +593,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     return bestMatch && highestScore >= 50 ? bestMatch : null;
   };
 
-  const getAllListingMatches = (listing) => {
-    if (!storedRequests || storedRequests.length === 0) return [];
-    const title = listing.title || '';
-    const firstItem = listing.items?.[0]?.itemName || '';
-    const itemName = `${title} ${firstItem}`.trim();
-
-    return storedRequests
-      .filter(req => req.category === 'Food' || !req.category)
-      .map(req => {
-        const score = calculateMatchScore(
-          { category: 'Food', itemName, quantity: listing.quantity || 30 },
-          req,
-          3.0
-        );
-        return { ...req, score };
-      })
-      .sort((a, b) => b.score - a.score);
-  };
+  
 
   const sortedAndFilteredListings = useMemo(() => {
     let result = [...listings];
@@ -644,7 +641,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         if (!hasLocA && !hasLocB) return 0;
         if (!hasLocA) return 1;
         if (!hasLocB) return -1;
-        // Calculate distance relative to Pune center (73.8567° E, 18.5204° N)
+        // Calculate distance relative to Pune center (73.8567 deg E, 18.5204 deg N)
         const distA = Math.pow(a.location.coordinates[0] - 73.8567, 2) + Math.pow(a.location.coordinates[1] - 18.5204, 2);
         const distB = Math.pow(b.location.coordinates[0] - 73.8567, 2) + Math.pow(b.location.coordinates[1] - 18.5204, 2);
         return distA - distB;
@@ -654,21 +651,21 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
     return result;
   }, [listings, filter, searchQuery, sortBy]);
 
-  if (loading) return <div className="text-center p-8 text-slate-500 dark:text-slate-400"><T text="Loading live feed..." /></div>;
+  if (loading) return <div className="text-center p-8 text-slate-500 dark:text-slate-300"><T text="Loading live feed..." /></div>;
 
   return (
     <div className="space-y-6">
       {/* Donor View Mode Toggle */}
       {isDonor && (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-2xl border border-slate-200 dark:border-[#1E2D52] shadow-xs flex flex-col sm:flex-row justify-between items-center gap-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 dark:text-white"><T text="Donor Command Dashboard" /></h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-300">
               {!showMyUploads ? <T text="Default View: Active NGO claim requests submitted on your food listings." /> : <T text="Toggled View: Managing your uploaded surplus food listings." />}
             </p>
           </div>
-          <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyUploads ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+          <div className="flex items-center gap-3 bg-slate-100 dark:bg-[#070E1E] p-1.5 rounded-xl border border-slate-200 dark:border-[#1E2D52]">
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${!showMyUploads ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
               <T text="NGO Requests" />
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -678,9 +675,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 onChange={e => setShowMyUploads(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-emerald-600"></div>
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-[#0F1A33] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-[#2A426B] peer-checked:bg-emerald-500 dark:peer-checked:bg-sky-400"></div>
             </label>
-            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyUploads ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${showMyUploads ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
               <T text="Show My Uploads/Postings" />
             </span>
           </div>
@@ -689,18 +686,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
       {/* NGO View Mode Toggle */}
       {isOrg && (
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
+        <div className="bg-white dark:bg-[#070E1E] p-6 rounded-2xl border border-slate-200 dark:border-[#1E2D52] shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 w-full">
           <div>
-            <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <HandHeart className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2">
+              <HandHeart className="w-5 h-5 text-emerald-600 dark:text-[#ECE9E1]" />
               <T text="hubTitle" fallback="Food Rescue Hub" />
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 max-w-md">
               <T text="hubSubtitle" fallback="Browse surplus food from nearby donors and claim it before it expires." />
             </p>
           </div>
-          <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${!showMyShortages ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-[#0F1A33] p-1.5 rounded-xl border border-slate-200 dark:border-[#1E2D52]">
+            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${!showMyShortages ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
               <T text="Surplus Feed" />
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -710,9 +707,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 onChange={e => setShowMyShortages(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-slate-600 peer-checked:bg-emerald-600"></div>
+              <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-[#0F1A33] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-[#2A426B] peer-checked:bg-emerald-500 dark:peer-checked:bg-sky-400"></div>
             </label>
-            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400'}`}>
+            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
               <T text="Show My Shortages" />
             </span>
           </div>
@@ -776,9 +773,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         <div className="space-y-8">
           {/* SECTION 1: LIVE NGO SHORTAGES & DEMANDS */}
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 shadow-xs">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-[#070E1E] p-5 rounded-2xl border border-amber-200/80 dark:border-[#E0A84A]/40 shadow-xs">
               <div>
-                <div className="inline-flex items-center space-x-1.5 text-[11px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">
+                <div className="inline-flex items-center space-x-1.5 text-[11px] font-extrabold text-amber-600 dark:text-[#E0A84A] uppercase tracking-wider mb-1">
                   <AlertCircle className="w-3.5 h-3.5" />
                   <span><T text="Active Organisation Demands" /></span>
                 </div>
@@ -786,7 +783,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <Package className="w-5 h-5 text-amber-500" />
                   <T text="Live NGO Shortages" /> ({activeNeeds.length})
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                   <T text="Active food shortages posted by verified NGOs and distribution hubs. Donate directly to fulfill their immediate needs." />
                 </p>
               </div>
@@ -794,7 +791,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-end">
                 <button
                   onClick={fetchActiveNeeds}
-                  className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 p-2 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="text-xs font-bold text-amber-600 dark:text-[#E0A84A] hover:text-amber-700 p-2 rounded-xl border border-amber-200 dark:border-[#E0A84A]/40 bg-amber-50/50 dark:bg-[#E0A84A]/14 flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="Refresh active shortages"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -802,7 +799,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 </button>
                 <Link
                   to="/ngo-requests"
-                  className="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
+                  className="text-xs font-medium text-white bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors shadow-xs hover:from-amber-400 hover:to-orange-400"
                 >
                   <span><T text="View All" /></span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -812,11 +809,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
             {/* Shortages Grid / Loading / Error / Empty state */}
             {loadingActiveNeeds ? (
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 border border-slate-200 dark:border-slate-700 text-center text-slate-500 text-xs">
+              <div className="bg-white dark:bg-[#0F1A33] rounded-2xl p-8 border border-slate-200 dark:border-[#1E2D52] text-center text-slate-500 text-xs">
                 <T text="Loading active organisation shortages..." />
               </div>
             ) : activeNeedsError ? (
-              <div className="bg-red-50 dark:bg-red-950/40 rounded-2xl p-6 border border-red-200 dark:border-red-900 text-center text-xs text-red-600 dark:text-red-400 flex flex-col items-center gap-2">
+              <div className="bg-red-50 dark:bg-[#E5707A]/14 rounded-2xl p-6 border border-red-200 dark:border-[#E5707A]/40 text-center text-xs text-red-600 dark:text-[#E5707A] flex flex-col items-center gap-2">
                 <p>{activeNeedsError}</p>
                 <button
                   onClick={fetchActiveNeeds}
@@ -826,12 +823,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 </button>
               </div>
             ) : activeNeeds.length === 0 ? (
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-8 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
-                <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600" />
-                <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+              <div className="bg-white dark:bg-[#0F1A33] rounded-2xl p-8 border border-dashed border-slate-300 dark:border-[#1E2D52] text-center space-y-2">
+                <Package className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-300" />
+                <h4 className="font-bold text-slate-700 dark:text-[#9AA3B8] text-sm">
                   <T text="No Active NGO Shortages" />
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                <p className="text-xs text-slate-500 dark:text-slate-300 max-w-sm mx-auto">
                   <T text="There are currently no active shortages posted by organisations. When an organisation publishes a food need, it will appear here in real time." />
                 </p>
               </div>
@@ -846,17 +843,17 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   return (
                     <div
                       key={need._id}
-                      className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 hover:border-amber-400 dark:hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                      className="bg-white dark:bg-[#0F1A33] rounded-2xl p-5 border border-slate-200 dark:border-[#1E2D52] hover:border-amber-400 dark:hover:border-amber-500 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                     >
                       <div className="space-y-3">
                         <div className="flex justify-between items-start gap-2">
-                          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A] border border-amber-200 dark:border-[#E0A84A]/40">
                             {need.category || 'Food'} Deficit
                           </span>
                           <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                             isUrgent
-                              ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-900'
-                              : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/80 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-900'
+                              ? 'bg-red-100 text-red-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A] border border-red-200 dark:border-[#E5707A]/40'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200/60 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A] dark:border dark:border-[#E0A84A]/40'
                           }`}>
                             {isUrgent ? '🔴 Urgent' : '🟡 Moderate'}
                           </span>
@@ -866,27 +863,27 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">
                             {need.title}
                           </h4>
-                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-300">
                             <T text="Needed Quantity" />:{' '}
-                            <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
+                            <strong className="text-emerald-600 dark:text-[#ECE9E1] font-extrabold text-sm">
                               {need.quantity} {need.unit || 'servings'}
                             </strong>
                           </div>
                         </div>
 
                         {/* Organisation info */}
-                        <div className="p-2.5 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-700/80 text-xs space-y-1">
+                        <div className="p-2.5 bg-slate-50 dark:bg-[#070E1E]/60 rounded-xl border border-slate-100 dark:border-[#1E2D52]/80 text-xs space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center truncate">
+                            <span className="font-bold text-slate-800 dark:text-[#9AA3B8] flex items-center truncate">
                               <Building2 className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" />
                               <span className="truncate">{orgName}</span>
                             </span>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/80 px-1.5 py-0.2 rounded shrink-0">
-                              ✓ Verified
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-[#5BB487]/14 px-1.5 py-0.2 rounded shrink-0">
+                              {'\u2713'} Verified
                             </span>
                           </div>
                           {city && (
-                            <p className="text-slate-400 dark:text-slate-500 flex items-center text-[11px] truncate">
+                            <p className="text-slate-400 dark:text-slate-300 flex items-center text-[11px] truncate">
                               <MapPin className="w-3 h-3 mr-1 shrink-0" />
                               {city}
                             </p>
@@ -894,12 +891,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
 
                         {need.description && (
-                          <p className="text-xs italic text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 line-clamp-2">
+                          <p className="text-xs italic text-slate-600 dark:text-[#9AA3B8] bg-slate-50 dark:bg-[#070E1E]/50 p-2.5 rounded-xl border border-slate-100 dark:border-[#1E2D52] line-clamp-2">
                             "{need.description}"
                           </p>
                         )}
 
-                        <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 pt-1">
+                        <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-300 pt-1">
                           <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             <span><T text="Posted" />: {postedTime}</span>
@@ -912,7 +909,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
 
                       {/* Action Button: Donate / Fulfil this need */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+                      <div className="pt-2 border-t border-slate-100 dark:border-[#1E2D52]">
                         <button
                           onClick={async () => {
                             if (!token) {
@@ -947,7 +944,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               }
                             }
                           }}
-                          className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                          className="w-full py-2.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 dark:hover:bg-[#3F66CC] shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                         >
                           <Utensils className="w-3.5 h-3.5" />
                           <span><T text="Donate / Fulfil this need" /></span>
@@ -964,13 +961,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
           {/* SECTION 2: NGO CLAIM REQUESTS (ON YOUR DONATIONS) */}
           <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-blue-100 dark:border-slate-800 shadow-xs">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white dark:bg-[#070E1E] p-5 rounded-2xl border border-blue-100 dark:border-[#1E2D52] shadow-xs">
             <div>
-              <h3 className="text-lg font-extrabold text-[#1d4ed8] dark:text-blue-400 flex items-center gap-2">
+              <h3 className="text-lg font-extrabold text-[#1d4ed8] dark:text-[#3156B5] flex items-center gap-2">
                 <Heart className="w-5 h-5 fill-[#2563eb] text-[#2563eb]" />
                 <T text="NGO Claim Requests" /> ({recentClaims.length})
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                 <T text="Review and manage incoming claim requests from verified NGOs." />
               </p>
             </div>
@@ -996,7 +993,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 className={`px-4 py-2 rounded-xl transition-all cursor-pointer ${
                   donorClaimStatusFilter === tab.id
                     ? 'bg-[#2563eb] text-white shadow-xs font-extrabold'
-                    : 'bg-[#eff6ff] dark:bg-slate-800 text-[#1d4ed8] dark:text-blue-300 hover:bg-[#dbeafe] font-semibold'
+                    : 'bg-[#eff6ff] dark:bg-[#0F1A33] text-[#1d4ed8] dark:text-[#3156B5] hover:bg-[#dbeafe] font-semibold'
                 }`}
               >
                 <T text={tab.labelKey} /> ({tab.count})
@@ -1056,7 +1053,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   const claimInTransit = isInTransit(claim);
 
                   return (
-                    <div key={claim._id} className="bg-white dark:bg-[#0f172a] rounded-2xl p-5 border border-blue-100 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between">
+                    <div key={claim._id} className="bg-white dark:bg-[#070E1E] rounded-2xl p-5 border border-blue-100 dark:border-[#1E2D52] shadow-xs space-y-4 flex flex-col justify-between">
                       <div className="space-y-3">
                         <div className="flex justify-between items-start gap-2">
                           <h4 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight">
@@ -1064,9 +1061,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           </h4>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                              claim.status === 'ACCEPTED' ? 'bg-[#dcfce7] text-[#166534] dark:bg-emerald-950/60 dark:text-emerald-400' :
-                              claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-400' :
-                              'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-400'
+                              claim.status === 'ACCEPTED' ? 'bg-[#dcfce7] text-[#166534] dark:bg-[#5BB487]/14 dark:text-[#ECE9E1]' :
+                              claim.status === 'DECLINED' || claim.status === 'REJECTED' ? 'bg-red-100 text-red-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A]' :
+                              'bg-amber-100 text-amber-800 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A]'
                             }`}>
                               {claim.status}
                             </span>
@@ -1075,7 +1072,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               <button
                                 onClick={() => handleRemoveClaim(claim._id)}
                                 title="Remove from dashboard"
-                                className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                                className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-[#E5707A]/14 transition-colors"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -1084,13 +1081,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
 
                         <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            <T text="Requesting" />: <strong className="text-slate-800 dark:text-slate-200">{claim.foodId?.title || <T text="Surplus Listing" />}</strong> ({claim.foodId?.quantity || 0} <T text="servings" />)
+                          <p className="text-xs text-slate-500 dark:text-slate-300">
+                            <T text="Requesting" />: <strong className="text-slate-800 dark:text-[#9AA3B8]">{claim.foodId?.title || <T text="Surplus Listing" />}</strong> ({claim.foodId?.quantity || 0} <T text="servings" />)
                           </p>
                         </div>
 
                         {/* Quote Message Box (Matching Screenshot) */}
-                        <div className="bg-[#f8fafc] dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 italic">
+                        <div className="bg-[#f8fafc] dark:bg-[#0F1A33]/60 p-3 rounded-xl border border-slate-100 dark:border-[#1E2D52] text-xs text-slate-600 dark:text-[#9AA3B8] italic">
                           {cleanMsg || <T text='"We will arrive within 45 min to claim the parcel"' />}
                         </div>
 
@@ -1109,9 +1106,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
 
                         {/* Details Grid */}
-                        <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <div className="grid grid-cols-1 gap-2 text-xs text-slate-500 dark:text-slate-300">
                           {claim.requestedPickupTime && (
-                            <div className="flex items-center text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg border border-blue-100 dark:border-blue-800 font-semibold">
+                            <div className="flex items-center text-blue-700 dark:text-[#3156B5] bg-blue-50 dark:bg-[#3156B5]/14 p-2 rounded-lg border border-blue-100 dark:border-[#3156B5]/40 font-semibold">
                               <Clock className="w-3.5 h-3.5 mr-1.5 text-blue-600 shrink-0" />
                               <span><T text="Requested Pickup" />: <strong>{formatPickupTime(claim.requestedPickupTime)}</strong></span>
                             </div>
@@ -1123,10 +1120,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         </div>
 
                       {claim.status === 'PENDING' ? (
-                        <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex gap-2 pt-3 border-t border-slate-100 dark:border-[#1E2D52]">
                           <button
                             onClick={() => handleAcceptClaim(claim._id)}
-                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
+                            className="flex-1 py-2 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white font-bold rounded-xl text-xs transition-colors shadow-xs"
                           >
                             <T text="Accept Request" />
                           </button>
@@ -1135,18 +1132,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               setClaimToReject(claim);
                               setRejectClaimModalOpen(true);
                             }}
-                            className="flex-1 py-2 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400 font-bold rounded-xl text-xs transition-colors"
+                            className="flex-1 py-2 bg-red-100 hover:bg-red-200 dark:bg-[#E5707A]/14 dark:hover:bg-[#E5707A]/14 text-red-700 dark:text-[#E5707A] font-bold rounded-xl text-xs transition-colors"
                           >
                             <T text="Decline" />
                           </button>
                         </div>
                       ) : claim.status === 'ACCEPTED' ? (
-                        <div className="pt-3 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                        <div className="pt-3 border-t border-slate-100 dark:border-[#1E2D52] space-y-2">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">✓ <T text="Accepted Request" /></span>
+                            <span className="text-[11px] font-bold text-emerald-700 dark:text-[#ECE9E1]">✓ <T text="Accepted Request" /></span>
                             <button
                               onClick={() => window.dispatchEvent(new CustomEvent('OPEN_DRAWER', { detail: 'PICKUPS' }))}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center gap-1"
+                              className="px-3 py-1 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg text-xs font-bold transition-colors shadow-xs flex items-center gap-1"
                             >
                               <Truck className="w-3 h-3" />
                               <T text="View in Active Pickups" />
@@ -1156,26 +1153,26 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           {/* Compact Volunteer Status Line */}
                           <div className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 ${
                             claim.foodId?.volunteerStatus === 'accepted'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+                              ? 'bg-emerald-50 dark:bg-[#5BB487]/14 border-emerald-200 dark:border-[#5BB487]/40 text-emerald-700 dark:text-[#ECE9E1]'
                               : claim.foodId?.volunteerStatus === 'declined'
-                              ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400'
-                              : 'bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                              ? 'bg-rose-50 dark:bg-[#E5707A]/14 border-rose-200 dark:border-[#E5707A]/40 text-rose-700 dark:text-[#E5707A]'
+                              : 'bg-slate-50 dark:bg-[#070E1E]/50 border-slate-200 dark:border-[#1E2D52] text-slate-600 dark:text-slate-300'
                           }`}>
                             {volStatusLabel}
                           </div>
 
                           {/* Delivery Complete Badge */}
                           {(claim.foodId?.status === 'COMPLETED' || claim.foodId?.status === 'delivered') && (
-                            <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center gap-2">
+                            <div className="p-2.5 bg-emerald-50 dark:bg-[#5BB487]/14 rounded-xl border border-emerald-200 dark:border-[#5BB487]/40 flex items-center gap-2">
                               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                              <p className="text-xs font-bold text-emerald-700 dark:text-[#5BB487]">
                                 <T text="Food Delivered & Verified" /> ✓
                               </p>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <div className="pt-3 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-center text-slate-500">
+                        <div className="pt-3 border-t border-slate-100 dark:border-[#1E2D52] text-xs font-semibold text-center text-slate-500">
                           <T text="Decline Processed" />
                         </div>
                       )}
@@ -1193,13 +1190,13 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         /* VIEW 2: INLINE DONOR POSTINGS & UPLOADS VIEW */
         <div className="space-y-6">
           {/* Header & Status Filter Tabs Bar */}
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="bg-white dark:bg-[#0F1A33] p-5 rounded-2xl border border-slate-200 dark:border-[#1E2D52] shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
                 <Package className="w-5 h-5 mr-2 text-emerald-600" />
                 <T text="My Active Listings" /> ({donorPostings.length})
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                 <T text="Manage your posted surplus listings, edit postings within the 12-hour window, or track their statuses." />
               </p>
             </div>
@@ -1224,7 +1221,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               });
 
               return (
-                <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full md:w-auto overflow-x-auto gap-1">
+                <div className="flex bg-slate-100 dark:bg-[#070E1E] p-1.5 rounded-xl border border-slate-200 dark:border-[#1E2D52] w-full md:w-auto overflow-x-auto gap-1">
                   {[
                     { key: 'ALL', label: 'All', count: counts.ALL },
                     { key: 'ACTIVE', label: 'Active', count: counts.ACTIVE },
@@ -1238,15 +1235,15 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       onClick={() => setDonorPostingsTab(tab.key)}
                       className={`flex-1 md:flex-none py-1.5 px-3 text-xs font-bold rounded-lg transition-colors whitespace-nowrap cursor-pointer flex items-center justify-center gap-1.5 ${
                         donorPostingsTab === tab.key
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                          ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-[#15223F] dark:bg-[#15223F] dark:border dark:border-[#1E2D52]/60'
                       }`}
                     >
                       <span><T text={tab.label} /></span>
                       <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
                         donorPostingsTab === tab.key
                           ? 'bg-emerald-700 text-emerald-100'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          : 'bg-slate-200 dark:bg-[#15223F] text-slate-600 dark:text-slate-300 dark:border dark:border-[#1E2D52]/60'
                       }`}>
                         {tab.count}
                       </span>
@@ -1288,7 +1285,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         onClick={() => {
                           if (onEdit) onEdit({ isNewPostSignal: true });
                         }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
+                        className="px-4 py-2 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white font-bold rounded-xl text-sm transition-colors cursor-pointer"
                       >
                         <T text="Post a Surplus" />
                       </button>
@@ -1297,7 +1294,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               );
             }
 
-            const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+            
 
             const handleCancelListing = async (id, isReserved) => {
               if (isReserved) {
@@ -1308,7 +1305,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               try {
                 await axios.patch(`${API_URL}/api/food/${id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } });
                 fetchDonorPostings();
-              } catch (e) {
+              } catch  {
                 alert('Failed to cancel listing');
               }
             };
@@ -1317,7 +1314,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               try {
                 await axios.patch(`${API_URL}/api/food/${id}/collected`, {}, { headers: { Authorization: `Bearer ${token}` } });
                 fetchDonorPostings();
-              } catch (e) {
+              } catch  {
                 alert('Failed to mark collected');
               }
             };
@@ -1325,23 +1322,23 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredPostings.map(post => {
-                  const isEditable = (Date.now() - new Date(post.createdAt).getTime()) <= TWELVE_HOURS_MS;
+                  
                   
                   let statusLabel = 'ACTIVE';
-                  let statusBadgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+                  let statusBadgeClass = 'bg-emerald-100 text-emerald-700 dark:bg-[#5BB487]/14 dark:text-[#5BB487] border-emerald-200 dark:border dark:border-[#5BB487]/40';
 
                   if (post.computedStatus === 'ACCEPTED') {
                     statusLabel = 'RESERVED';
-                    statusBadgeClass = 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+                    statusBadgeClass = 'bg-blue-100 text-blue-700 dark:bg-[#3156B5]/14 dark:text-[#3156B5] border-blue-200 dark:border-[#3156B5]/40';
                   } else if (post.computedStatus === 'COMPLETED') {
                     statusLabel = 'COLLECTED';
-                    statusBadgeClass = 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+                    statusBadgeClass = 'bg-purple-100 text-purple-700 dark:bg-[#3156B5]/14 dark:text-[#3156B5] border-purple-200 dark:border dark:border-[#3156B5]/40';
                   } else if (post.computedStatus === 'REJECTED') {
                     statusLabel = 'CANCELLED';
-                    statusBadgeClass = 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300 border-rose-200 dark:border-rose-800';
+                    statusBadgeClass = 'bg-rose-100 text-rose-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A] border-rose-200 dark:border dark:border-[#E5707A]/40';
                   } else if (post.computedStatus === 'NON_CLAIMED') {
                     statusLabel = 'EXPIRED';
-                    statusBadgeClass = 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-600';
+                    statusBadgeClass = 'bg-slate-100 text-slate-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A] border-slate-300 dark:border dark:border-[#E5707A]/40';
                   }
 
                   const isReserved = post.computedStatus === 'ACCEPTED';
@@ -1352,10 +1349,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   const urgency = calculateListingUrgency(post);
 
                   return (
-                    <div key={post._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div key={post._id} className="bg-white dark:bg-[#0F1A33] rounded-2xl p-5 border border-slate-200 dark:border-[#1E2D52] shadow-xs space-y-4 flex flex-col justify-between hover:shadow-md transition-shadow">
                       <div className="space-y-3">
                         <div className="flex justify-between items-start">
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-[#0F1A33] text-slate-700 dark:text-[#9AA3B8]">
                             {post.foodType}
                           </span>
                           <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider border ${statusBadgeClass}`}>
@@ -1365,21 +1362,21 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                         <div>
                           <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{post.title}</h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            <T text="Servings" />: <strong className="text-slate-800 dark:text-slate-200">{post.quantity} <T text="Portions" /></strong>
+                          <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
+                            <T text="Servings" />: <strong className="text-slate-800 dark:text-[#9AA3B8]">{post.quantity} <T text="Portions" /></strong>
                           </p>
                         </div>
                         
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                        <div className="text-xs text-slate-500 dark:text-slate-300">
                           <T text="Posted" />: {new Date(post.createdAt).toLocaleDateString()}
                         </div>
 
                         {urgency.level !== 'EXPIRED' && isActive && (
                           <div className="pt-1">
                             <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold ${
-                              urgency.level === 'HIGH' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900/50' :
-                              urgency.level === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50' :
-                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
+                              urgency.level === 'HIGH' ? 'bg-red-50 text-red-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A] border border-red-200 dark:border-[#E5707A]/40' :
+                              urgency.level === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A] border border-yellow-200 dark:border-[#E0A84A]/40' :
+                              'bg-emerald-50 text-emerald-700 dark:bg-[#5BB487]/14 dark:text-[#ECE9E1] border border-emerald-200 dark:border-[#5BB487]/40'
                             }`}>
                               <Clock className="w-3.5 h-3.5" />
                               {urgency.text}
@@ -1388,18 +1385,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         )}
                       </div>
 
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex flex-wrap gap-2">
+                      <div className="pt-3 border-t border-slate-100 dark:border-[#1E2D52]/60 flex flex-wrap gap-2">
                         {isActive && (
                           <>
                             <button
                               onClick={() => onEdit && onEdit(post)}
-                              className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              className="flex-1 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#15223F] dark:text-[#ECE9E1] dark:border dark:border-[#3156B5]/40 dark:hover:bg-[#15223F] text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
                               <Edit className="w-3.5 h-3.5" /> <T text="Edit Listing" />
                             </button>
                             <button
                               onClick={() => handleCancelListing(post._id, false)}
-                              className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-[#E5707A]/14 dark:hover:bg-[#E5707A]/14 text-red-600 dark:text-[#E5707A] rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
                               <XCircle className="w-3.5 h-3.5" /> <T text="Cancel" />
                             </button>
@@ -1413,7 +1410,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                                 setSelectedListing(post);
                                 setIsLightboxOpen(true);
                               }}
-                              className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#15223F] dark:text-[#ECE9E1] dark:border dark:border-[#3156B5]/40 dark:hover:bg-[#15223F] text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
                               <Search className="w-3.5 h-3.5" /> <T text="View Details" />
                             </button>
@@ -1425,7 +1422,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             </button>
                             <button
                               onClick={() => handleCancelListing(post._id, true)}
-                              className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                              className="flex-1 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-[#E5707A]/14 dark:hover:bg-[#E5707A]/14 text-red-600 dark:text-[#E5707A] rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                             >
                               <XCircle className="w-3.5 h-3.5" /> <T text="Cancel" />
                             </button>
@@ -1435,7 +1432,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         {isExpired && (
                           <button
                             onClick={() => onEdit && onEdit({ ...post, _id: undefined, isRepost: true })}
-                            className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            className="w-full py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                           >
                             <Package className="w-3.5 h-3.5" /> <T text="Repost" />
                           </button>
@@ -1447,7 +1444,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               setSelectedListing(post);
                               setIsLightboxOpen(true);
                             }}
-                            className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
+                            className="w-full py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#15223F] dark:text-[#ECE9E1] dark:border dark:border-[#3156B5]/40 dark:hover:bg-[#15223F] text-slate-700 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1"
                           >
                             <Search className="w-3.5 h-3.5" /> <T text="View Details" />
                           </button>
@@ -1463,19 +1460,19 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       ) : isOrg && showMyShortages ? (
         /* VIEW 3: INLINE NGO SHORTAGES & NEEDS VIEW */
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs flex justify-between items-center">
+          <div className="bg-white dark:bg-[#0F1A33] p-5 rounded-2xl border border-slate-200 dark:border-[#1E2D52] shadow-xs flex justify-between items-center">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center">
                 <Package className="w-5 h-5 mr-2 text-amber-500" />
                 <T text="My Organisation Shortages & Needs" /> ({myNeeds.length})
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                 <T text="Manage your posted shortage requests, track fulfillment status, or update demand." />
               </p>
             </div>
             <button
               onClick={fetchMyNeeds}
-              className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-400"
+              className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-[#E0A84A]"
             >
               <T text="Refresh Shortages" />
             </button>
@@ -1492,16 +1489,16 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {myNeeds.map(need => (
-                <div key={need._id} className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-xs space-y-4 flex flex-col justify-between">
+                <div key={need._id} className="bg-white dark:bg-[#0F1A33] rounded-2xl p-5 border border-slate-200 dark:border-[#1E2D52] shadow-xs space-y-4 flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300">
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A]">
                         {need.category || 'Food'} <T text="Deficit" />
                       </span>
                       <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        need.status === 'ACTIVE' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' :
-                        need.status === 'FULFILLED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' :
-                        'bg-slate-200 text-slate-700 dark:bg-slate-600 dark:text-slate-300'
+                        need.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-[#5BB487]/14 dark:text-[#5BB487] dark:border dark:border-[#5BB487]/40' :
+                        need.status === 'FULFILLED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-[#5BB487]/14 dark:text-[#5BB487] dark:border dark:border-[#5BB487]/40' :
+                        'bg-slate-200 text-slate-700 dark:bg-[#0F1A33] dark:text-[#9AA3B8]'
                       }`}>
                         {need.status}
                       </span>
@@ -1509,28 +1506,28 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                     <div>
                       <h4 className="font-bold text-slate-900 dark:text-white text-base leading-snug">{need.title}</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        <T text="Needed Quantity" />: <strong className="text-slate-800 dark:text-slate-200">{need.quantity} {need.unit || <T text="servings" />}</strong>
+                      <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
+                        <T text="Needed Quantity" />: <strong className="text-slate-800 dark:text-[#9AA3B8]">{need.quantity} {need.unit || <T text="servings" />}</strong>
                       </p>
                     </div>
 
                     {need.description && (
-                      <p className="text-xs italic text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700">
+                      <p className="text-xs italic text-slate-600 dark:text-[#9AA3B8] bg-slate-50 dark:bg-[#070E1E]/50 p-2.5 rounded-xl border border-slate-100 dark:border-[#1E2D52]">
                         "{need.description}"
                       </p>
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+                  <div className="pt-3 border-t border-slate-100 dark:border-[#1E2D52] flex gap-2">
                     {need.status === 'ACTIVE' && (
                       <button
                         onClick={async () => {
                           try {
                             await axios.patch(`${API_URL}/api/needs/${need._id}`, { status: 'FULFILLED' }, { headers: { Authorization: `Bearer ${token}` } });
                             fetchMyNeeds();
-                          } catch (e) { alert('Failed to update status'); }
+                          } catch  { alert('Failed to update status'); }
                         }}
-                        className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                        className="flex-1 py-2 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-xl font-bold text-xs transition-colors cursor-pointer"
                       >
                         <T text="Mark Fulfilled" />
                       </button>
@@ -1541,9 +1538,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         try {
                           await axios.delete(`${API_URL}/api/needs/${need._id}`, { headers: { Authorization: `Bearer ${token}` } });
                           fetchMyNeeds();
-                        } catch (e) { alert('Failed to delete'); }
+                        } catch  { alert('Failed to delete'); }
                       }}
-                      className="py-2 px-3 bg-red-100 hover:bg-red-200 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded-xl font-bold text-xs transition-colors cursor-pointer"
+                      className="py-2 px-3 bg-red-100 hover:bg-red-200 dark:bg-[#E5707A]/14 text-red-700 dark:text-[#E5707A] rounded-xl font-bold text-xs transition-colors cursor-pointer"
                     >
                        <T text="Delete" />
                     </button>
@@ -1558,20 +1555,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
         <>
           {/* Direct Donations for Your Needs (Organisation Only) */}
           {isOrg && incomingDonations.length > 0 && (
-            <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 shadow-xs space-y-4 animate-in fade-in">
+            <div className="bg-emerald-50/50 dark:bg-[#5BB487]/14 p-5 rounded-2xl border border-emerald-200 dark:border-[#5BB487]/40 shadow-xs space-y-4 animate-in fade-in">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-base font-bold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+                  <h3 className="text-base font-bold text-emerald-900 dark:text-[#5BB487] flex items-center gap-2">
                     <HeartHandshake className="w-5 h-5 text-emerald-600" />
                     <T text="Direct Donations for Your Requirements" /> ({incomingDonations.length})
                   </h3>
-                  <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                  <p className="text-xs text-emerald-700 dark:text-[#ECE9E1] mt-0.5">
                     <T text="These food donations were offered directly by donors to fulfill your posted shortage requirements." />
                   </p>
                 </div>
                 <button
                   onClick={fetchIncomingDonations}
-                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 p-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-800 flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-[#ECE9E1] p-1.5 rounded-lg border border-emerald-300 dark:border-[#5BB487]/40 bg-white dark:bg-[#0F1A33] flex items-center gap-1 cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span><T text="Refresh" /></span>
@@ -1589,17 +1586,17 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   return (
                     <div
                       key={donation._id}
-                      className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-emerald-300 dark:border-emerald-700/60 shadow-xs flex flex-col justify-between space-y-3"
+                      className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-emerald-300 dark:border-[#5BB487]/40 shadow-xs flex flex-col justify-between space-y-3"
                     >
                       <div className="space-y-2">
                         <div className="flex justify-between items-start">
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-[#5BB487]/14 dark:text-[#5BB487]">
                             {donation.foodType || 'VEG'}
                           </span>
                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                            status === 'PENDING' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300' :
-                            status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' :
-                            'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                            status === 'PENDING' ? 'bg-amber-100 text-amber-800 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A]' :
+                            status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800 dark:bg-[#5BB487]/14 dark:text-[#5BB487]' :
+                            'bg-slate-100 text-slate-700 dark:bg-[#0F1A33] dark:text-[#9AA3B8]'
                           }`}>
                             {status}
                           </span>
@@ -1609,17 +1606,17 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug">
                             {donation.title}
                           </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            <strong className="text-slate-700 dark:text-slate-300">{portions} {unit}</strong> • {donorName}
+                          <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                            <strong className="text-slate-700 dark:text-[#9AA3B8]">{portions} {unit}</strong> • {donorName}
                           </p>
                         </div>
 
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-950/40 rounded-lg border border-emerald-100 dark:border-emerald-800/40 text-[11px] text-emerald-800 dark:text-emerald-300">
+                        <div className="p-2 bg-emerald-50 dark:bg-[#5BB487]/14 rounded-lg border border-emerald-100 dark:border-[#5BB487]/40 text-[11px] text-emerald-800 dark:text-[#5BB487]">
                           <strong className="font-bold"><T text="Fulfills" />:</strong> {reqName}
                         </div>
 
                         {donation.pickupAddress && (
-                          <div className="flex items-center text-slate-500 dark:text-slate-400 text-xs">
+                          <div className="flex items-center text-slate-500 dark:text-slate-300 text-xs">
                             <MapPin className="w-3.5 h-3.5 mr-1.5 shrink-0 text-slate-400" />
                             <span className="line-clamp-1">{donation.pickupAddress}</span>
                           </div>
@@ -1627,7 +1624,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       </div>
 
                       {/* Controls */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex gap-2">
+                      <div className="pt-2 border-t border-slate-100 dark:border-[#1E2D52] flex gap-2">
                         {status === 'PENDING' && (
                           <>
                             <button
@@ -1635,14 +1632,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                                 setListingToReject(donation);
                                 setRejectModalOpen(true);
                               }}
-                              className="flex-1 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-400 rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              className="flex-1 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-[#E5707A]/14 dark:text-[#E5707A] rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <XCircle className="w-3.5 h-3.5" />
                               <span><T text="Reject" /></span>
                             </button>
                             <button
                               onClick={() => handleAcceptTargetedDonation(donation._id)}
-                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                              className="flex-1 py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
                               <span><T text="Accept" /></span>
@@ -1650,7 +1647,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           </>
                         )}
                         {status === 'ACCEPTED' && (
-                          <div className="w-full text-center py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-lg">
+                          <div className="w-full text-center py-1 bg-emerald-100 dark:bg-[#5BB487]/14 text-emerald-800 dark:text-[#5BB487] text-xs font-bold rounded-lg">
                             <T text="Accepted • Active in Pickups" />
                           </div>
                         )}
@@ -1663,12 +1660,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           )}
 
           {/* Clean Header & Filters */}
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white dark:bg-[#0F1A33] p-5 rounded-2xl border border-slate-200 dark:border-[#1E2D52] shadow-xs">
             <div>
               <h2 className="text-xl font-bold text-slate-900 dark:text-white">
                 {user?.accountType === 'ORGANISATION' ? <T text="Surplus Available For You" /> : <T text="Live Surplus Food Feed" />}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
                 {user?.accountType === 'ORGANISATION'
                   ? <T text="Claim surplus food matching your needs and arrange fast pickup." />
                   : <T text="Browse available food donations." />}
@@ -1684,7 +1681,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   placeholder={searchDishesPlaceholder || "Search dishes or items..."}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs"
+                  className="pl-9 pr-4 py-2 w-full border border-slate-200 dark:border-[#1E2D52] rounded-xl bg-slate-50 dark:bg-[#070E1E] text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs transition-all text-xs"
                 />
               </div>
 
@@ -1700,7 +1697,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <button
                     key={f.val}
                     onClick={() => setFilter(f.val)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f.val ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${filter === f.val ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-[#0F1A33] dark:text-[#9AA3B8] dark:hover:bg-[#15223F]'}`}
                   >
                     <T text={f.key} />
                   </button>
@@ -1711,7 +1708,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
+                className="px-3 py-2 border border-slate-200 dark:border-[#1E2D52] rounded-xl bg-slate-50 dark:bg-[#070E1E] text-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold text-xs shadow-xs"
               >
                 <option value="Expiring Soonest"><T text="Expiring Soonest" /></option>
                 <option value="Recently Added"><T text="Recently Added" /></option>
@@ -1730,18 +1727,18 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
           {sortedAndFilteredListings.map((listing) => {
             const title = listing.title || 'Untitled';
             const portions = listing.quantity || 0;
-            const expiry = listing.overallExpiry || listing.expiryTime;
+            
             const match = getListingMatch(listing);
 
             return (
               <div
                 key={listing._id}
                 onClick={() => { setSelectedListing(listing); setClaimStatus('IDLE'); setClaimMessage(''); setClaimTime(''); }}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
+                className="bg-white dark:bg-[#0F1A33] rounded-2xl shadow-xs border border-slate-200 dark:border-[#1E2D52] overflow-hidden hover:shadow-md transition-all relative flex flex-col cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-500 group"
               >
                 {listing.status === 'CLAIMED' && (
-                  <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs z-10 flex items-center justify-center">
-                    <div className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-400 px-4 py-2 rounded-xl font-bold flex items-center text-xs">
+                  <div className="absolute inset-0 bg-white/80 dark:bg-[#070E1E]/80 backdrop-blur-xs z-10 flex items-center justify-center">
+                    <div className="bg-orange-100 text-orange-700 dark:bg-transparent dark:text-[#D9B65D] px-4 py-2 rounded-xl font-bold flex items-center text-xs">
                       <AlertCircle className="w-4 h-4 mr-1.5" /> CLAIMED
                     </div>
                   </div>
@@ -1762,11 +1759,11 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     </div>
 
                     <div className="space-y-2.5 mb-3 text-xs">
-                      <div className="flex items-center text-slate-600 dark:text-slate-300">
+                      <div className="flex items-center text-slate-600 dark:text-[#9AA3B8]">
                         <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
                         <strong>{portions} <T text="Portions" /></strong>
                       </div>
-                      <div className="flex items-center text-slate-600 dark:text-slate-400">
+                      <div className="flex items-center text-slate-600 dark:text-slate-300">
                         <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
                         <span className="line-clamp-1">{listing.pickupAddress || [listing.donorId?.address, listing.donorId?.city].filter(Boolean).join(', ') || 'Pune Location'}</span>
                       </div>
@@ -1774,7 +1771,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         const urgency = calculateListingUrgency(listing);
                         if (urgency.level === 'EXPIRED') {
                           return (
-                            <div className="flex items-center text-slate-500 dark:text-slate-500 font-medium">
+                            <div className="flex items-center text-slate-500 dark:text-slate-300 font-medium">
                               <Clock className="w-3.5 h-3.5 mr-2 shrink-0" />
                               <span><T text="Expired" /></span>
                             </div>
@@ -1783,9 +1780,9 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         return (
                           <div className="pt-0.5">
                             <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-bold ${
-                              urgency.level === 'HIGH' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900/50' :
-                              urgency.level === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50' :
-                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50'
+                              urgency.level === 'HIGH' ? 'bg-red-50 text-red-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A] border border-red-200 dark:border-[#E5707A]/40' :
+                              urgency.level === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A] border border-yellow-200 dark:border-[#E0A84A]/40' :
+                              'bg-emerald-50 text-emerald-700 dark:bg-[#5BB487]/14 dark:text-[#ECE9E1] border border-emerald-200 dark:border-[#5BB487]/40'
                             }`}>
                               <Clock className="w-3.5 h-3.5" />
                               {urgency.text}
@@ -1797,12 +1794,12 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                     {/* Matched shortage pill */}
                     {match ? (
-                      <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 text-[11px]">
-                        <span className="font-extrabold text-emerald-700 dark:text-emerald-400 flex items-center mb-0.5">
+                      <div className="p-2.5 bg-emerald-50 dark:bg-[#5BB487]/14 rounded-xl border border-emerald-200 dark:border-[#5BB487]/40 text-[11px]">
+                        <span className="font-extrabold text-emerald-700 dark:text-[#ECE9E1] flex items-center mb-0.5">
                           <Sparkles className="w-3 h-3 mr-1 text-emerald-600" />
                           <T text="Matches" /> {match.ngoName}
                         </span>
-                        <span className="text-slate-600 dark:text-slate-400 line-clamp-1">
+                        <span className="text-slate-600 dark:text-slate-300 line-clamp-1">
                           <T text="Needs" />: {match.quantity} {match.unit} {match.item}
                         </span>
                       </div>
@@ -1817,7 +1814,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             setListingToReject(listing);
                             setRejectModalOpen(true);
                           }}
-                          className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                          className="flex-1 py-2 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-[#E5707A]/14 dark:text-[#E5707A] dark:hover:bg-[#E5707A]/14 text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
                         >
                           <XCircle className="w-3.5 h-3.5" />
                           <span><T text="Reject Donation" /></span>
@@ -1830,7 +1827,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                             setClaimMessage('');
                             setClaimTime(getDefaultPickupTime());
                           }}
-                          className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+                          className="flex-1 py-2 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
                         >
                           <Utensils className="w-3.5 h-3.5" />
                           <span><T text="Send Claim Request" /></span>
@@ -1857,10 +1854,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {/* Detailed Surplus Modal with Matched NGO Shortages */}
       {selectedListing && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[60] flex justify-center items-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg relative animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-700">
-            <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 sticky top-0">
+          <div className="bg-white dark:bg-[#0F1A33] rounded-2xl shadow-2xl w-full max-w-lg relative animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-[#1E2D52]">
+            <div className="p-5 border-b border-slate-200 dark:border-[#1E2D52] flex justify-between items-center bg-slate-50 dark:bg-[#070E1E]/50 sticky top-0">
               <div>
-                <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">
+                <span className="text-[10px] font-extrabold uppercase text-emerald-600 dark:text-[#ECE9E1] tracking-wider block">
                   <T text="Surplus Food Details" />
                 </span>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-white line-clamp-1 pr-4">{selectedListing.title}</h3>
@@ -1877,17 +1874,17 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                     <CheckCircle className="w-8 h-8" />
                   </div>
                   <h4 className="text-2xl font-bold text-slate-800 dark:text-white mb-2"><T text="Claim Request Sent!" /></h4>
-                  <p className="text-slate-500 dark:text-slate-400 mb-6 text-xs"><T text="The donor will review your request. Check your notifications for updates." /></p>
+                  <p className="text-slate-500 dark:text-slate-300 mb-6 text-xs"><T text="The donor will review your request. Check your notifications for updates." /></p>
                 </div>
               ) : claimStatus === 'FORM' ? (
                 <div className="space-y-4 animate-in fade-in">
                   <h4 className="font-bold text-base text-slate-800 dark:text-white mb-1"><T text="Request Food as Verified NGO" /></h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-300">
                     <T text="Coordinate your pickup time and state your intent so the donor can review and accept." />
                   </p>
 
                   {claimFormError && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
+                    <div className="p-3 bg-red-50 dark:bg-[#E5707A]/14 border border-red-200 dark:border-[#E5707A]/40 rounded-xl text-red-700 dark:text-[#E5707A] text-xs font-semibold flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
                       <span>{claimFormError}</span>
                     </div>
@@ -1895,10 +1892,10 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                   <div>
                     <div className="flex justify-between items-center mb-1.5">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-[#9AA3B8]">
                         <T text="Request Message / Intent" /> <span className="text-red-500">*</span>
                       </label>
-                      <span className={`text-[10px] font-bold ${claimMessage.trim().length < 10 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <span className={`text-[10px] font-bold ${claimMessage.trim().length < 10 ? 'text-amber-500' : 'text-emerald-600 dark:text-[#ECE9E1]'}`}>
                         {claimMessage.trim().length}/10 chars min
                       </span>
                     </div>
@@ -1909,33 +1906,33 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         if (claimFormError) setClaimFormError('');
                       }}
                       placeholder="e.g. We will arrive with an insulated van at 2:30 PM to collect and distribute to 50 families at our shelter."
-                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-3 py-2 border rounded-xl dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                       rows="3"
                     ></textarea>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-[#9AA3B8] mb-1.5">
                       <T text="Estimated Pickup Date & Time" /> <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2 mb-2">
                       <button
                         type="button"
                         onClick={() => setPresetTime(30)}
-                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-[#0F1A33] hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-[#5BB487]/14 dark:hover:text-[#5BB487] text-slate-700 dark:text-[#9AA3B8] rounded-lg transition-colors cursor-pointer"
                       >
                         +30 mins
                       </button>
                       <button
                         type="button"
                         onClick={() => setPresetTime(60)}
-                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-[#0F1A33] hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-[#5BB487]/14 dark:hover:text-[#5BB487] text-slate-700 dark:text-[#9AA3B8] rounded-lg transition-colors cursor-pointer"
                       >
                         +1 hour
                       </button>
                       <button
                         type="button"
                         onClick={() => setPresetTime(120)}
-                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-slate-700 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 text-slate-700 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                        className="px-2.5 py-1 text-[11px] font-bold bg-slate-100 dark:bg-[#0F1A33] hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-[#5BB487]/14 dark:hover:text-[#5BB487] text-slate-700 dark:text-[#9AA3B8] rounded-lg transition-colors cursor-pointer"
                       >
                         +2 hours
                       </button>
@@ -1948,14 +1945,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         setClaimTime(e.target.value);
                         if (claimFormError) setClaimFormError('');
                       }}
-                      className="w-full px-3 py-2 border rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full px-3 py-2 border rounded-xl dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>
                   <div className="flex gap-3 pt-4">
-                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition-colors text-xs cursor-pointer shadow-xs">
+                    <button onClick={() => handleClaim(selectedListing._id)} className="flex-1 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 dark:hover:bg-[#3F66CC] transition-colors text-xs cursor-pointer shadow-xs">
                       <T text="Submit Request" />
                     </button>
-                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs cursor-pointer">
+                    <button onClick={() => setClaimStatus('IDLE')} className="flex-1 bg-slate-200 dark:bg-[#0F1A33] text-slate-800 dark:text-white font-bold py-2.5 rounded-xl transition-colors text-xs cursor-pointer">
                       <T text="Cancel" />
                     </button>
                   </div>
@@ -1964,24 +1961,24 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 <div className="space-y-6">
                   {/* Food Breakdown */}
                   <div>
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center">
                       <Package className="w-3.5 h-3.5 mr-1.5" /> <T text="Item Breakdown" />
                     </h4>
                     {selectedListing.items && selectedListing.items.length > 0 ? (
                       <ul className="space-y-2">
                         {selectedListing.items.map((item, idx) => (
-                          <li key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-700/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.itemName}</span>
-                            <span className="text-xs font-bold bg-white dark:bg-slate-800 px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-slate-300">
+                          <li key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-[#0F1A33]/30 p-2.5 rounded-xl border border-slate-100 dark:border-[#1E2D52] text-xs">
+                            <span className="font-semibold text-slate-800 dark:text-[#9AA3B8]">{item.itemName}</span>
+                            <span className="text-xs font-bold bg-white dark:bg-[#0F1A33] px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-[#9AA3B8]">
                               {item.quantity} {item.unit}
                             </span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <div className="bg-slate-50 dark:bg-slate-700/30 p-2.5 rounded-xl border border-slate-100 dark:border-slate-700 text-xs">
-                        <span className="font-semibold text-slate-800 dark:text-slate-200"><T text="Total Portions" /></span>
-                        <span className="float-right font-bold bg-white dark:bg-slate-800 px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-slate-300">
+                      <div className="bg-slate-50 dark:bg-[#0F1A33]/30 p-2.5 rounded-xl border border-slate-100 dark:border-[#1E2D52] text-xs">
+                        <span className="font-semibold text-slate-800 dark:text-[#9AA3B8]"><T text="Total Portions" /></span>
+                        <span className="float-right font-bold bg-white dark:bg-[#0F1A33] px-2.5 py-1 rounded shadow-xs text-slate-700 dark:text-[#9AA3B8]">
                           {selectedListing.quantity} <T text="Servings" />
                         </span>
                       </div>
@@ -1992,7 +1989,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   {/* Food Images Lightbox Trigger */}
                   {selectedListing.photos && selectedListing.photos.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center">
                         <Search className="w-3.5 h-3.5 mr-1.5" /> <T text="Attached Images" />
                       </h4>
                       <button
@@ -2000,7 +1997,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                           setCurrentPhotoIndex(0);
                           setIsLightboxOpen(true);
                         }}
-                        className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 px-4 rounded-xl transition-colors border border-slate-200 dark:border-slate-600 flex items-center justify-center space-x-2 text-sm shadow-sm cursor-pointer"
+                        className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-[#0F1A33]/50 dark:hover:bg-[#15223F] text-slate-700 dark:text-[#9AA3B8] font-bold py-3 px-4 rounded-xl transition-colors border border-slate-200 dark:border-[#1E2D52] flex items-center justify-center space-x-2 text-sm shadow-sm cursor-pointer"
                       >
                         <Search className="w-4 h-4" />
                         <span>View {selectedListing.photos.length} Image{selectedListing.photos.length !== 1 ? 's' : ''}</span>
@@ -2010,7 +2007,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
                   {/* Donor Info */}
                   <div>
-                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center">
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider mb-2 flex items-center">
                       <Building2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> <T text="Donor Information" />
                     </h4>
                     {(() => {
@@ -2021,20 +2018,20 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                       const email = donor.email || donor.businessDetails?.shopEmail || 'Not provided';
 
                       return (
-                        <div className="bg-slate-50 dark:bg-slate-700/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-600 space-y-2.5 text-xs">
+                        <div className="bg-slate-50 dark:bg-[#0F1A33]/40 p-3.5 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-2.5 text-xs">
                           <div className="flex items-center text-slate-800 dark:text-white font-bold">
                             <Building2 className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />
                             <span><T text="Name" />: {displayName}</span>
                           </div>
-                          <div className="flex items-center text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center text-slate-600 dark:text-[#9AA3B8]">
                             <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
                             <span><T text="Address" />: {address}</span>
                           </div>
                           
                           {/* Contact Actions for NGO -> Donor */}
-                          <div className="pt-2 border-t border-slate-200/60 dark:border-slate-600/60 space-y-2">
+                          <div className="pt-2 border-t border-slate-200/60 dark:border-[#1E2D52]/60 space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-1.5">
-                              <div className="flex items-center text-slate-600 dark:text-slate-300">
+                              <div className="flex items-center text-slate-600 dark:text-[#9AA3B8]">
                                 <Phone className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
                                 <span><T text="Phone" />: {phone}</span>
                               </div>
@@ -2050,7 +2047,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                               )}
                             </div>
                             {email !== 'Not provided' && (
-                              <div className="flex items-center text-slate-600 dark:text-slate-300 text-[11px]">
+                              <div className="flex items-center text-slate-600 dark:text-[#9AA3B8] text-[11px]">
                                 <Mail className="w-3.5 h-3.5 mr-2 text-slate-400 shrink-0" />
                                 <span>Email: {email}</span>
                               </div>
@@ -2062,14 +2059,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   </div>
 
                   {/* Timings */}
-                  <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-slate-700 pt-3">
-                    <div className="text-slate-500 dark:text-slate-400">
+                  <div className="flex justify-between items-center text-xs border-t border-slate-200 dark:border-[#1E2D52] pt-3">
+                    <div className="text-slate-500 dark:text-slate-300">
                       <span className="block font-medium"><T text="Prepared" /></span>
-                      <span className="text-slate-800 dark:text-slate-200 font-semibold">
+                      <span className="text-slate-800 dark:text-[#9AA3B8] font-semibold">
                         {selectedListing.preparedTime ? new Date(selectedListing.preparedTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : 'Recently'}
                       </span>
                     </div>
-                    <div className="text-right text-amber-600 dark:text-amber-400">
+                    <div className="text-right text-amber-600 dark:text-[#E0A84A]">
                       <span className="block font-medium"><T text="Expires" /></span>
                       <span className="font-bold">
                         {new Date(selectedListing.overallExpiry || selectedListing.expiryTime).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}
@@ -2082,7 +2079,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 
             {/* Action Bar */}
             {claimStatus === 'IDLE' && (
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex gap-2">
+              <div className="p-4 border-t border-slate-200 dark:border-[#1E2D52] bg-slate-50 dark:bg-[#070E1E]/50 flex gap-2">
                 {user?.accountType === 'ORGANISATION' && selectedListing.status === 'AVAILABLE' ? (
                   <>
                     <button
@@ -2090,7 +2087,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         setListingToReject(selectedListing);
                         setRejectModalOpen(true);
                       }}
-                      className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 font-bold py-2.5 px-4 rounded-xl transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-[#E5707A]/14 dark:text-[#E5707A] dark:hover:bg-[#E5707A]/14 font-bold py-2.5 px-4 rounded-xl transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <XCircle className="w-4 h-4" />
                       <T text="Reject Donation" />
@@ -2102,7 +2099,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                         setClaimTime(getDefaultPickupTime());
                         setClaimFormError('');
                       }}
-                      className="flex-1 bg-emerald-600 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 text-white font-bold py-2.5 px-4 rounded-xl hover:bg-emerald-700 dark:hover:bg-[#3F66CC] transition-colors shadow-xs text-xs cursor-pointer flex items-center justify-center gap-1.5"
                     >
                       <Utensils className="w-4 h-4" />
                       <T text="Send Claim Request" />
@@ -2111,7 +2108,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                 ) : (
                   <button
                     onClick={() => setSelectedListing(null)}
-                    className="w-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-xs cursor-pointer"
+                    className="w-full bg-slate-200 dark:bg-[#0F1A33] text-slate-800 dark:text-white font-bold py-2.5 px-4 rounded-xl transition-colors text-xs cursor-pointer"
                   >
                     <T text="Close" />
                   </button>
@@ -2125,7 +2122,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
       {/* Lightbox Modal */}
       {isLightboxOpen && selectedListing?.photos && selectedListing.photos.length > 0 && (
         <div
-          className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-black/95 p-4 sm:p-8 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-[#0D1830]/95 p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setIsLightboxOpen(false)}
         >
           <div className="relative w-full max-w-4xl max-h-[85vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
@@ -2138,7 +2135,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
             {selectedListing.photos.length > 1 && (
               <>
                 <button
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full transition-colors"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-[#0D1830]/50 hover:bg-[#0D1830]/80 text-white p-3 rounded-full transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     setCurrentPhotoIndex((prev) => (prev === 0 ? selectedListing.photos.length - 1 : prev - 1));
@@ -2147,7 +2144,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
                 </button>
                 <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white p-3 rounded-full transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#0D1830]/50 hover:bg-[#0D1830]/80 text-white p-3 rounded-full transition-colors"
                   onClick={(e) => {
                     e.stopPropagation();
                     setCurrentPhotoIndex((prev) => (prev === selectedListing.photos.length - 1 ? 0 : prev + 1));
@@ -2156,14 +2153,14 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
                 </button>
 
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 px-4 py-1.5 rounded-full text-white text-xs font-bold">
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[#0D1830]/80 px-4 py-1.5 rounded-full text-white text-xs font-bold">
                   {currentPhotoIndex + 1} / {selectedListing.photos.length}
                 </div>
               </>
             )}
           </div>
           <button
-            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-slate-400 hover:text-white transition-colors bg-black/50 p-2.5 rounded-full"
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 text-slate-400 hover:text-white transition-colors bg-[#0D1830]/50 p-2.5 rounded-full"
             onClick={() => setIsLightboxOpen(false)}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
@@ -2216,3 +2213,7 @@ const LiveFeed = ({ socket, user, token, onEdit }) => {
 };
 
 export default LiveFeed;
+
+
+
+

@@ -118,7 +118,7 @@ export const reverseGeocodeCoords = async (coords) => {
         return response.results[0].formatted_address;
       }
     }
-  } catch (err) {
+  } catch  {
     // Proceed to fallback
   }
 
@@ -160,7 +160,7 @@ export const geocodeAddress = async (address) => {
         return { lat: loc.lat(), lng: loc.lng() };
       }
     }
-  } catch (err) {
+  } catch  {
     // Proceed to fallback
   }
 

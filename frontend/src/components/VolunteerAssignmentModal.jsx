@@ -10,21 +10,18 @@ import {
   CheckCircle2, 
   Copy, 
   Check, 
-  Share2, 
   QrCode, 
-  ExternalLink,
-  MessageCircle,
-  Navigation
+  MessageCircle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from './ui/Modal';
-import { T, useTranslatedString } from '../context/LanguageContext';
+
 import Button from './ui/Button';
 import DirectContactButtons from './ui/DirectContactButtons';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers = [], token, onSuccess, initialStatus }) => {
+const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers = [], token, onSuccess, _initialStatus }) => {
   const [volunteers, setVolunteers] = useState([
     { name: '', phone: '', vehicleNumber: '' }
   ]);
@@ -159,44 +156,44 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
     >
       {assignmentSuccess && savedData ? (
         <div className="space-y-5 py-1">
-          <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl text-emerald-800 dark:text-emerald-200 text-xs flex items-center gap-2.5">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="p-3 bg-[#F3F0EA] dark:bg-[#0F1A33]/40 border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white text-xs flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-[#18315E] shrink-0" />
             <div>
               <p className="font-bold">Volunteer assignment saved successfully!</p>
-              <p className="text-[11px] text-emerald-700 dark:text-emerald-300/80">
+              <p className="text-[11px] text-[#18315E] dark:text-[#D9B65D]/80">
                 Single-use signed confirmation links and the volunteer navigation link are generated below.
               </p>
             </div>
           </div>
 
           {/* 1. DONOR CONFIRM-PICKUP LINK */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/90 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#18315E] dark:text-[#D9B65D]">
                   Step 1: Donor Handover Verification
                 </span>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h4 className="text-sm font-bold text-[#18315E] dark:text-white">
                   Donor Confirm-Pickup Link
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[#60708B] dark:text-slate-300 mt-0.5">
                   Share this link with the donor. The donor will click this to confirm handing over the food to <strong>{savedData.volunteer?.name || 'the volunteer'}</strong>.
                 </p>
               </div>
             </div>
 
             {/* Link & Copy Box */}
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+            <div className="flex items-center gap-2 bg-white dark:bg-[#0F1A33] p-2 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] text-xs font-mono text-[#18315E] dark:text-slate-300 break-all select-all">
               <span className="truncate flex-1 text-[11px]">{savedData.links.confirmPickupUrl}</span>
               <button
                 type="button"
                 onClick={() => handleCopy(savedData.links.confirmPickupUrl, 'donor-link')}
-                className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-sans font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1 shrink-0 transition-colors"
+                className="px-2.5 py-1.5 bg-[#F3F0EA] dark:bg-[#0F1A33] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-lg text-xs font-sans font-semibold text-[#18315E] dark:text-white flex items-center gap-1 shrink-0 transition-colors"
               >
                 {copiedKey === 'donor-link' ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
+                    <Check className="w-3.5 h-3.5 text-[#18315E]" />
+                    <span className="text-[#18315E] dark:text-[#D9B65D] font-bold">Copied!</span>
                   </>
                 ) : (
                   <>
@@ -213,7 +210,7 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
                 href={`https://wa.me/?text=${encodeURIComponent(`Hello! Please use this link to confirm handing over the food donation to our volunteer (${savedData.volunteer?.name || 'Volunteer'}): ${savedData.links.confirmPickupUrl}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 min-w-[150px] py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                className="flex-1 min-w-[150px] py-2 px-3 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
                 <MessageCircle className="w-4 h-4" />
                 <span>Share via WhatsApp</span>
@@ -222,20 +219,20 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
               <button
                 type="button"
                 onClick={() => setShowDonorQr(prev => !prev)}
-                className="py-2 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors"
+                className="py-2 px-3 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-xl text-xs font-semibold text-[#18315E] dark:text-white flex items-center gap-1.5 transition-colors"
               >
-                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <QrCode className="w-4 h-4 text-[#18315E] dark:text-[#D9B65D]" />
                 <span>{showDonorQr ? 'Hide QR' : 'Show Static QR'}</span>
               </button>
             </div>
 
             {/* Static QR Code Display */}
             {showDonorQr && (
-              <div className="pt-2 flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95">
-                <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200 inline-block">
+              <div className="pt-2 flex flex-col items-center justify-center p-4 bg-white dark:bg-[#0F1A33] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] animate-in fade-in zoom-in-95">
+                <div className="p-3 bg-white rounded-lg shadow-sm border border-[#E5E1D8] inline-block">
                   <QRCodeSVG value={savedData.links.confirmPickupUrl} size={150} level="M" />
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 text-center">
+                <p className="text-[11px] text-[#60708B] dark:text-slate-300 mt-2 text-center">
                   Scannable by the donor with any phone's camera app (no scanner app needed)
                 </p>
               </div>
@@ -243,32 +240,32 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
           </div>
 
           {/* 2. VOLUNTEER TASK / DIRECTIONS LINK */}
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+          <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/90 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-600 dark:text-[#3156B5]">
                   Volunteer Mission Link
                 </span>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h4 className="text-sm font-bold text-[#18315E] dark:text-white">
                   Volunteer Mobile Task Page
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[#60708B] dark:text-slate-300 mt-0.5">
                   Send this mobile-first page to <strong>{savedData.volunteer?.name || 'the volunteer'}</strong> with Google Maps navigation and contact details.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+            <div className="flex items-center gap-2 bg-white dark:bg-[#0F1A33] p-2 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] text-xs font-mono text-[#18315E] dark:text-slate-300 break-all select-all">
               <span className="truncate flex-1 text-[11px]">{savedData.links.volunteerTaskUrl}</span>
               <button
                 type="button"
                 onClick={() => handleCopy(savedData.links.volunteerTaskUrl, 'vol-link')}
-                className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-sans font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1 shrink-0 transition-colors"
+                className="px-2.5 py-1.5 bg-[#F3F0EA] dark:bg-[#0F1A33] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-lg text-xs font-sans font-semibold text-[#18315E] dark:text-white flex items-center gap-1 shrink-0 transition-colors"
               >
                 {copiedKey === 'vol-link' ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-500" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
+                    <Check className="w-3.5 h-3.5 text-[#18315E]" />
+                    <span className="text-[#18315E] dark:text-[#D9B65D] font-bold">Copied!</span>
                   </>
                 ) : (
                   <>
@@ -305,19 +302,19 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
               <button
                 type="button"
                 onClick={() => setShowTaskQr(prev => !prev)}
-                className="py-2 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors"
+                className="py-2 px-3 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-xl text-xs font-semibold text-[#18315E] dark:text-white flex items-center gap-1.5 transition-colors"
               >
-                <QrCode className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                <QrCode className="w-4 h-4 text-sky-600 dark:text-[#3156B5]" />
                 <span>{showTaskQr ? 'Hide QR' : 'Show Static QR'}</span>
               </button>
             </div>
 
             {showTaskQr && (
-              <div className="pt-2 flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95">
-                <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200 inline-block">
+              <div className="pt-2 flex flex-col items-center justify-center p-4 bg-white dark:bg-[#0F1A33] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] animate-in fade-in zoom-in-95">
+                <div className="p-3 bg-white rounded-lg shadow-sm border border-[#E5E1D8] inline-block">
                   <QRCodeSVG value={savedData.links.volunteerTaskUrl} size={150} level="M" />
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 text-center">
+                <p className="text-[11px] text-[#60708B] dark:text-slate-300 mt-2 text-center">
                   Volunteer can scan this to open their task view
                 </p>
               </div>
@@ -326,32 +323,32 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
 
           {/* 3. NGO CONFIRM-DELIVERY LINK (If already en_route or ready) */}
           {savedData.links.confirmDeliveryUrl && (
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+            <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/90 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#E5B85C] dark:text-[#D9B65D]">
                     Step 2: NGO Receiving Verification
                   </span>
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h4 className="text-sm font-bold text-[#18315E] dark:text-white">
                     NGO Confirm-Delivery Link
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-[#60708B] dark:text-slate-300 mt-0.5">
                     For the NGO receiving staff to confirm physical receipt once the volunteer arrives at drop-off.
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300 break-all select-all">
+              <div className="flex items-center gap-2 bg-white dark:bg-[#0F1A33] p-2 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] text-xs font-mono text-[#18315E] dark:text-slate-300 break-all select-all">
                 <span className="truncate flex-1 text-[11px]">{savedData.links.confirmDeliveryUrl}</span>
                 <button
                   type="button"
                   onClick={() => handleCopy(savedData.links.confirmDeliveryUrl, 'delivery-link')}
-                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-sans font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1 shrink-0 transition-colors"
+                  className="px-2.5 py-1.5 bg-[#F3F0EA] dark:bg-[#0F1A33] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-lg text-xs font-sans font-semibold text-[#18315E] dark:text-white flex items-center gap-1 shrink-0 transition-colors"
                 >
                   {copiedKey === 'delivery-link' ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copied!</span>
+                      <Check className="w-3.5 h-3.5 text-[#18315E]" />
+                      <span className="text-[#18315E] dark:text-[#D9B65D] font-bold">Copied!</span>
                     </>
                   ) : (
                     <>
@@ -367,7 +364,7 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
                   href={`https://wa.me/?text=${encodeURIComponent(`Hello! Please use this link to confirm delivery receipt from volunteer (${savedData.volunteer?.name || 'Volunteer'}): ${savedData.links.confirmDeliveryUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 min-w-[150px] py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  className="flex-1 min-w-[150px] py-2 px-3 bg-[#E5B85C] hover:bg-[#173B78] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>Share via WhatsApp</span>
@@ -376,19 +373,19 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
                 <button
                   type="button"
                   onClick={() => setShowDeliveryQr(prev => !prev)}
-                  className="py-2 px-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors"
+                  className="py-2 px-3 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-xl text-xs font-semibold text-[#18315E] dark:text-white flex items-center gap-1.5 transition-colors"
                 >
-                  <QrCode className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <QrCode className="w-4 h-4 text-[#E5B85C] dark:text-[#D9B65D]" />
                   <span>{showDeliveryQr ? 'Hide QR' : 'Show Static QR'}</span>
                 </button>
               </div>
 
               {showDeliveryQr && (
-                <div className="pt-2 flex flex-col items-center justify-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in-95">
-                  <div className="p-3 bg-white rounded-lg shadow-sm border border-slate-200 inline-block">
+                <div className="pt-2 flex flex-col items-center justify-center p-4 bg-white dark:bg-[#0F1A33] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] animate-in fade-in zoom-in-95">
+                  <div className="p-3 bg-white rounded-lg shadow-sm border border-[#E5E1D8] inline-block">
                     <QRCodeSVG value={savedData.links.confirmDeliveryUrl} size={150} level="M" />
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 text-center">
+                  <p className="text-[11px] text-[#60708B] dark:text-slate-300 mt-2 text-center">
                     Scannable by the receiving NGO staff with any camera app
                   </p>
                 </div>
@@ -396,11 +393,11 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
             </div>
           )}
 
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+          <div className="pt-3 border-t border-[#E5E1D8] dark:border-[#1E2D52] flex justify-end">
             <Button
               type="button"
               variant="primary"
-              className="w-full justify-center bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-bold"
+              className="w-full justify-center bg-[#173B78] hover:bg-[#173B78] dark:bg-[#F3F0EA] dark:hover:bg-[#15223F] text-white dark:text-white font-bold"
               onClick={onClose}
             >
               Done / Close
@@ -409,12 +406,12 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-[#60708B] dark:text-slate-300">
             Assign one or more volunteers who will be responsible for picking up this surplus food.
           </p>
 
           {error && (
-            <div className="p-3 text-xs bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded-xl border border-red-200 dark:border-red-800">
+            <div className="p-3 text-xs bg-[#F3F0EA] text-[#18315E] dark:bg-[#0F1A33]/30 dark:text-[#D9B65D] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52]">
               {error}
             </div>
           )}
@@ -423,17 +420,17 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
             {volunteers.map((vol, idx) => (
               <div
                 key={idx}
-                className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5 relative"
+                className="p-3.5 bg-[#F3F0EA] dark:bg-[#0F1A33] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2.5 relative"
               >
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#18315E] dark:text-[#D9B65D]">
                     Volunteer #{idx + 1}
                   </span>
                   {volunteers.length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveRow(idx)}
-                      className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                      className="text-[#60708B] hover:text-[#18315E] transition-colors p-1"
                       title="Remove Volunteer"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -442,60 +439,60 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#60708B] dark:text-slate-300 mb-1">
                     Volunteer Name *
                   </label>
                   <div className="relative">
-                    <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                    <User className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#60708B]" />
                     <input
                       type="text"
                       required
                       placeholder="e.g. Ramesh Kumar"
                       value={vol.name}
                       onChange={(e) => handleChange(idx, 'name', e.target.value)}
-                      className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                      className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-semibold text-[#60708B] dark:text-slate-300 mb-1">
                       Phone Number *
                     </label>
                     <div className="relative">
-                      <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                      <Phone className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#60708B]" />
                       <input
                         type="text"
                         required
                         placeholder="e.g. +91 9823012345"
                         value={vol.phone}
                         onChange={(e) => handleChange(idx, 'phone', e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-semibold text-[#60708B] dark:text-slate-300 mb-1">
                       Vehicle Number / Info
                     </label>
                     <div className="relative">
-                      <Truck className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                      <Truck className="w-3.5 h-3.5 absolute left-3 top-2.5 text-[#60708B]" />
                       <input
                         type="text"
                         placeholder="e.g. MH 12 AB 1234"
                         value={vol.vehicleNumber}
                         onChange={(e) => handleChange(idx, 'vehicleNumber', e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
                   </div>
                 </div>
 
                 {vol.phone && vol.phone.trim().length >= 7 && (
-                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-1">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Direct Contact Actions:</span>
+                  <div className="pt-2 border-t border-[#E5E1D8]/60 dark:border-[#1E2D52]/60 flex flex-wrap items-center justify-between gap-1">
+                    <span className="text-[10px] font-bold text-[#60708B] uppercase">Direct Contact Actions:</span>
                     <DirectContactButtons
                       phone={vol.phone}
                       name={vol.name || `Volunteer #${idx + 1}`}
@@ -511,13 +508,13 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
           <button
             type="button"
             onClick={handleAddRow}
-            className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center space-x-1.5 border border-dashed border-slate-300 dark:border-slate-600"
+            className="w-full py-2 bg-[#F3F0EA] dark:bg-[#0F1A33] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] text-[#18315E] dark:text-slate-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center space-x-1.5 border border-dashed border-[#E5E1D8] dark:border-[#1E2D52]"
           >
             <Plus className="w-4 h-4" />
             <span>Add Another Volunteer</span>
           </button>
 
-          <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+          <div className="flex gap-2 pt-2 border-t border-[#E5E1D8] dark:border-[#1E2D52]">
             <Button
               type="button"
               variant="secondary"
@@ -530,7 +527,7 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
             <Button
               type="submit"
               variant="primary"
-              className="flex-1 justify-center bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="flex-1 justify-center bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white"
               disabled={loading}
             >
               {loading ? 'Saving...' : 'Save Volunteer Assignment'}
@@ -543,3 +540,13 @@ const VolunteerAssignmentModal = ({ isOpen, onClose, foodId, initialVolunteers =
 };
 
 export default VolunteerAssignmentModal;
+
+
+
+
+
+
+
+
+
+

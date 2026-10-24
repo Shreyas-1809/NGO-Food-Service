@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Send, Copy, Check, MessageSquare, Mail, Share2 } from 'lucide-react';
-import Button from './ui/Button';
+import { X, Copy, Check, MessageSquare, Mail, Share2 } from 'lucide-react';
+
 
 const InviteOrgModal = ({ ngo, onClose }) => {
   const [copied, setCopied] = useState(false);
@@ -33,42 +33,42 @@ const InviteOrgModal = ({ ngo, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0D1830]/80 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        className="bg-white dark:bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+        className="bg-white dark:bg-[#0F1A33] w-full max-w-md rounded-2xl shadow-2xl border border-[#E5E1D8] dark:border-[#1E2D52] overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/40">
+        <div className="p-5 border-b border-[#E5E1D8] dark:border-[#1E2D52] flex items-center justify-between bg-[#F3F0EA]/50 dark:bg-[#0F1A33]/40">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-xl bg-[#173B78]/10 text-[#18315E] dark:text-[#D9B65D] flex items-center justify-center font-bold">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              <h3 className="font-bold text-base text-[#18315E] dark:text-white">
                 Invite to FoodBridge
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[#60708B] dark:text-slate-300">
                 Help bring {ngo?.name || 'this organisation'} onboard
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-[#60708B] hover:text-[#60708B] dark:hover:text-[#ECE9E1] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-mono">
+          <div className="p-3 bg-[#F3F0EA] dark:bg-[#0F1A33]/60 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] text-xs text-[#18315E] dark:text-slate-300 leading-relaxed font-mono">
             {inviteMessage}
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
               onClick={handleWhatsApp}
-              className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+              className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
             >
               <MessageSquare className="w-4 h-4" />
               <span>Share WhatsApp</span>
@@ -76,7 +76,7 @@ const InviteOrgModal = ({ ngo, onClose }) => {
 
             <button
               onClick={handleEmail}
-              className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+              className="flex items-center justify-center space-x-2 py-2.5 px-3 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
             >
               <Mail className="w-4 h-4" />
               <span>Send Email</span>
@@ -86,9 +86,9 @@ const InviteOrgModal = ({ ngo, onClose }) => {
           <div className="pt-2">
             <button
               onClick={handleCopy}
-              className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              className="w-full flex items-center justify-center space-x-2 py-2.5 px-3 border border-[#E5E1D8] dark:border-[#1E2D52] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] text-[#18315E] dark:text-slate-300 rounded-xl text-xs font-semibold transition-all cursor-pointer"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-[#18315E]" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? 'Copied Invitation to Clipboard!' : 'Copy Invitation Message'}</span>
             </button>
           </div>
@@ -99,3 +99,13 @@ const InviteOrgModal = ({ ngo, onClose }) => {
 };
 
 export default InviteOrgModal;
+
+
+
+
+
+
+
+
+
+

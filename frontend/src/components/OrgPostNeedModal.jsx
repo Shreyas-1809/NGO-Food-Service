@@ -7,11 +7,7 @@ import {
   Calendar, 
   CheckCircle2, 
   ArrowRight, 
-  Utensils, 
-  Package, 
-  X,
-  Sparkles,
-  Phone
+  Utensils
 } from 'lucide-react';
 // Note: donationService mock imports removed — needs are now fully persisted via /api/needs
 import { useNavigate } from 'react-router-dom';
@@ -179,13 +175,13 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
             {createdRequest ? (
               <div className="space-y-6 animate-in fade-in duration-300">
                 <div className="text-center space-y-2">
-                  <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+                  <div className="w-12 h-12 bg-[#F3F0EA] dark:bg-[#0F1A33]/80 text-[#18315E] dark:text-[#D9B65D] rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-7 h-7" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-lg font-bold text-[#18315E] dark:text-white">
                     {createdRequest.isRecurring ? <T text="Recurring Template Created" /> : <T text="Your Shortage is Live for Donors & Volunteers" />}
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                  <p className="text-xs text-[#60708B] dark:text-slate-300 max-w-md mx-auto">
                     {createdRequest.isRecurring 
                       ? <T text={`This request will automatically generate on a ${formData.frequency.toLowerCase()} basis. The first occurrence is live.`} /> 
                       : <T text="Matching surplus food donors will be notified immediately. Donors can also fulfill this demand directly from the shortages feed." />}
@@ -193,68 +189,68 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                 </div>
 
                 {/* Shortage Listing Card Design Confirmation */}
-                <div className="max-w-md mx-auto bg-slate-50 dark:bg-slate-900/80 rounded-2xl p-5 shadow-xs border-2 border-emerald-500/80 space-y-4">
+                <div className="max-w-md mx-auto bg-[#F3F0EA] dark:bg-[#0F1A33]/80 rounded-2xl p-5 shadow-xs border-2 border-[#173B78]/80 space-y-4">
                   <div className="space-y-3">
                     <div className="flex justify-between items-start">
                       <div className="space-y-0.5">
-                        <span className="text-[10px] font-extrabold uppercase text-slate-400 dark:text-slate-500 tracking-wider block">
+                        <span className="text-[10px] font-extrabold uppercase text-[#60708B] dark:text-slate-300 tracking-wider block">
                           <T text={createdRequest.category || 'Food'} /> <T text="Deficit" />
                         </span>
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white leading-snug">
+                        <h4 className="text-base font-bold text-[#18315E] dark:text-white leading-snug">
                           {createdRequest.item}
                         </h4>
                       </div>
                       
                       <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase shrink-0 ${
                         createdRequest.urgency === 'HIGH'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-200 dark:border-red-900'
-                          : 'bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-900'
+                          ? 'bg-[#F3F0EA] text-[#18315E] dark:bg-[#0F1A33]/80 dark:text-[#D9B65D] border border-[#E5E1D8] dark:border-[#1E2D52]'
+                          : 'bg-[#F3F0EA] text-[#18315E] dark:bg-[#0F1A33]/80 dark:text-[#D9B65D] border border-[#E5E1D8] dark:border-[#D9B65D]'
                       }`}>
-                        {createdRequest.urgency === 'HIGH' ? <T text="🔴 Urgent" /> : <T text="🟡 Moderate" />}
+                        {createdRequest.urgency === 'HIGH' ? <T text="?? Urgent" /> : <T text="?? Moderate" />}
                       </span>
                     </div>
 
-                    <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
+                    <div className="p-3 bg-white dark:bg-[#0F1A33] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-1 text-xs">
                       <div className="flex justify-between items-center">
-                        <span className="font-bold text-slate-900 dark:text-white flex items-center truncate mr-2">
-                          <Building2 className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" />
+                        <span className="font-bold text-[#18315E] dark:text-white flex items-center truncate mr-2">
+                          <Building2 className="w-3.5 h-3.5 mr-1 text-[#18315E] shrink-0" />
                           <span className="truncate">{createdRequest.ngoName}</span>
                         </span>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-1.5 py-0.5 rounded shrink-0">
-                          ✓ <T text="Verified" />
+                        <span className="text-[10px] font-bold text-[#18315E] bg-[#F3F0EA] dark:bg-[#0F1A33] px-1.5 py-0.5 rounded shrink-0">
+                          ? <T text="Verified" />
                         </span>
                       </div>
-                      <p className="text-slate-500 dark:text-slate-400 flex items-center truncate">
-                        <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
+                      <p className="text-[#60708B] dark:text-slate-300 flex items-center truncate">
+                        <MapPin className="w-3.5 h-3.5 mr-1 text-[#60708B] shrink-0" />
                         {createdRequest.area || createdRequest.city}, {createdRequest.city}
                       </p>
                     </div>
 
                     <div className="space-y-2 pt-1 text-xs">
                       <div className="flex justify-between items-center">
-                        <span className="text-slate-500 dark:text-slate-400"><T text="Target Quantity Needed:" /></span>
-                        <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
+                        <span className="text-[#60708B] dark:text-slate-300"><T text="Target Quantity Needed:" /></span>
+                        <span className="text-sm font-extrabold text-[#18315E] dark:text-[#D9B65D]">
                           {createdRequest.quantity} {createdRequest.unit}
                         </span>
                       </div>
 
-                      <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                        <span className="flex items-center text-slate-500 dark:text-slate-400">
-                          <Users className="w-3.5 h-3.5 mr-1 text-teal-600 shrink-0" /> <T text="Feeding Capacity:" />
+                      <div className="flex justify-between items-center text-[#60708B] dark:text-slate-300">
+                        <span className="flex items-center text-[#60708B] dark:text-slate-300">
+                          <Users className="w-3.5 h-3.5 mr-1 text-[#18315E] shrink-0" /> <T text="Feeding Capacity:" />
                         </span>
-                        <strong className="text-slate-900 dark:text-white">{createdRequest.beneficiaries} <T text="people" /></strong>
+                        <strong className="text-[#18315E] dark:text-white">{createdRequest.beneficiaries} <T text="people" /></strong>
                       </div>
 
-                      <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                        <span className="flex items-center text-slate-500 dark:text-slate-400">
-                          <Calendar className="w-3.5 h-3.5 mr-1 text-blue-600 shrink-0" /> <T text="Needed By:" />
+                      <div className="flex justify-between items-center text-[#60708B] dark:text-slate-300">
+                        <span className="flex items-center text-[#60708B] dark:text-slate-300">
+                          <Calendar className="w-3.5 h-3.5 mr-1 text-[#18315E] shrink-0" /> <T text="Needed By:" />
                         </span>
-                        <strong className="text-slate-900 dark:text-white">{createdRequest.requiredBy}</strong>
+                        <strong className="text-[#18315E] dark:text-white">{createdRequest.requiredBy}</strong>
                       </div>
                     </div>
 
                     {createdRequest.description && (
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                      <p className="text-[11px] text-[#60708B] dark:text-slate-300 italic">
                         "{createdRequest.description}"
                       </p>
                     )}
@@ -288,23 +284,23 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
               <form onSubmit={handleSubmit} className="space-y-4">
                 
                 {error && (
-                  <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-xs font-semibold text-red-600 dark:text-red-400 flex items-center space-x-2">
+                  <div className="p-3 bg-[#F3F0EA] dark:bg-[#0F1A33]/40 border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-xs font-semibold text-[#18315E] dark:text-[#D9B65D] flex items-center space-x-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
                   </div>
                 )}
 
                 {/* Section 1: Pickup / Delivery & Hub Location */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center">
-                    <Building2 className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
+                <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52]/80 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300 flex items-center">
+                    <Building2 className="w-3.5 h-3.5 mr-1.5 text-[#18315E] shrink-0" />
                     <T text="Hub & Delivery Details" />
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        <T text="Hub Location / Area" /> <span className="text-red-500">*</span>
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
+                        <T text="Hub Location / Area" /> <span className="text-[#18315E]">*</span>
                       </label>
                       <input 
                         type="text"
@@ -312,12 +308,12 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={areaPlaceholder}
                         value={formData.area}
                         onChange={(e) => handleChange('area', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
                         <T text="City" />
                       </label>
                       <input 
@@ -325,12 +321,12 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={cityPlaceholder}
                         value={formData.city}
                         onChange={(e) => handleChange('city', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
                         <T text="Detailed Street / Unloading Address" />
                       </label>
                       <input 
@@ -338,23 +334,23 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={addressPlaceholder}
                         value={formData.address}
                         onChange={(e) => handleChange('address', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Section 2: Item & Target Quantity */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center">
-                    <Utensils className="w-3.5 h-3.5 mr-1.5 text-emerald-600 shrink-0" />
+                <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52]/80 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300 flex items-center">
+                    <Utensils className="w-3.5 h-3.5 mr-1.5 text-[#18315E] shrink-0" />
                     <T text="Item & Quantity Needed" />
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                     <div className="md:col-span-2">
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        <T text="Item Name / Specific Food Need" /> <span className="text-red-500">*</span>
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
+                        <T text="Item Name / Specific Food Need" /> <span className="text-[#18315E]">*</span>
                       </label>
                       <input 
                         type="text"
@@ -362,30 +358,30 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={itemPlaceholder}
                         value={formData.item}
                         onChange={(e) => handleChange('item', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
                         <T text="Category" />
                       </label>
                       <select 
                         value={formData.category}
                         onChange={(e) => handleChange('category', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none font-medium cursor-pointer"
                       >
-                        <option value="Food" className="bg-white dark:bg-slate-800"><T text="Food & Rations" /></option>
-                        <option value="Cooked Meals" className="bg-white dark:bg-slate-800"><T text="Cooked Meals" /></option>
-                        <option value="Clothes" className="bg-white dark:bg-slate-800"><T text="Clothes & Blankets" /></option>
-                        <option value="Books" className="bg-white dark:bg-slate-800"><T text="Educational Materials" /></option>
-                        <option value="Medical Supplies" className="bg-white dark:bg-slate-800"><T text="Medical Supplies" /></option>
+                        <option value="Food" className="bg-white dark:bg-[#0F1A33]"><T text="Food & Rations" /></option>
+                        <option value="Cooked Meals" className="bg-white dark:bg-[#0F1A33]"><T text="Cooked Meals" /></option>
+                        <option value="Clothes" className="bg-white dark:bg-[#0F1A33]"><T text="Clothes & Blankets" /></option>
+                        <option value="Books" className="bg-white dark:bg-[#0F1A33]"><T text="Educational Materials" /></option>
+                        <option value="Medical Supplies" className="bg-white dark:bg-[#0F1A33]"><T text="Medical Supplies" /></option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        <T text="Target Quantity" /> <span className="text-red-500">*</span>
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
+                        <T text="Target Quantity" /> <span className="text-[#18315E]">*</span>
                       </label>
                       <input 
                         type="number"
@@ -394,30 +390,30 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={qtyPlaceholder}
                         value={formData.quantity}
                         onChange={(e) => handleChange('quantity', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
                         <T text="Unit" />
                       </label>
                       <select 
                         value={formData.unit}
                         onChange={(e) => handleChange('unit', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium cursor-pointer"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none font-medium cursor-pointer"
                       >
-                        <option value="kg" className="bg-white dark:bg-slate-800">kg (Kilograms)</option>
-                        <option value="Portions" className="bg-white dark:bg-slate-800"><T text="Portions / Meals" /></option>
-                        <option value="Liters" className="bg-white dark:bg-slate-800"><T text="Liters" /></option>
-                        <option value="Packs" className="bg-white dark:bg-slate-800"><T text="Packs / Rations" /></option>
-                        <option value="Boxes" className="bg-white dark:bg-slate-800"><T text="Boxes" /></option>
-                        <option value="Pieces" className="bg-white dark:bg-slate-800"><T text="Pieces / Blankets" /></option>
+                        <option value="kg" className="bg-white dark:bg-[#0F1A33]">kg (Kilograms)</option>
+                        <option value="Portions" className="bg-white dark:bg-[#0F1A33]"><T text="Portions / Meals" /></option>
+                        <option value="Liters" className="bg-white dark:bg-[#0F1A33]"><T text="Liters" /></option>
+                        <option value="Packs" className="bg-white dark:bg-[#0F1A33]"><T text="Packs / Rations" /></option>
+                        <option value="Boxes" className="bg-white dark:bg-[#0F1A33]"><T text="Boxes" /></option>
+                        <option value="Pieces" className="bg-white dark:bg-[#0F1A33]"><T text="Pieces / Blankets" /></option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
                         <T text="Beneficiaries Count" />
                       </label>
                       <input 
@@ -425,37 +421,37 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={beneficiariesPlaceholder}
                         value={formData.beneficiaries}
                         onChange={(e) => handleChange('beneficiaries', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Section 3: Urgency & Needed-By Date */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center">
-                    <Calendar className="w-3.5 h-3.5 mr-1.5 text-emerald-600" />
+                <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52]/80 space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300 flex items-center">
+                    <Calendar className="w-3.5 h-3.5 mr-1.5 text-[#18315E]" />
                     <T text="Urgency & Schedule" />
                   </h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        <T text="Urgency Level" /> <span className="text-red-500">*</span>
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
+                        <T text="Urgency Level" /> <span className="text-[#18315E]">*</span>
                       </label>
                       <select 
                         value={formData.urgency}
                         onChange={(e) => handleChange('urgency', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none font-semibold"
                       >
-                        <option value="HIGH">🔴 <T text="High / Urgent Deficit" /></option>
-                        <option value="MEDIUM">🟡 <T text="Medium Priority" /></option>
+                        <option value="HIGH">?? <T text="High / Urgent Deficit" /></option>
+                        <option value="MEDIUM">?? <T text="Medium Priority" /></option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        {formData.frequency === 'ONE_TIME' ? <T text="Needed By Date" /> : <T text="First Occurrence Date" />} <span className="text-red-500">*</span>
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
+                        {formData.frequency === 'ONE_TIME' ? <T text="Needed By Date" /> : <T text="First Occurrence Date" />} <span className="text-[#18315E]">*</span>
                       </label>
                       <input 
                         type="date"
@@ -463,18 +459,18 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         min={new Date().toISOString().split('T')[0]} // Quick HTML5 validation fallback
                         value={formData.requiredBy}
                         onChange={(e) => handleChange('requiredBy', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none font-medium"
                       />
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                        <T text="Frequency" /> <span className="text-red-500">*</span>
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
+                        <T text="Frequency" /> <span className="text-[#18315E]">*</span>
                       </label>
                       <select 
                         value={formData.frequency}
                         onChange={(e) => handleFrequencyChange(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none font-semibold"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none font-semibold"
                       >
                         <option value="ONE_TIME"><T text="One-time Request" /></option>
                         <option value="DAILY"><T text="Daily" /></option>
@@ -485,7 +481,7 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block font-semibold text-[#18315E] dark:text-slate-300 mb-1">
                         <T text="Special Instructions / Description" />
                       </label>
                       <textarea 
@@ -493,7 +489,7 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                         placeholder={descPlaceholder}
                         value={formData.description}
                         onChange={(e) => handleChange('description', e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-[#18315E] dark:text-white focus:ring-2 focus:ring-[#E5E1D8] outline-none"
                       />
                     </div>
                   </div>
@@ -511,7 +507,7 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
                   <Button
                     type="submit"
                     variant="primary"
-                    className="px-6 bg-amber-500 hover:bg-amber-600 text-white"
+                    className="px-6 bg-[#E5B85C] hover:bg-[#E5B85C] text-white"
                     disabled={isSubmitting}
                     loading={isSubmitting}
                     icon={AlertCircle}
@@ -529,3 +525,12 @@ const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
 };
 
 export default OrgPostNeedModal;
+
+
+
+
+
+
+
+
+

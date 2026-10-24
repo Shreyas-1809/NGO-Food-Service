@@ -9,3 +9,5 @@ import Dashboard from '../../components/Dashboard';
 export default function NGODashboard({ socket, user, token, onLogout, isDarkMode, toggleTheme }) {
   return <Dashboard socket={socket} user={user} token={token} role="ngo" onLogout={onLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
 }
+
+

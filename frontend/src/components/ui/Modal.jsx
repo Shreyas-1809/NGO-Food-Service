@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -12,6 +12,16 @@ const Modal = ({
   confirmClose = false,
   confirmMessage = 'Are you sure you want to close? Any unsaved changes will be lost.',
 }) => {
+const handleClose = useCallback(() => {
+    if (confirmClose) {
+      if (window.confirm(confirmMessage)) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  }, [confirmClose, confirmMessage, onClose]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -20,17 +30,7 @@ const Modal = ({
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  const handleClose = () => {
-    if (confirmClose) {
-      if (window.confirm(confirmMessage)) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
-  };
+  }, [isOpen, handleClose]);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -47,22 +47,22 @@ const Modal = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100] flex justify-center items-center p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 bg-[#173B78]/80 backdrop-blur-xs z-[100] flex justify-center items-center p-4 animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
       <div
-        className={`w-full ${maxWidth} bg-[var(--card-bg)] rounded-[12px] shadow-2xl relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden`}
+        className={`w-full ${maxWidth} bg-white dark:bg-[#0F1A33] rounded-3xl shadow-sm border border-[#E5E1D8] dark:border-[#1E2D52] relative animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden`}
       >
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-700/60 shrink-0">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-[#E5E1D8] shrink-0">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{title}</h2>
+            <h2 className="text-xl font-extrabold text-[#18315E] dark:text-white font-serif">{title}</h2>
             {subtitle && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>
+              <p className="text-sm text-[#60708B] mt-1">{subtitle}</p>
             )}
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors"
+            className="p-2 rounded-full hover:bg-[#F3F0EA] text-[#60708B] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -77,3 +77,4 @@ const Modal = ({
 };
 
 export default Modal;
+

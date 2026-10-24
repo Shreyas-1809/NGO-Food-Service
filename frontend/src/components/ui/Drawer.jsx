@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 
 const Drawer = ({
@@ -12,6 +12,16 @@ const Drawer = ({
   confirmMessage = 'Are you sure you want to close? Any unsaved changes will be lost.',
   icon: Icon
 }) => {
+const handleClose = useCallback(() => {
+    if (confirmClose) {
+      if (window.confirm(confirmMessage)) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  }, [confirmClose, confirmMessage, onClose]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && isOpen) {
@@ -20,17 +30,7 @@ const Drawer = ({
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
-
-  const handleClose = () => {
-    if (confirmClose) {
-      if (window.confirm(confirmMessage)) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
-  };
+  }, [isOpen, handleClose]);
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -42,26 +42,26 @@ const Drawer = ({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-[100] flex justify-end animate-in fade-in duration-200"
+      className="fixed inset-0 bg-[#173B78]/80 backdrop-blur-xs z-[100] flex justify-end animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
       <div
-        className={`${width} bg-white dark:bg-slate-800 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300`}
+        className={`${width} bg-white dark:bg-[#0F1A33] rounded-3xl shadow-sm border border-[#E5E1D8] dark:border-[#1E2D52] h-full flex flex-col animate-in slide-in-from-right duration-300`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 dark:border-slate-700/60 shrink-0">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-[#E5E1D8] shrink-0">
           <div className="flex items-center gap-3">
-            {Icon && <Icon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+            {Icon && <Icon className="w-5 h-5 text-[#E5B85C]" />}
             <div>
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{title}</h2>
+              <h2 className="text-xl font-extrabold text-[#18315E] dark:text-white font-serif">{title}</h2>
               {subtitle && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>
+                <p className="text-sm text-[#60708B] mt-1">{subtitle}</p>
               )}
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors"
+            className="p-2 rounded-full hover:bg-[#F3F0EA] text-[#60708B] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -75,3 +75,5 @@ const Drawer = ({
 };
 
 export default Drawer;
+
+

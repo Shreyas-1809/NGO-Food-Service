@@ -47,7 +47,7 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
         });
       }
 
-      onSuccess && onSuccess();
+      if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
       console.error('Failed to reject:', err);
@@ -62,22 +62,22 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
       onClose={onClose}
       title="Reject Donation"
       icon={AlertTriangle}
-      iconClassName="text-red-500 bg-red-100 dark:bg-red-900/30"
+      iconClassName="text-[#18315E] bg-[#F3F0EA] dark:bg-[#0F1A33]/30"
       maxWidth="max-w-md"
     >
       <div className="space-y-6">
-        <p className="text-sm text-slate-600 dark:text-slate-300">
+        <p className="text-sm text-[#60708B] dark:text-slate-300">
           Please select a reason for rejecting <strong>{donation.title}</strong>. This will remove it from your feed and notify the donor.
         </p>
 
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm rounded-lg">
+          <div className="p-3 bg-[#F3F0EA] dark:bg-[#0F1A33]/30 text-[#18315E] dark:text-[#D9B65D] text-sm rounded-lg">
             {error}
           </div>
         )}
 
         <div className="space-y-3">
-          <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <label className="block text-sm font-semibold text-[#18315E] dark:text-slate-300">
             Reason for Rejection
           </label>
           <div className="space-y-2">
@@ -89,9 +89,9 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
                   value={reason}
                   checked={selectedReason === reason}
                   onChange={(e) => setSelectedReason(e.target.value)}
-                  className="mt-1 w-4 h-4 text-red-600 bg-slate-100 border-slate-300 focus:ring-red-500 dark:focus:ring-red-600 dark:ring-offset-slate-800 focus:ring-2 dark:bg-slate-700 dark:border-slate-600"
+                  className="mt-1 w-4 h-4 text-[#18315E] bg-[#F3F0EA] border-[#E5E1D8] focus:ring-[#E5E1D8] dark:focus:ring-[#173B78] dark:ring-offset-[#173B78] focus:ring-2 dark:bg-[#0F1A33] dark:border-[#1E2D52]"
                 />
-                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                <span className="text-sm text-[#18315E] dark:text-slate-300 group-hover:text-[#18315E] dark:group-hover:text-white transition-colors">
                   {reason}
                 </span>
               </label>
@@ -101,8 +101,8 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
 
         {isOther && (
           <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Please specify <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-[#18315E] dark:text-slate-300">
+              Please specify <span className="text-[#18315E]">*</span>
             </label>
             <input
               type="text"
@@ -110,13 +110,13 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
               value={otherReason}
               onChange={(e) => setOtherReason(e.target.value)}
               placeholder="Brief reason (max 200 chars)"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              className="w-full bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E5E1D8]/50"
             />
           </div>
         )}
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+          <label className="block text-sm font-medium text-[#18315E] dark:text-slate-300">
             Additional Notes (Optional)
           </label>
           <textarea
@@ -124,12 +124,12 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Any extra context for the donor..."
             rows={2}
-            className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500/50 resize-none"
+            className="w-full bg-white dark:bg-[#0F1A33] border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#E5E1D8]/50 resize-none"
           />
         </div>
       </div>
 
-      <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+      <div className="mt-8 flex justify-end gap-3 pt-6 border-t border-[#E5E1D8] dark:border-[#1E2D52]">
         <Button variant="secondary" onClick={onClose} disabled={isSubmitting}>
           Cancel
         </Button>
@@ -146,3 +146,13 @@ const RejectDonationModal = ({ isOpen, onClose, donation, token, onSuccess, onSu
 };
 
 export default RejectDonationModal;
+
+
+
+
+
+
+
+
+
+

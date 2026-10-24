@@ -31,14 +31,14 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
 
           {/* Delivery Box Gradient */}
           <linearGradient id="boxGrad" x1="160" y1="110" x2="160" y2="210" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#F59E0B" />
+            <stop offset="0%" stopColor="#E5B85C" />
             <stop offset="100%" stopColor="#D97706" />
           </linearGradient>
 
           {/* Lid Gradient */}
           <linearGradient id="lidGrad" x1="160" y1="95" x2="160" y2="120" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stopColor="#FBBF24" />
-            <stop offset="100%" stopColor="#F59E0B" />
+            <stop offset="100%" stopColor="#E5B85C" />
           </linearGradient>
 
           {/* Checkmark Badge Gradient */}
@@ -56,7 +56,7 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
 
         {/* 1. Soft Warm & Mint Ambient Blobs */}
         <circle cx="160" cy="140" r="110" fill="url(#successGlow)" />
-        <ellipse cx="160" cy="225" rx="90" ry="14" fill="#E2E8F0" fillOpacity="0.6" className="dark:fill-stone-800" />
+        <ellipse cx="160" cy="225" rx="90" ry="14" fill="#E2E8F0" fillOpacity="0.6" className="dark:fill-[#0F1A33]" />
 
         {/* 2. Floating Confetti & Joyful Sparkles */}
         {/* Confetti Ribbon 1 */}
@@ -65,7 +65,7 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
         <path d="M245 65 Q 235 80 250 85 T 240 105" stroke="#10B981" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.85" />
         
         {/* Star Sparkle Left */}
-        <path d="M95 125 L98 133 L106 136 L98 139 L95 147 L92 139 L84 136 L92 133 Z" fill="#F59E0B" opacity="0.9" />
+        <path d="M95 125 L98 133 L106 136 L98 139 L95 147 L92 139 L84 136 L92 133 Z" fill="#E5B85C" opacity="0.9" />
         {/* Star Sparkle Top Right */}
         <path d="M225 50 L227.5 56 L234 58 L227.5 60 L225 66 L222.5 60 L216 58 L222.5 56 Z" fill="#10B981" opacity="0.9" />
         {/* Star Sparkle Top Center */}
@@ -75,7 +75,7 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
         <circle cx="65" cy="110" r="4.5" fill="#3B82F6" opacity="0.75" />
         <circle cx="260" cy="120" r="5" fill="#EC4899" opacity="0.75" />
         <circle cx="115" cy="55" r="3.5" fill="#10B981" opacity="0.8" />
-        <circle cx="205" cy="40" r="4" fill="#F59E0B" opacity="0.8" />
+        <circle cx="205" cy="40" r="4" fill="#E5B85C" opacity="0.8" />
         <circle cx="270" cy="165" r="3.5" fill="#E8873A" opacity="0.75" />
 
         {/* 3. Fresh Food Items Peeking from Box */}
@@ -137,7 +137,7 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
             letterSpacing="0.3"
             fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
           >
-            DELIVERED & VERIFIED ✓
+            DELIVERED & VERIFIED \u2713
           </text>
         </g>
       </svg>
@@ -146,3 +146,6 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
 };
 
 export default DeliverySuccessIllustration;
+
+
+

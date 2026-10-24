@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps } from '../services/mapsService';
 import { calculateDistanceKm } from '../services/mapsService';
-import { MapPin, ShieldCheck, Info, Sparkles, ArrowRight } from 'lucide-react';
+import { MapPin, ShieldCheck, Info, Sparkles } from 'lucide-react';
 
 const isValidCoord = (lat, lng) =>
   Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
@@ -12,7 +12,7 @@ const hasRealCoords = (coords) =>
   isValidCoord(coords.lat, coords.lng) &&
   !(Math.abs(Number(coords.lat)) < 1e-6 && Math.abs(Number(coords.lng)) < 1e-6);
 
-const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = null, orgNgoId = null, redirectNgo = null }) => {
+const MapView = ({ ngos = [], selectedNgo = null, _onSelectNgo, userLocation = null, orgNgoId = null, redirectNgo = null }) => {
   const mapRef = useRef(null);
   const [apiAvailable, setApiAvailable] = useState(true);
 
@@ -45,11 +45,11 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
           const isOwnHub = orgNgoId && ngo.id === orgNgoId;
           const isSurplusClaimant = Boolean(ngo.wantsSurplus);
 
-          let fillColor = ngo.verified ? '#10B981' : '#F59E0B';
+          let fillColor = ngo.verified ? '#10B981' : '#E5B85C';
           let scale = 10;
 
           if (isOwnHub) {
-            fillColor = '#F59E0B';
+            fillColor = '#E5B85C';
             scale = 14;
           } else if (isSurplusClaimant) {
             fillColor = '#8B5CF6'; // Violet for surplus claimant
@@ -62,7 +62,7 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
             title: isOwnHub
               ? `${ngo.name} (Your Hub)`
               : isSurplusClaimant
-              ? `🎯 ${ngo.name} (Wants Your Surplus)`
+              ? `${ngo.name} (Wants Your Surplus)`
               : ngo.name,
             icon: {
               path: maps.SymbolPath.CIRCLE,
@@ -155,7 +155,13 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
         redirectPolyline.setMap(null);
       }
     };
-  }, [ngos, userLocation, selectedNgo, redirectNgo]);
+  }, [
+	ngos,
+	userLocation,
+	selectedNgo,
+	redirectNgo,
+	orgNgoId
+]);
 
   // For fallback canvas: compute connection between donor and redirect NGO
   const redirectNgoPos = redirectNgo?.location;
@@ -165,25 +171,25 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
     : null;
 
   return (
-    <div className="w-full h-full min-h-[450px] relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+    <div className="w-full h-full min-h-[450px] relative rounded-3xl overflow-hidden border border-[#E5E1D8] dark:border-[#1E2D52] shadow-sm flex flex-col">
       
       {/* Live Google Map Container or Fallback Canvas */}
       {apiAvailable ? (
         <div ref={mapRef} className="w-full h-full min-h-[450px]" />
       ) : (
         /* INTERACTIVE DEMO MAP CANVAS FALLBACK */
-        <div className="w-full h-full min-h-[450px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 text-white relative p-6 flex flex-col justify-between overflow-hidden">
+        <div className="w-full h-full min-h-[450px] bg-gradient-to-br from-[#173B78] via-[#0F172A] to-[#F97316] text-white relative p-6 flex flex-col justify-between overflow-hidden">
           
           {/* Top Banner Alert */}
-          <div className="bg-slate-800/90 backdrop-blur-md border border-slate-700 p-3 rounded-2xl flex items-center justify-between text-xs z-10 shadow-lg">
+          <div className="bg-[#173B78]/90 backdrop-blur-md border border-[#1E293B] p-3 rounded-2xl flex items-center justify-between text-xs z-10 shadow-lg">
             <div className="flex items-center space-x-2">
-              <Info className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Map rendering mode. Configure <code className="text-emerald-300">VITE_GOOGLE_MAPS_API_KEY</code> in <code className="text-emerald-300">.env</code> for Google Maps API.</span>
+              <Info className="w-4 h-4 text-[#E5B85C] shrink-0" />
+              <span>Map rendering mode. Configure <code className="text-[#E5B85C]">VITE_GOOGLE_MAPS_API_KEY</code> in <code className="text-[#E5B85C]">.env</code> for Google Maps API.</span>
             </div>
           </div>
 
           {/* Canvas Pins */}
-          <div className="relative flex-1 my-4 bg-slate-950/50 rounded-2xl border border-slate-800/80 p-4 overflow-hidden flex items-center justify-center">
+          <div className="relative flex-1 my-4 bg-[#173B78]/50 rounded-2xl border border-[#1E293B]/80 p-4 overflow-hidden flex items-center justify-center">
             
             {/* Simulated Grid Lines */}
             <div className="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:24px_24px] opacity-20"></div>
@@ -225,35 +231,35 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
                 </svg>
 
                 {/* Distance badge on the line */}
-                <div className="absolute z-20 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-violet-900/90 text-violet-200 border border-violet-600/60 shadow-lg"
+                <div className="absolute z-20 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-[#173B78]/90 text-[#E5B85C] border border-[#E5B85C]/60 shadow-lg"
                   style={{ top: '45%', left: '48%', transform: 'translate(-50%, -50%)' }}>
                   ~{canvasDistanceKm} km
                 </div>
 
                 {/* Donor Marker (Your Hub) */}
                 <div className="absolute flex flex-col items-center z-20" style={{ top: '32%', left: '26%', transform: 'translate(-50%, -100%)' }}>
-                  <div className="bg-blue-600 text-white p-2.5 rounded-full shadow-xl shadow-blue-600/50">
+                  <div className="bg-[#173B78] text-white p-2.5 rounded-full shadow-xl shadow-[#173B78]/50">
                     <MapPin className="w-5 h-5" />
                   </div>
-                  <span className="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
+                  <span className="bg-[#173B78] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
                     📍 Your Hub
                   </span>
                 </div>
 
                 {/* Receiver NGO Marker (highlighted) */}
                 <div className="absolute flex flex-col items-center z-20" style={{ top: '52%', left: '70%', transform: 'translate(-50%, -100%)' }}>
-                  <div className="bg-violet-600 text-white p-2.5 rounded-full shadow-xl shadow-violet-600/70 ring-4 ring-violet-400/30 animate-pulse">
+                  <div className="bg-[#E5B85C] text-white p-2.5 rounded-full shadow-xl shadow-[#173B78]/70 ring-4 ring-[#173B78]/30 animate-pulse">
                     <Sparkles className="w-5 h-5" />
                   </div>
-                  <span className="bg-violet-950 text-violet-200 border border-violet-700 text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap max-w-[120px] truncate">
-                    🎯 {redirectNgo.name}
+                  <span className="bg-[#173B78] text-[#E5B85C] border border-[#E5B85C] text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap max-w-[120px] truncate">
+                    {redirectNgo.name}
                   </span>
                 </div>
 
                 {/* Live indicator */}
-                <div className="absolute bottom-3 left-3 flex items-center space-x-1.5 bg-slate-800/90 px-2.5 py-1.5 rounded-xl border border-violet-700/50 z-20">
-                  <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse"></div>
-                  <span className="text-[10px] font-bold text-violet-300">Route preview active</span>
+                <div className="absolute bottom-3 left-3 flex items-center space-x-1.5 bg-[#173B78]/90 px-2.5 py-1.5 rounded-xl border border-[#E5B85C]/50 z-20">
+                  <div className="w-2 h-2 rounded-full bg-[#E5B85C] animate-pulse"></div>
+                  <span className="text-[10px] font-bold text-[#E5B85C]">Route preview active</span>
                 </div>
               </>
             )}
@@ -263,10 +269,10 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
               <>
                 {/* Donor Marker */}
                 <div className="absolute top-1/3 left-1/4 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
-                  <div className="bg-blue-600 text-white p-2.5 rounded-full shadow-xl shadow-blue-600/50 animate-bounce">
+                  <div className="bg-[#173B78] text-white p-2.5 rounded-full shadow-xl shadow-[#173B78]/50 animate-bounce">
                     <MapPin className="w-5 h-5" />
                   </div>
-                  <span className="bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
+                  <span className="bg-[#173B78] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap">
                     📍 Your Location (Pune)
                   </span>
                 </div>
@@ -280,21 +286,21 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
                     <div className="absolute top-1/2 left-2/3 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
                       <div className={`text-white p-2.5 rounded-full shadow-xl ${
                         isOwnHub
-                          ? 'bg-amber-500 shadow-amber-500/60 ring-2 ring-white'
+                          ? 'bg-[#E5B85C] shadow-[#E5B85C]/60 ring-2 ring-white'
                           : isSurplusClaimant
-                          ? 'bg-violet-600 shadow-violet-600/70 ring-2 ring-white animate-pulse'
-                          : 'bg-emerald-500 shadow-emerald-500/50'
+                          ? 'bg-[#E5B85C] shadow-[#173B78]/70 ring-2 ring-white animate-pulse'
+                          : 'bg-[#173B78] shadow-[#173B78]/50'
                       }`}>
                         {isSurplusClaimant ? <Sparkles className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap border ${
                         isOwnHub
-                          ? 'bg-amber-950 text-amber-200 border-amber-700'
+                          ? 'bg-[#173B78] text-[#18315E] border-[#1E293B]'
                           : isSurplusClaimant
-                          ? 'bg-violet-950 text-violet-200 border-violet-700'
-                          : 'bg-emerald-950 text-emerald-200 border-emerald-800'
+                          ? 'bg-[#173B78] text-[#E5B85C] border-[#E5B85C]'
+                          : 'bg-[#173B78] text-[#18315E] border-[#173B78]'
                       }`}>
-                        {isOwnHub ? '📍 This is you · ' : isSurplusClaimant ? '🎯 Wants Surplus · ' : '✓ '}{ngos[0].name}
+                        {isOwnHub ? '📍 This is you · ' : isSurplusClaimant ? 'Wants Surplus · ' : '? '}{ngos[0].name}
                       </span>
                     </div>
                   );
@@ -309,17 +315,17 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
                     <div className="absolute bottom-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
                       <div className={`text-white p-2 rounded-full shadow-lg ${
                         isOwnHub
-                          ? 'bg-amber-500 shadow-amber-500/50 ring-2 ring-white'
+                          ? 'bg-[#E5B85C] shadow-[#F3F0EA]/50 ring-2 ring-white'
                           : isSurplusClaimant
-                          ? 'bg-violet-600 shadow-violet-600/70 ring-2 ring-white'
-                          : 'bg-teal-500 shadow-teal-500/50'
+                          ? 'bg-[#E5B85C] shadow-[#173B78]/70 ring-2 ring-white'
+                          : 'bg-[#E5B85C] shadow-[#E5B85C]/50'
                       }`}>
                         <ShieldCheck className="w-4 h-4" />
                       </div>
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded shadow mt-1 whitespace-nowrap ${
-                        isOwnHub ? 'bg-amber-950 text-amber-200' : isSurplusClaimant ? 'bg-violet-950 text-violet-200' : 'bg-slate-900 text-slate-300'
+                        isOwnHub ? 'bg-[#173B78] text-[#18315E]' : isSurplusClaimant ? 'bg-[#173B78] text-[#E5B85C]' : 'bg-[#173B78] text-[#60708B]'
                       }`}>
-                        {isOwnHub ? '📍 This is you · ' : isSurplusClaimant ? '🎯 Wants Surplus · ' : ''}{ngos[1].name}
+                        {isOwnHub ? '📍 This is you · ' : isSurplusClaimant ? 'Wants Surplus · ' : ''}{ngos[1].name}
                       </span>
                     </div>
                   );
@@ -337,3 +343,13 @@ const MapView = ({ ngos = [], selectedNgo = null, onSelectNgo, userLocation = nu
 };
 
 export default MapView;
+
+
+
+
+
+
+
+
+
+

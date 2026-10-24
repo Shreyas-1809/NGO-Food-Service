@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { 
   Truck, 
   Phone, 
-  MessageCircle, 
-  Mail, 
-  X, 
   CheckCircle, 
   Navigation, 
   QrCode, 
@@ -39,12 +36,11 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
   const [pickups, setPickups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deliveryConfirmingId, setDeliveryConfirmingId] = useState(null);
-  const [error, setError] = useState('');
+  const [,setError] = useState('');
   const [editingVolunteer, setEditingVolunteer] = useState({});
   const [volunteerForm, setVolunteerForm] = useState({});
   const [savingVolunteer, setSavingVolunteer] = useState({});
   const [assignError, setAssignError] = useState({});
-  const [receiptForm, setReceiptForm] = useState({});
   const [deliveryModalFood, setDeliveryModalFood] = useState(null);
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const [copiedToken, setCopiedToken] = useState(null);
@@ -53,7 +49,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
 
   const isDonor = user?.accountType === 'DONOR';
 
-  const fetchPickups = async (silent = false) => {
+const fetchPickups = useCallback(async (silent = false) => {
     if (!token) return;
     try {
       if (!silent) setLoading(true);
@@ -75,7 +71,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
     } finally {
       if (!silent) setLoading(false);
     }
-  };
+  }, [token, highlightTaskId]);
 
   // Live polling and socket listeners while drawer is open
   useEffect(() => {
@@ -111,7 +107,13 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
         socket.off('CLAIM_ACCEPTED', handleLiveUpdate);
       }
     };
-  }, [isOpen, user, token, socket]);
+  }, [
+	isOpen,
+	user,
+	token,
+	socket,
+	fetchPickups
+]);
 
   const toggleExpand = (taskId) => {
     setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
@@ -233,7 +235,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
     >
       <div className="flex flex-col h-full space-y-4">
         {/* Filter Tabs Header */}
-        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#070E1E] p-1 rounded-xl border border-slate-200 dark:border-[#1E2D52] text-xs font-bold shrink-0 overflow-x-auto">
           {[
             { id: 'ALL', label: 'All Active Tasks', count: activePickups.length },
             { id: 'IN_TRANSIT', label: 'In Transit', count: activePickups.filter(p => p.status === 'IN_TRANSIT' || p.volunteerStatus === 'picked_up').length },
@@ -244,8 +246,8 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
               onClick={() => setFilterTab(tab.id)}
               className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 filterTab === tab.id
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white dark:bg-[#15223F] dark:border dark:border-[#1E2D52]/60 dark:hover:bg-[#15223F]'
               }`}
             >
               {tab.label} ({tab.count})
@@ -261,7 +263,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
               <span>Loading workspace tasks...</span>
             </div>
           ) : filteredPickups.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-6 space-y-2">
+            <div className="text-center py-12 text-slate-500 bg-slate-50 dark:bg-[#070E1E]/40 rounded-2xl border border-dashed border-slate-300 dark:border-[#1E2D52] p-6 space-y-2">
               <Package className="w-8 h-8 text-slate-400 mx-auto" />
               <h4 className="font-bold text-slate-800 dark:text-white text-sm">No Active Tasks in this View</h4>
               <p className="text-xs text-slate-400">Accepted claim requests and active pickup handovers will appear here.</p>
@@ -300,27 +302,27 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
               return (
                 <div 
                   key={pickup._id} 
-                  className={`bg-white dark:bg-slate-800 rounded-2xl border transition-all overflow-hidden shadow-xs ${
+                  className={`bg-white dark:bg-[#0F1A33] rounded-2xl border transition-all overflow-hidden shadow-xs ${
                     highlightTaskId === pickup._id 
                       ? 'border-emerald-500 ring-2 ring-emerald-500/20 dark:ring-emerald-500/30' 
-                      : 'border-slate-200 dark:border-slate-700'
+                      : 'border-slate-200 dark:border-[#1E2D52]'
                   }`}
                 >
                   {/* Card Main Header Bar */}
                   <div 
                     onClick={() => toggleExpand(pickup._id)}
-                    className="p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-700/40 transition-colors"
+                    className="p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50/80 dark:hover:bg-[#15223F]/40 transition-colors"
                   >
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-extrabold text-slate-900 dark:text-white text-base truncate">
                           {pickup.title}
                         </h4>
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-300">
                           ({pickup.quantity || 0} Servings)
                         </span>
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-3 flex-wrap">
+                      <div className="text-xs text-slate-500 dark:text-slate-300 flex items-center gap-3 flex-wrap">
                         <span><strong>{isDonor ? 'Recipient NGO:' : 'Donor:'}</strong> {counterpartName}</span>
                         <span>•</span>
                         <span><strong>Requested:</strong> {formatPickupTime(pickup.requestedPickupTime || pickup.createdAt)}</span>
@@ -330,11 +332,11 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                     <div className="flex items-center gap-3 shrink-0">
                       {/* Status Pill Badge */}
                       <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider ${
-                        isCompleted ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' :
-                        isInTransit ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' :
-                        pickup.volunteerStatus === 'declined' ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' :
-                        isVolAssigned ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' :
-                        'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
+                        isCompleted ? 'bg-emerald-100 text-emerald-800 dark:bg-[#5BB487]/14 dark:text-[#5BB487]' :
+                        isInTransit ? 'bg-amber-100 text-amber-800 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A]' :
+                        pickup.volunteerStatus === 'declined' ? 'bg-rose-100 text-rose-800 dark:bg-[#E5707A]/14 dark:text-[#E5707A]' :
+                        isVolAssigned ? 'bg-blue-100 text-blue-800 dark:bg-[#3156B5]/14 dark:text-[#3156B5]' :
+                        'bg-slate-100 text-slate-700 dark:bg-[#0F1A33] dark:text-[#9AA3B8]'
                       }`}>
                         {isCompleted ? 'Completed ✓' :
                          isInTransit ? 'En Route 🚚' :
@@ -350,19 +352,19 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                   </div>
 
                   {/* Task Stepper Visual Bar */}
-                  <div className="px-4 py-2 bg-slate-50 dark:bg-slate-900/40 border-t border-b border-slate-100 dark:border-slate-700/60">
+                  <div className="px-4 py-2 bg-slate-50 dark:bg-[#070E1E]/40 border-t border-b border-slate-100 dark:border-[#1E2D52]/60">
                     <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-bold">
-                      <div className={`py-1 rounded-lg ${isAccepted ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
-                        1. Accepted ✓
+                      <div className={`py-1 rounded-lg ${isAccepted ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
+                        1. Accepted {'✓'}
                       </div>
-                      <div className={`py-1 rounded-lg ${isVolAssigned ? 'bg-emerald-500 text-white' : pickup.volunteerStatus === 'declined' ? 'bg-rose-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
+                      <div className={`py-1 rounded-lg ${isVolAssigned ? 'bg-emerald-500 text-white' : pickup.volunteerStatus === 'declined' ? 'bg-rose-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
                         2. Vol Assigned
                       </div>
-                      <div className={`py-1 rounded-lg ${isInTransit ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
+                      <div className={`py-1 rounded-lg ${isInTransit ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
                         3. In Transit 🚚
                       </div>
-                      <div className={`py-1 rounded-lg ${isCompleted ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
-                        4. Delivered ✓
+                      <div className={`py-1 rounded-lg ${isCompleted ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
+                        4. Delivered {'✓'}
                       </div>
                     </div>
                   </div>
@@ -371,13 +373,13 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                   {isExpanded && (
                     <div className="p-4 space-y-4 text-xs animate-in fade-in duration-200">
                       {/* Counterpart Contact Section */}
-                      <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
+                      <div className="bg-slate-50 dark:bg-[#070E1E]/60 p-3.5 rounded-xl border border-slate-200/80 dark:border-[#1E2D52] flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">
                             {isDonor ? 'Recipient Organisation' : 'Food Donor Partner'}
                           </span>
                           <p className="font-bold text-slate-900 dark:text-white text-sm mt-0.5">{counterpartName}</p>
-                          <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center mt-1">
+                          <p className="text-slate-500 dark:text-slate-300 text-xs flex items-center mt-1">
                             <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
                             <span>{(!isDonor && pickup.pickupAddress) ? pickup.pickupAddress : [counterpart?.address, counterpart?.city].filter(Boolean).join(', ') || 'Pune Hub'}</span>
                           </p>
@@ -395,9 +397,9 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                       {/* Volunteer Assignment Section */}
                       {isFormVisible ? (
                         /* NGO Inline Assignment Form */
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-emerald-300 dark:border-emerald-700/60 shadow-xs space-y-3">
+                        <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-emerald-300 dark:border-[#5BB487]/40 shadow-xs space-y-3">
                           <div className="flex justify-between items-center">
-                            <span className="font-bold text-[10px] uppercase text-emerald-600 dark:text-emerald-400 tracking-wider flex items-center gap-1.5">
+                            <span className="font-bold text-[10px] uppercase text-emerald-600 dark:text-[#ECE9E1] tracking-wider flex items-center gap-1.5">
                               <UserCheck className="w-4 h-4 text-emerald-600" />
                               <span>{vol.name ? 'Edit Volunteer Assignment' : 'Assign Pickup Volunteer'}</span>
                             </span>
@@ -405,26 +407,26 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                               <button
                                 type="button"
                                 onClick={() => setEditingVolunteer(prev => ({ ...prev, [pickup._id]: false }))}
-                                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-[#9AA3B8] cursor-pointer"
                               >
                                 Cancel
                               </button>
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                          <p className="text-xs text-slate-500 dark:text-slate-300">
                             Enter the details of the volunteer who will pick up and transport this surplus food.
                           </p>
 
                           {assignError[pickup._id] && (
-                            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-700 dark:text-rose-300 text-xs">
+                            <div className="p-2.5 bg-rose-50 dark:bg-[#E5707A]/14 border border-rose-200 dark:border-[#E5707A]/40 rounded-lg text-rose-700 dark:text-[#E5707A] text-xs">
                               {assignError[pickup._id]}
                             </div>
                           )}
 
                           <div className="space-y-2.5">
                             <div>
-                              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                              <label className="block text-[11px] font-semibold text-slate-600 dark:text-[#9AA3B8] mb-1">
                                 Volunteer Name *
                               </label>
                               <div className="relative">
@@ -435,14 +437,14 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                                   placeholder="e.g. Priya Sharma"
                                   value={currentVolForm.name || ''}
                                   onChange={(e) => handleFormChange(pickup._id, 'name', e.target.value)}
-                                  className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                                  className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                                 />
                               </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-[#9AA3B8] mb-1">
                                   Phone Number *
                                 </label>
                                 <div className="relative">
@@ -453,13 +455,13 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                                     placeholder="e.g. +91 9823012345"
                                     value={currentVolForm.phone || ''}
                                     onChange={(e) => handleFormChange(pickup._id, 'phone', e.target.value)}
-                                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                                   />
                                 </div>
                               </div>
 
                               <div>
-                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1">
+                                <label className="block text-[11px] font-semibold text-slate-600 dark:text-[#9AA3B8] mb-1">
                                   Vehicle Number / Info
                                 </label>
                                 <div className="relative">
@@ -469,7 +471,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                                     placeholder="e.g. MH 12 AB 1234"
                                     value={currentVolForm.vehicleNumber || ''}
                                     onChange={(e) => handleFormChange(pickup._id, 'vehicleNumber', e.target.value)}
-                                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    className="w-full pl-8 pr-3 py-1.5 border rounded-lg text-xs dark:bg-[#0F1A33] dark:border-[#1E2D52] dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                                   />
                                 </div>
                               </div>
@@ -479,7 +481,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                               type="button"
                               disabled={savingVolunteer[pickup._id]}
                               onClick={() => handleSaveVolunteer(pickup._id)}
-                              className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                              className="w-full py-2 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                             >
                               <UserCheck className="w-4 h-4" />
                               <span>{savingVolunteer[pickup._id] ? 'Saving Volunteer...' : 'Save Volunteer Assignment'}</span>
@@ -488,7 +490,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                         </div>
                       ) : isVolAssigned ? (
                         /* Assigned Volunteer Display Card */
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                        <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                               <UserCheck className="w-4 h-4 text-emerald-600" />
@@ -498,24 +500,24 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                               <button
                                 type="button"
                                 onClick={() => startEditingVolunteer(pickup)}
-                                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
+                                className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-[#ECE9E1] hover:underline cursor-pointer"
                               >
                                 Edit / Reassign
                               </button>
                             )}
                           </div>
 
-                          <div className="bg-slate-50 dark:bg-slate-900/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700 space-y-2">
+                          <div className="bg-slate-50 dark:bg-[#070E1E]/50 p-3.5 rounded-xl border border-slate-200/80 dark:border-[#1E2D52] space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div>
                                 <div className="flex items-center gap-2">
                                   <p className="font-bold text-slate-900 dark:text-white text-sm">{vol.name}</p>
                                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    pickup.volunteerStatus === 'declined' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' :
-                                    isCompleted || pickup.volunteerStatus === 'delivered' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
-                                    isInTransit || pickup.volunteerStatus === 'picked_up' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
-                                    ['en_route', 'accepted'].includes(pickup.volunteerStatus) ? 'bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300' :
-                                    'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
+                                    pickup.volunteerStatus === 'declined' ? 'bg-rose-100 text-rose-700 dark:bg-[#E5707A]/14 dark:text-[#E5707A]' :
+                                    isCompleted || pickup.volunteerStatus === 'delivered' ? 'bg-emerald-100 text-emerald-700 dark:bg-[#5BB487]/14 dark:text-[#5BB487]' :
+                                    isInTransit || pickup.volunteerStatus === 'picked_up' ? 'bg-amber-100 text-amber-700 dark:bg-[#E0A84A]/14 dark:text-[#E0A84A]' :
+                                    ['en_route', 'accepted'].includes(pickup.volunteerStatus) ? 'bg-sky-100 text-sky-700 dark:bg-[#3156B5]/14 dark:text-[#3156B5]' :
+                                    'bg-blue-100 text-blue-700 dark:bg-[#3156B5]/14 dark:text-[#3156B5]'
                                   }`}>
                                     {pickup.volunteerStatus === 'declined' ? 'Declined ⚠️' :
                                      isCompleted || pickup.volunteerStatus === 'delivered' ? 'Delivered ✓' :
@@ -524,9 +526,9 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                                      'Assigned'}
                                   </span>
                                 </div>
-                                {vol.phone && <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5">{vol.phone}</p>}
+                                {vol.phone && <p className="text-slate-500 dark:text-slate-300 text-xs mt-0.5">{vol.phone}</p>}
                                 {(vol.arrivalTime || vol.vehicleNumber || vol.notes) && (
-                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-300 mt-0.5">
                                     Vehicle / Notes: <strong>{vol.arrivalTime || vol.vehicleNumber || vol.notes}</strong>
                                   </p>
                                 )}
@@ -541,12 +543,12 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
 
                             {/* Single Action: Send to Volunteer via WhatsApp */}
                             {volunteerUrl && !isDonor && (
-                              <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 mt-2">
+                              <div className="pt-2 border-t border-slate-100 dark:border-[#1E2D52]/60 mt-2">
                                 <a
                                   href={`https://wa.me/${(vol.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${vol.name || 'Volunteer'}, here is your food pickup task & navigation link for "${pickup.title}":\n\n${volunteerUrl}\n\nPlease tap this link to view pickup location, drop-off location, item details, and update your status.`)}`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+                                  className="w-full py-2.5 px-3 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
                                   title="Open WhatsApp with prefilled volunteer task link"
                                 >
                                   <Share2 className="w-4 h-4" />
@@ -557,7 +559,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                           </div>
 
                           {pickup.volunteerStatus === 'declined' && (
-                            <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between gap-2">
+                            <div className="p-2.5 bg-rose-50 dark:bg-[#E5707A]/14 rounded-xl border border-rose-200 dark:border-[#E5707A]/40 text-xs text-rose-700 dark:text-[#E5707A] flex items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5">
                                 <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
                                 <span>{pickup.volunteerDeclineReason ? `Declined: ${pickup.volunteerDeclineReason}` : 'Volunteer declined this task.'}</span>
@@ -576,12 +578,12 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                         </div>
                       ) : (
                         /* Donor Read-Only Empty State */
-                        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                        <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-2">
                           <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                             <UserCheck className="w-4 h-4 text-slate-400" />
                             <span>Pickup Volunteer Assignment</span>
                           </span>
-                          <div className="bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-slate-500 italic text-xs">
+                          <div className="bg-slate-50 dark:bg-[#070E1E]/40 p-3 rounded-xl border border-dashed border-slate-300 dark:border-[#1E2D52] text-center text-slate-500 italic text-xs">
                             Volunteer not yet assigned by receiving organisation. You will be notified once assigned.
                           </div>
                         </div>
@@ -621,7 +623,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                                 href={`https://wa.me/${(counterpartPhone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${counterpartName || 'Donor'}, here is your pickup handover confirmation link for "${pickup.title}":\n\n${pickupUrl}`)}`}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors"
+                                className="px-2.5 py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors"
                                 title="Share Handover Link with Donor via WhatsApp"
                               >
                                 <Share2 className="w-3.5 h-3.5" />
@@ -676,8 +678,8 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
 
                       {/* Map Live Location Action */}
                       {isInTransit && !isCompleted && (
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
+                        <div className="p-3 bg-emerald-50 dark:bg-[#5BB487]/14 border border-emerald-200 dark:border-[#5BB487]/40 rounded-xl flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-emerald-800 dark:text-[#5BB487] font-bold text-xs">
                             <Navigation className="w-4 h-4 text-emerald-600 animate-pulse shrink-0" />
                             <span>Volunteer in-transit with live tracking</span>
                           </div>
@@ -686,7 +688,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                               onClose();
                               navigate(`/map?donation=${pickup._id}`);
                             }}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
+                            className="px-3 py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-xs"
                           >
                             <span>View on Live Map</span>
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -698,7 +700,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                       {!isCompleted && (
                         <div className="space-y-2">
                           {!isInTransit ? (
-                            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2.5 text-amber-800 dark:text-amber-300 font-bold text-xs">
+                            <div className="p-3 bg-amber-50 dark:bg-[#E0A84A]/14 border border-amber-200 dark:border-[#E0A84A]/40 rounded-xl flex items-center gap-2.5 text-amber-800 dark:text-[#E0A84A] font-bold text-xs">
                               <Clock className="w-4 h-4 text-amber-500 animate-pulse shrink-0" />
                               <span>Waiting for donor to verify volunteer</span>
                             </div>
@@ -707,7 +709,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
                               type="button"
                               onClick={() => handleConfirmDeliveryReceived(pickup)}
                               disabled={deliveryConfirmingId === pickup._id}
-                              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
+                              className="w-full py-2.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
                             >
                               {deliveryConfirmingId === pickup._id ? (
                                 <>
@@ -733,14 +735,14 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
         </div>
 
         {/* Footer: Archived History Link */}
-        <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 shrink-0">
+        <div className="pt-3 border-t border-slate-200 dark:border-[#1E2D52] flex items-center justify-between text-xs text-slate-500 shrink-0">
           <span>Delivered tasks are automatically archived into History.</span>
           <button
             onClick={() => {
               onClose();
               navigate('/activity');
             }}
-            className="font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1 cursor-pointer hover:underline"
+            className="font-bold text-emerald-600 hover:text-emerald-700 dark:text-[#ECE9E1] flex items-center gap-1 cursor-pointer hover:underline"
           >
             <span>View History</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -763,3 +765,7 @@ const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTa
 };
 
 export default ActivePickupsDrawer;
+
+
+
+

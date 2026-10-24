@@ -1,15 +1,15 @@
 import React from 'react';
-import { X, ShieldAlert, CheckCircle2, Utensils, Shirt, Laptop, BookOpen, HeartPulse, Info } from 'lucide-react';
+import { X, ShieldAlert, Utensils, Shirt, Laptop, Info } from 'lucide-react';
 
 const DonationGuidelinesModal = ({ onClose }) => {
   return (
-    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[80] flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 dark:border-slate-800 relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-[#173B78]/70 backdrop-blur-md z-[80] flex items-center justify-center p-4 animate-in fade-in duration-200 overflow-y-auto">
+      <div className="bg-white dark:bg-[#0F1A33] rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-[#E5E1D8] dark:border-[#1E2D52] relative flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-emerald-600 p-6 text-white flex justify-between items-center sticky top-0 z-10">
+        <div className="bg-[#173B78] p-6 text-white flex justify-between items-center sticky top-0 z-10">
           <div>
-            <span className="text-xs uppercase tracking-widest font-extrabold text-emerald-100 flex items-center">
+            <span className="text-xs uppercase tracking-widest font-extrabold text-[#18315E] flex items-center">
               <ShieldAlert className="w-4 h-4 mr-1" /> Safety & Quality Standards
             </span>
             <h2 className="text-2xl font-extrabold">DONATION GUIDELINES</h2>
@@ -20,11 +20,11 @@ const DonationGuidelinesModal = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 text-xs sm:text-sm text-slate-700 dark:text-slate-300">
+        <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1 text-xs sm:text-sm text-[#18315E] dark:text-slate-300">
           
           {/* Food Rules */}
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-2">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center text-emerald-700 dark:text-emerald-400">
+          <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/40 p-4 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
+            <h3 className="font-extrabold text-[#18315E] dark:text-white text-base flex items-center text-[#18315E] dark:text-[#D9B65D]">
               <Utensils className="w-4 h-4 mr-2" /> Food & Groceries Safety Rules
             </h3>
             <ul className="list-disc pl-5 space-y-1 text-xs">
@@ -36,8 +36,8 @@ const DonationGuidelinesModal = ({ onClose }) => {
           </div>
 
           {/* Clothing Rules */}
-          <div className="bg-blue-50 dark:bg-blue-950/40 p-4 rounded-2xl border border-blue-200 dark:border-blue-800 space-y-2">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center text-blue-700 dark:text-blue-400">
+          <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/40 p-4 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
+            <h3 className="font-extrabold text-[#18315E] dark:text-white text-base flex items-center text-[#18315E] dark:text-[#D9B65D]">
               <Shirt className="w-4 h-4 mr-2" /> Clothing & Footwear Rules
             </h3>
             <ul className="list-disc pl-5 space-y-1 text-xs">
@@ -47,8 +47,8 @@ const DonationGuidelinesModal = ({ onClose }) => {
           </div>
 
           {/* Electronics Rules */}
-          <div className="bg-purple-50 dark:bg-purple-950/40 p-4 rounded-2xl border border-purple-200 dark:border-purple-800 space-y-2">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center text-purple-700 dark:text-purple-400">
+          <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/40 p-4 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
+            <h3 className="font-extrabold text-[#18315E] dark:text-white text-base flex items-center text-[#18315E] dark:text-[#D9B65D]">
               <Laptop className="w-4 h-4 mr-2" /> Electronics Rules
             </h3>
             <ul className="list-disc pl-5 space-y-1 text-xs">
@@ -58,11 +58,11 @@ const DonationGuidelinesModal = ({ onClose }) => {
           </div>
 
           {/* General Rules Callout */}
-          <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
-            <h3 className="font-extrabold text-slate-900 dark:text-white text-base flex items-center">
-              <Info className="w-4 h-4 mr-2 text-emerald-600" /> General Donation Principles
+          <div className="bg-[#F3F0EA] dark:bg-[#0F1A33] p-4 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
+            <h3 className="font-extrabold text-[#18315E] dark:text-white text-base flex items-center">
+              <Info className="w-4 h-4 mr-2 text-[#18315E]" /> General Donation Principles
             </h3>
-            <ul className="list-disc pl-5 space-y-1 text-xs text-slate-600 dark:text-slate-400">
+            <ul className="list-disc pl-5 space-y-1 text-xs text-[#60708B] dark:text-slate-300">
               <li>Provide accurate quantity and unit counts.</li>
               <li>Upload clear images of the surplus items when possible.</li>
               <li>Provide exact, accessible pickup location details.</li>
@@ -73,10 +73,10 @@ const DonationGuidelinesModal = ({ onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-800 text-right">
+        <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33] border-t border-[#E5E1D8] dark:border-[#1E2D52] text-right">
           <button
             onClick={onClose}
-            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs"
+            className="px-6 py-2.5 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white font-bold rounded-xl text-xs"
           >
             I UNDERSTAND & AGREE
           </button>
@@ -88,3 +88,12 @@ const DonationGuidelinesModal = ({ onClose }) => {
 };
 
 export default DonationGuidelinesModal;
+
+
+
+
+
+
+
+
+

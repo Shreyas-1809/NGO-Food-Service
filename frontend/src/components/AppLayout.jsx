@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
 import { 
-  Heart, LayoutDashboard, Package, Search, FileText, 
+  LayoutDashboard, Package, Search, FileText, 
   BarChart3, MessageSquare, Settings, LogOut, Sun, Moon, Bell, ArrowLeft, Menu, X, Map as MapIcon,
   ShieldCheck, MapPin
 } from 'lucide-react';
@@ -14,6 +14,7 @@ import MyShortagesDrawer from './MyShortagesDrawer';
 import NotificationsDrawer from './NotificationsDrawer';
 import ActivePickupsDrawer from './ActivePickupsDrawer';
 import ProfileEditModal from './ProfileEditModal';
+import Logo from './Logo';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -117,7 +118,7 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
     return () => window.removeEventListener('OPEN_DRAWER', handleOpenDrawer);
   }, []);
 
-  const fetchNotificationsCount = async () => {
+const fetchNotificationsCount = useCallback(async () => {
     try {
       const uid = user?.id || user?._id;
       if (uid && token) {
@@ -143,10 +144,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       } else {
         setUnreadCount(0);
       }
-    } catch (err) {
+    } catch  {
       setUnreadCount(0);
     }
-  };
+  }, [user, token]);
 
   useEffect(() => {
     fetchNotificationsCount();
@@ -171,7 +172,13 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
         socket.off('PICKUP_CONFIRMED', handleNewNotification);
       };
     }
-  }, [user, token, isOrg, socket]);
+  }, [
+	user,
+	token,
+	isOrg,
+	socket,
+	fetchNotificationsCount
+]);
 
   const closeDrawer = () => {
     setActiveDrawer(null);
@@ -187,10 +194,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       <Link
         to="/"
         onClick={closeMobileMenu}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold transition-all duration-300 ease-in-out focus:outline-none focus-visible:outline-none ${
           location.pathname === '/'
-            ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 shadow-xs border border-emerald-200/50 dark:border-emerald-800/40'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white shadow-xs border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <LayoutDashboard className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -200,10 +207,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       <Link
         to="/ngo-requests"
         onClick={closeMobileMenu}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all ${
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-300 ease-in-out focus:outline-none focus-visible:outline-none ${
           location.pathname === '/ngo-requests'
-            ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold shadow-xs'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white shadow-xs border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <Package className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -213,10 +220,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       <Link
         to="/ngos"
         onClick={closeMobileMenu}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all ${
-          location.pathname.startsWith('/ngo')
-            ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold shadow-xs'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-300 ease-in-out focus:outline-none focus-visible:outline-none ${
+          location.pathname === '/ngos'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white shadow-xs border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <Search className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -226,10 +233,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       <Link
         to="/map"
         onClick={closeMobileMenu}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all ${
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-300 ease-in-out focus:outline-none focus-visible:outline-none ${
           location.pathname === '/map'
-            ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold shadow-xs'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white shadow-xs border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <MapIcon className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -239,10 +246,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 
       <button
         onClick={() => { setActiveDrawer(activeDrawer === (isOrg ? 'SHORTAGES' : 'POSTINGS') ? null : (isOrg ? 'SHORTAGES' : 'POSTINGS')); closeMobileMenu(); }}
-        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${
+        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-300 ease-in-out text-left cursor-pointer focus:outline-none focus-visible:outline-none ${
           activeDrawer === (isOrg ? 'SHORTAGES' : 'POSTINGS')
-            ? 'bg-emerald-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <FileText className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -252,10 +259,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       <Link
         to="/activity"
         onClick={closeMobileMenu}
-        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all ${
+        className={`flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-300 ease-in-out focus:outline-none focus-visible:outline-none ${
           location.pathname === '/activity'
-            ? 'bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 font-bold shadow-xs'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white shadow-xs border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <BarChart3 className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -264,10 +271,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 
       <button
         onClick={() => { setActiveDrawer(activeDrawer === 'NOTIFICATIONS' ? null : 'NOTIFICATIONS'); closeMobileMenu(); }}
-        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-colors text-left cursor-pointer ${
+        className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all duration-300 ease-in-out text-left cursor-pointer focus:outline-none focus-visible:outline-none ${
           activeDrawer === 'NOTIFICATIONS'
-            ? 'bg-emerald-50 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400'
-            : 'text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'
+            ? 'bg-slate-700 text-white font-medium shadow-sm dark:bg-[#0A1328] dark:text-white border-2 border-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)] ring-1 ring-blue-400/50 dark:border dark:border-amber-400/80 dark:shadow-[0_0_10px_rgba(245,158,11,0.2)] dark:ring-0'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#15223F] hover:text-slate-900 dark:hover:text-[#D9B65D] border-2 border-transparent'
         }`}
       >
         <MessageSquare className="w-4 h-4 shrink-0" strokeWidth={1.75} />
@@ -276,7 +283,7 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 
       <button
         onClick={() => { setShowProfileModal(true); closeMobileMenu(); }}
-        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-emerald-50 dark:hover:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors text-left cursor-pointer"
+        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-semibold text-[#60708B] dark:text-slate-300 hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] hover:text-[#18315E] dark:hover:text-[#D9B65D] transition-all duration-300 ease-in-out text-left cursor-pointer focus:outline-none focus-visible:outline-none"
       >
         <Settings className="w-4 h-4 shrink-0" strokeWidth={1.75} />
         <span><T text="Settings" /></span>
@@ -286,25 +293,23 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
   );
 
   return (
-    <div className="flex w-full h-screen bg-[#f3faf6] dark:bg-[#061412] font-sans text-slate-900 dark:text-slate-100 overflow-hidden">
+    <div className="flex w-full h-screen bg-[#FAF8F3] dark:bg-[#0F1A33] font-sans text-[#18315E] dark:text-white overflow-hidden">
       
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:flex w-60 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col py-6 px-4 shrink-0 z-30 shadow-sm h-screen overflow-hidden">
+      <aside className="hidden lg:flex w-60 bg-white dark:bg-[#0A1328] border-r border-[#E5E1D8] dark:border-[#1E2D52] flex-col py-6 px-4 shrink-0 z-30 shadow-sm h-screen overflow-hidden">
         <Link to="/" className="flex items-center space-x-3 px-2 mb-8 shrink-0">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-xs border border-emerald-200/50 dark:border-emerald-800/40">
-            <Heart className="w-4 h-4 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" strokeWidth={1.75} />
-          </div>
-          <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">FoodBridge</span>
+          <Logo size={32} />
+          <span className="text-xl font-black text-[#18315E] dark:text-white tracking-tight">FoodBridge</span>
         </Link>
         <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar pr-1 -mr-1">
           <NavigationLinks />
         </div>
         
         {onLogout && (
-          <div className="pt-4 mt-auto border-t border-slate-100 dark:border-slate-800 shrink-0">
+          <div className="pt-4 mt-auto border-t border-[#E5E1D8] dark:border-[#1E2D52] shrink-0">
             <button
               onClick={() => { onLogout(); closeMobileMenu(); }}
-              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-left cursor-pointer"
+              className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:text-[#E5707A] dark:hover:bg-[#E5707A]/14 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/40 transition-all duration-300 ease-in-out text-left cursor-pointer focus:outline-none focus-visible:outline-none"
             >
               <LogOut className="w-4 h-4 shrink-0" strokeWidth={1.75} />
               <span><T text="Logout" /></span>
@@ -316,24 +321,22 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       {/* MOBILE DRAWER */}
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={closeMobileMenu} />
-          <div className="relative w-64 bg-white dark:bg-slate-900 h-full flex flex-col py-6 px-4 shadow-2xl animate-in slide-in-from-left duration-300">
-            <button onClick={closeMobileMenu} className="absolute top-6 right-4 text-slate-400 hover:text-slate-600">
+          <div className="fixed inset-0 bg-[#173B78]/40 backdrop-blur-sm" onClick={closeMobileMenu} />
+          <div className="relative w-64 bg-white dark:bg-[#0A1328] h-full flex flex-col py-6 px-4 shadow-2xl animate-in slide-in-from-left duration-300">
+            <button onClick={closeMobileMenu} className="absolute top-6 right-4 text-[#60708B] hover:text-[#60708B]">
               <X className="w-5 h-5" />
             </button>
             <Link to="/" onClick={closeMobileMenu} className="flex items-center space-x-3 px-2 mb-8 shrink-0">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                <Heart className="w-4 h-4 fill-emerald-600 text-emerald-600 dark:fill-emerald-400 dark:text-emerald-400" strokeWidth={1.75} />
-              </div>
-              <span className="text-xl font-black text-slate-900 dark:text-white tracking-tight">FoodBridge</span>
+              <Logo size={32} />
+              <span className="text-xl font-black text-[#18315E] dark:text-white tracking-tight">FoodBridge</span>
             </Link>
             <div className="overflow-y-auto flex-1"><NavigationLinks /></div>
             
             {onLogout && (
-              <div className="pt-4 mt-auto border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="pt-4 mt-auto border-t border-[#E5E1D8] dark:border-[#1E2D52] shrink-0">
                 <button
                   onClick={() => { onLogout(); closeMobileMenu(); }}
-                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400 transition-colors text-left cursor-pointer"
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:text-[#E5707A] dark:hover:bg-[#E5707A]/14 border border-transparent hover:border-rose-200 dark:hover:border-rose-800/40 transition-all duration-300 ease-in-out text-left cursor-pointer focus:outline-none focus-visible:outline-none"
                 >
                   <LogOut className="w-4 h-4 shrink-0" strokeWidth={1.75} />
                   <span><T text="Logout" /></span>
@@ -348,19 +351,19 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* TOP BAR */}
-        <header className="h-16 shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
+        <header className="h-16 shrink-0 bg-white dark:bg-[#0A1328] border-b border-[#E5E1D8] dark:border-[#1E2D52] px-4 sm:px-6 flex items-center justify-between gap-4 z-20">
           
           {/* LEFT: Mobile Menu & Title */}
           <div className="flex items-center space-x-3 shrink-0">
-            <button className="lg:hidden text-slate-500 dark:text-slate-400" onClick={() => setMobileMenuOpen(true)}>
+            <button className="lg:hidden text-[#60708B] dark:text-slate-300" onClick={() => setMobileMenuOpen(true)}>
               <Menu className="w-5 h-5" strokeWidth={1.75} />
             </button>
             {location.pathname !== '/' && (
-              <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors hidden sm:block cursor-pointer">
+              <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-[#60708B] dark:text-slate-300 hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] rounded-xl transition-colors hidden sm:block cursor-pointer">
                 <ArrowLeft className="w-4 h-4" strokeWidth={1.75} />
               </button>
             )}
-            <div className="hidden xl:block text-sm font-bold text-slate-800 dark:text-slate-100">
+            <div className="hidden xl:block text-sm font-bold text-[#18315E]">
               {location.pathname === '/' ? <T text="Home" /> : <T text={location.pathname.replace('/', '').replace('-', ' ').toUpperCase()} fallback="Page" />}
             </div>
           </div>
@@ -369,7 +372,7 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
           <div className="flex-1 max-w-xl px-1 sm:px-4 min-w-0">
             <div ref={searchDropdownRef} className="relative group w-full">
               <form onSubmit={handleTopSearchSubmit} className="relative w-full">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" strokeWidth={1.75} />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#60708B] group-focus-within:text-[#18315E] transition-colors pointer-events-none" strokeWidth={1.75} />
                 <input 
                   type="text" 
                   value={topSearchTerm}
@@ -381,7 +384,7 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
                     if (topSearchTerm.trim().length > 0) setShowSuggestions(true);
                   }}
                   placeholder={searchPlaceholder || "Search NGOs, locations..."} 
-                  className="w-full h-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-full pl-10 pr-9 text-sm font-semibold text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all"
+                  className="w-full h-10 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 border border-[#E5E1D8] dark:border-[#1E2D52] focus:border-[#173B78] focus:ring-1 focus:ring-[#E5E1D8] rounded-full pl-10 pr-9 text-sm font-semibold text-[#18315E] dark:text-white placeholder-[#60708B] dark:placeholder-[#60708B] outline-none transition-all"
                 />
                 {topSearchTerm && (
                   <button
@@ -393,7 +396,7 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
                         navigate('/ngos');
                       }
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#60708B] hover:text-[#60708B] dark:hover:text-[#ECE9E1] hover:bg-[#F3F0EA]/50 dark:hover:bg-[#15223F] transition-colors cursor-pointer"
                     title="Clear search"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -403,54 +406,54 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 
               {/* Live Suggestions Dropdown */}
               {showSuggestions && topSearchTerm.trim().length > 0 && (
-                <div className="absolute top-12 left-0 right-0 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200/90 dark:border-slate-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                  <div className="p-2 border-b border-slate-100 dark:border-slate-700/60 bg-slate-50/70 dark:bg-slate-800/50 flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-3">
+                <div className="absolute top-12 left-0 right-0 bg-white dark:bg-[#0F1A33] rounded-2xl shadow-xl border border-[#E5E1D8]/90 dark:border-[#1E2D52] overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                  <div className="p-2 border-b border-[#E5E1D8] dark:border-[#1E2D52]/60 bg-[#F3F0EA]/70 dark:bg-[#0F1A33]/50 flex items-center justify-between text-[11px] font-bold text-[#60708B] dark:text-slate-300 uppercase tracking-wider px-3">
                     <span>Registered Organisations</span>
                     <span className="text-[10px] lowercase font-normal">{matchingOrgs.length} matching</span>
                   </div>
 
-                  <div className="divide-y divide-slate-100 dark:divide-slate-700/50 max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-[#E5E1D8] dark:divide-[#2A426B]/50 max-h-72 overflow-y-auto">
                     {matchingOrgs.length > 0 ? (
                       matchingOrgs.map((org) => (
                         <div
                           key={org.id || org._id}
                           onClick={() => handleSuggestionClick(org)}
-                          className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer flex items-center justify-between group/item"
+                          className="p-3 hover:bg-[#F3F0EA] dark:hover:bg-[#15223F]/60 transition-colors cursor-pointer flex items-center justify-between group/item"
                         >
                           <div className="flex items-center space-x-3 min-w-0">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                            <div className="w-8 h-8 rounded-xl bg-[#173B78]/10 text-[#18315E] dark:text-[#D9B65D] flex items-center justify-center font-bold text-xs shrink-0">
                               {(org.name || 'O').slice(0, 2).toUpperCase()}
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs text-slate-900 dark:text-white truncate group-hover/item:text-emerald-600 dark:group-hover/item:text-emerald-400 transition-colors">
+                                <span className="font-bold text-xs text-[#18315E] dark:text-white truncate group-hover/item:text-[#18315E] dark:group-hover/item:text-[#D9B65D] transition-colors">
                                   {org.name}
                                 </span>
                                 {org.verified && (
-                                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" title="Verified Partner" />
+                                  <ShieldCheck className="w-3.5 h-3.5 text-[#18315E] shrink-0" title="Verified Partner" />
                                 )}
                               </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center truncate mt-0.5">
-                                <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
+                              <p className="text-[11px] text-[#60708B] dark:text-slate-300 flex items-center truncate mt-0.5">
+                                <MapPin className="w-3 h-3 mr-1 text-[#60708B] shrink-0" />
                                 <span className="truncate">{org.area || org.city || 'Pune'}</span>
                               </p>
                             </div>
                           </div>
 
                           {org.activeNeedsCount > 0 ? (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 shrink-0 ml-2">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F0EA] text-[#18315E] dark:bg-[#0F1A33]/40 dark:text-[#D9B65D] shrink-0 ml-2">
                               {org.activeNeedsCount} need{org.activeNeedsCount > 1 ? 's' : ''}
                             </span>
                           ) : (
-                            <span className="text-[10px] text-slate-400 shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity ml-2">
+                            <span className="text-[10px] text-[#60708B] shrink-0 opacity-0 group-hover/item:opacity-100 transition-opacity ml-2">
                               View in NGOs →
                             </span>
                           )}
                         </div>
                       ))
                     ) : (
-                      <div className="p-4 text-center text-xs text-slate-500 dark:text-slate-400">
-                        No registered organisations match "<strong className="text-slate-700 dark:text-slate-300">{topSearchTerm}</strong>"
+                      <div className="p-4 text-center text-xs text-[#60708B] dark:text-slate-300">
+                        No registered organisations match "<strong className="text-[#18315E] dark:text-slate-300">{topSearchTerm}</strong>"
                       </div>
                     )}
                   </div>
@@ -458,10 +461,10 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
                   {/* Press Enter Footer */}
                   <div 
                     onClick={handleTopSearchSubmit}
-                    className="p-2.5 bg-slate-50 dark:bg-slate-700/40 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-700 cursor-pointer px-4 transition-colors"
+                    className="p-2.5 bg-[#F3F0EA] dark:bg-[#0F1A33]/40 border-t border-[#E5E1D8] dark:border-[#1E2D52] flex items-center justify-between text-xs font-semibold text-[#18315E] dark:text-[#D9B65D] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] cursor-pointer px-4 transition-colors"
                   >
                     <span>Press Enter to search all organisations for "<span className="font-bold">{topSearchTerm}</span>"</span>
-                    <span>↵</span>
+                    <span></span>
                   </div>
                 </div>
               )}
@@ -473,20 +476,20 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
             {toggleTheme && (
               <button
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[#60708B] hover:text-[#18315E] dark:text-slate-300 dark:hover:text-white hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] transition-all cursor-pointer shrink-0"
               >
-                {isDarkMode ? <Sun className="h-4 w-4 text-amber-400" strokeWidth={1.75} /> : <Moon className="h-4 w-4 text-slate-500" strokeWidth={1.75} />}
+                {isDarkMode ? <Sun className="h-4 w-4 text-[#E5B85C]" strokeWidth={1.75} /> : <Moon className="h-4 w-4 text-[#60708B]" strokeWidth={1.75} />}
               </button>
             )}
 
-            <div className="hidden sm:flex items-center px-3 h-10 rounded-full text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all text-slate-700 dark:text-slate-200 shrink-0">
+            <div className="hidden sm:flex items-center px-3 h-10 rounded-full text-xs font-semibold hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] border border-transparent hover:border-[#E5E1D8] dark:hover:border-[#1E293B] transition-all text-[#18315E] dark:text-white shrink-0">
               <select
                 value={currentLanguage}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer pr-1 h-full"
+                className="bg-transparent text-xs font-bold text-[#60708B] border-none outline-none cursor-pointer pr-1 h-full"
               >
                 {languages.map((lang) => (
-                  <option key={lang.code} value={lang.code} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200">
+                  <option key={lang.code} value={lang.code} className="bg-white text-[#18315E]">
                     {lang.nativeName} ({lang.code.toUpperCase()})
                   </option>
                 ))}
@@ -495,11 +498,11 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 
             <button
               onClick={() => setActiveDrawer(activeDrawer === 'NOTIFICATIONS' ? null : 'NOTIFICATIONS')}
-              className="relative w-10 h-10 flex items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
+              className="relative w-10 h-10 flex items-center justify-center rounded-full text-[#60708B] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] transition-all cursor-pointer shrink-0"
             >
               <Bell className="w-4 h-4" strokeWidth={1.75} />
               {unreadCount > 0 && (
-                <span className="absolute top-2 right-2.5 bg-rose-500 text-white text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-white dark:border-slate-900">
+                <span className="absolute top-2 right-2.5 bg-[#E5B85C] text-white text-[9px] font-bold w-3.5 h-3.5 flex items-center justify-center rounded-full border border-white">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -507,16 +510,16 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 
             <button
               onClick={() => setShowProfileModal(true)}
-              className="flex items-center space-x-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 p-1 sm:pr-4 h-10 rounded-full border border-slate-200 dark:border-slate-700 transition-all cursor-pointer ml-1 sm:ml-2 shrink-0"
+              className="flex items-center space-x-2.5 hover:bg-[#F3F0EA] p-1 sm:pr-4 h-10 rounded-full border border-[#E5E1D8] transition-all cursor-pointer ml-1 sm:ml-2 shrink-0"
             >
-              <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#173B78] text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
                 {userName.charAt(0).toUpperCase()}
               </div>
               <div className="hidden sm:flex flex-col text-left justify-center">
-                <span className="text-[11px] leading-none font-bold text-slate-800 dark:text-slate-100 truncate max-w-[100px]">
+                <span className="text-[11px] leading-none font-bold text-[#18315E] truncate max-w-[100px]">
                   {userName}
                 </span>
-                <span className="text-[9px] leading-none mt-1 font-bold text-slate-500 dark:text-slate-400">
+                <span className="text-[9px] leading-none mt-1 font-bold text-[#60708B]">
                   <T text={(user?.role || user?.accountType || 'DONOR').toUpperCase()} />
                 </span>
               </div>
@@ -550,3 +553,12 @@ const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) =
 };
 
 export default AppLayout;
+
+
+
+
+
+
+
+
+

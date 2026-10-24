@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
-import { Package, Download, User as UserIcon, Building2, MapPin, X, FileText, Award } from 'lucide-react';
+import { Download, Building2, MapPin, FileText, Award } from 'lucide-react';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
 import DirectContactButtons from './ui/DirectContactButtons';
 import DonationCertificateModal from './DonationCertificateModal';
 
-const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
+const HistoryDetailDrawer = ({ isOpen, onClose, record, _userRole }) => {
   const [certModalOpen, setCertModalOpen] = useState(false);
   if (!record) return null;
 
@@ -69,54 +69,54 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
       <div className="flex flex-col h-full space-y-6">
         
         {/* Header summary */}
-        <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/50 p-4 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52]">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">
+              <span className="text-[10px] font-extrabold uppercase text-[#60708B] tracking-wider block">
                 {record.recordType}
               </span>
-              <h3 className="font-bold text-slate-900 dark:text-white text-lg leading-snug">{record.itemTitle}</h3>
+              <h3 className="font-bold text-[#18315E] dark:text-white text-lg leading-snug">{record.itemTitle}</h3>
             </div>
             <StatusBadge status={record.overallStatus} />
           </div>
-          <div className="text-sm text-slate-600 dark:text-slate-300">
+          <div className="text-sm text-[#60708B] dark:text-slate-300">
             <strong>Quantity:</strong> {record.quantity} {record.unit}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-[#60708B] mt-1">
             {new Date(record.createdAt).toLocaleString()}
           </div>
         </div>
 
         {/* Statuses */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300">
             Both Sides Status
           </h4>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 p-3 rounded-lg">
-              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block mb-1">
+            <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/20 border border-[#E5E1D8] dark:border-[#1E2D52]/30 p-3 rounded-lg">
+              <span className="text-[10px] font-bold text-[#18315E] dark:text-[#D9B65D] uppercase tracking-wider block mb-1">
                 NGO
               </span>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <span className="text-sm font-semibold text-[#18315E] dark:text-white">
                 {record.ngoStatus}
               </span>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/30 p-3 rounded-lg">
-              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-1">
+            <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/20 border border-[#E5E1D8] dark:border-[#1E2D52]/30 p-3 rounded-lg">
+              <span className="text-[10px] font-bold text-[#18315E] dark:text-[#D9B65D] uppercase tracking-wider block mb-1">
                 Donor
               </span>
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              <span className="text-sm font-semibold text-[#18315E] dark:text-white">
                 {record.donorStatus}
               </span>
             </div>
           </div>
           
           {record.rejectionReason && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/50 p-3 rounded-lg mt-2">
-              <span className="text-xs font-bold text-red-600 dark:text-red-400 block mb-0.5">
+            <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/20 border border-[#E5E1D8] dark:border-[#1E2D52]/50 p-3 rounded-lg mt-2">
+              <span className="text-xs font-bold text-[#18315E] dark:text-[#D9B65D] block mb-0.5">
                 Rejection Reason:
               </span>
-              <span className="text-sm text-red-800 dark:text-red-300">
+              <span className="text-sm text-[#18315E] dark:text-[#D9B65D]">
                 {record.rejectionReason}
               </span>
             </div>
@@ -125,17 +125,17 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
 
         {/* Other Party */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300">
             Other Party Involved
           </h4>
-          <div className="bg-slate-50 dark:bg-slate-800 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+          <div className="bg-[#F3F0EA] dark:bg-[#0F1A33] p-3.5 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
             <div className="flex items-center">
-              <Building2 className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{record.otherPartyName}</span>
+              <Building2 className="w-4 h-4 text-[#60708B] mr-2 shrink-0" />
+              <span className="font-semibold text-[#18315E] dark:text-white">{record.otherPartyName}</span>
             </div>
             {(record.otherPartyPhone || record.otherPartyEmail) && (
-              <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-1.5">
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Direct Contact</span>
+              <div className="pt-2 border-t border-[#E5E1D8]/60 dark:border-[#1E2D52]/60 flex flex-wrap items-center justify-between gap-1.5">
+                <span className="text-[10px] font-bold text-[#60708B] uppercase">Direct Contact</span>
                 <DirectContactButtons
                   phone={record.otherPartyPhone}
                   email={record.otherPartyEmail}
@@ -152,12 +152,12 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
         {/* Location Details */}
         {record.pickupDetails && (
           <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300">
               Pickup / Delivery Details
             </h4>
-            <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex items-start">
-              <MapPin className="w-4 h-4 text-slate-400 mr-2 mt-0.5" />
-              <span className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{record.pickupDetails}</span>
+            <div className="bg-[#F3F0EA] dark:bg-[#0F1A33] p-3 rounded-lg border border-[#E5E1D8] dark:border-[#1E2D52] flex items-start">
+              <MapPin className="w-4 h-4 text-[#60708B] mr-2 mt-0.5" />
+              <span className="text-sm text-[#18315E] dark:text-slate-300 whitespace-pre-wrap">{record.pickupDetails}</span>
             </div>
           </div>
         )}
@@ -166,16 +166,16 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
           {record.overallStatus === 'COMPLETED' && (
             <Button 
               variant="primary" 
-              className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-bold"
+              className="w-full justify-center bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white shadow-sm font-bold"
               icon={Award}
               onClick={() => setCertModalOpen(true)}
             >
-              View Donation Certificate 📜
+              View Donation Certificate ??
             </Button>
           )}
           <Button 
             variant="secondary" 
-            className="w-full justify-center border-slate-300"
+            className="w-full justify-center border-[#E5E1D8]"
             icon={Download}
             onClick={handleDownloadSinglePDF}
           >
@@ -194,3 +194,11 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
 };
 
 export default HistoryDetailDrawer;
+
+
+
+
+
+
+
+

@@ -4,6 +4,7 @@ import { landingTranslations } from '../i18n/translations';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// eslint-disable-next-line react/only-export-components
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', name: 'English', nativeName: 'English' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
@@ -47,7 +48,7 @@ export const LanguageProvider = ({ children }) => {
     cacheRef.current[cacheKey] = translated;
     try {
       localStorage.setItem(`t_cache_v2_${cacheKey}`, translated);
-    } catch (e) {
+    } catch  {
       // LocalStorage error or full
     }
   }, []);
@@ -112,6 +113,7 @@ export const LanguageProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react/only-export-components
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
   if (!context) {
@@ -166,7 +168,13 @@ export const T = ({ text, fallback }) => {
     return () => {
       isMounted = false;
     };
-  }, [text, currentLanguage, translateText, getCachedTranslation]);
+  }, [
+	text,
+	currentLanguage,
+	translateText,
+	getCachedTranslation,
+	fallback
+]);
 
   return <>{translatedText}</>;
 };
@@ -174,6 +182,7 @@ export const T = ({ text, fallback }) => {
 /**
  * Hook to translate string values reactively (for placeholders, titles, attributes)
  */
+// eslint-disable-next-line react/only-export-components
 export const useTranslatedString = (text) => {
   const { currentLanguage, translateText, getCachedTranslation } = useLanguage();
   const [translated, setTranslated] = useState(() => {

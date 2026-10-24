@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchRegisteredNGOs } from '../services/ngoDirectoryService';
-import { ShieldCheck, MapPin, Phone, Mail, Globe, Users, HeartHandshake, ArrowLeft, AlertCircle, ArrowRight, Clock, Building2 } from 'lucide-react';
+import { ShieldCheck, MapPin, Phone, Mail, ArrowLeft, AlertCircle, ArrowRight, Clock } from 'lucide-react';
 import ContactNgoModal from './ContactNgoModal';
 import RedirectSurplusModal from './RedirectSurplusModal';
 import Avatar from './ui/Avatar';
@@ -46,8 +46,8 @@ const NGOProfilePage = ({ user }) => {
 
   if (loading) {
     return (
-      <div className="w-full max-w-[1400px] mx-auto p-8 text-center py-20 text-slate-400">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+      <div className="w-full max-w-[1400px] mx-auto p-8 text-center py-20 text-[#60708B]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E293B] mx-auto mb-2"></div>
         <p className="text-xs">Loading organisation profile...</p>
       </div>
     );
@@ -56,13 +56,13 @@ const NGOProfilePage = ({ user }) => {
   if (error || !ngo) {
     return (
       <div className="w-full max-w-[1400px] mx-auto p-8 space-y-4">
-        <Link to="/ngos" className="inline-flex items-center text-xs font-bold text-slate-500 hover:text-emerald-600">
+        <Link to="/ngos" className="inline-flex items-center text-xs font-bold text-[#60708B] hover:text-[#18315E]">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back to NGOs Directory
         </Link>
-        <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-3">
-          <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
-          <h3 className="font-bold text-base text-slate-800 dark:text-white">{error || 'Organisation Not Found'}</h3>
-          <p className="text-xs text-slate-500">The organisation may have updated their profile or may not be registered yet.</p>
+        <div className="p-8 text-center bg-white dark:bg-[#0F1A33] rounded-3xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-3">
+          <AlertCircle className="w-8 h-8 text-[#E5B85C] mx-auto" />
+          <h3 className="font-bold text-base text-[#18315E] dark:text-white">{error || 'Organisation Not Found'}</h3>
+          <p className="text-xs text-[#60708B]">The organisation may have updated their profile or may not be registered yet.</p>
         </div>
       </div>
     );
@@ -73,32 +73,32 @@ const NGOProfilePage = ({ user }) => {
       <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8 animate-in fade-in duration-200">
 
         {/* Back Link */}
-        <Link to="/ngos" className="inline-flex items-center text-xs font-bold text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 transition-colors">
+        <Link to="/ngos" className="inline-flex items-center text-xs font-bold text-[#60708B] hover:text-[#18315E] dark:text-slate-300 dark:hover:text-[#D9B65D] transition-colors">
           <ArrowLeft className="w-4 h-4 mr-1" /> <T text="Back to NGOs Directory" />
         </Link>
 
         {/* Header Profile Card */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+        <div className="bg-white dark:bg-[#0F1A33] rounded-3xl p-6 sm:p-8 shadow-sm border border-[#E5E1D8] dark:border-[#1E2D52] flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             <Avatar name={ngo.name} className="w-20 h-20 rounded-2xl text-xl font-bold shadow-md" />
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white"><T text={ngo.name} /></h1>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-[#18315E] dark:text-white"><T text={ngo.name} /></h1>
                 {ngo.verified && (
-                  <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-extrabold px-3 py-1 rounded-full flex items-center border border-emerald-300 dark:border-emerald-800">
-                    <ShieldCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" /> ✓ <T text="Verified Partner" />
+                  <span className="bg-[#F3F0EA] dark:bg-[#0F1A33] text-[#18315E] dark:text-[#D9B65D] text-xs font-extrabold px-3 py-1 rounded-full flex items-center border border-[#E5E1D8] dark:border-[#1E2D52]">
+                    <ShieldCheck className="w-3.5 h-3.5 mr-1 text-[#18315E]" /> ? <T text="Verified Partner" />
                   </span>
                 )}
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-2xl mt-2 leading-relaxed">
+              <p className="text-xs sm:text-sm text-[#60708B] dark:text-slate-300 max-w-2xl mt-2 leading-relaxed">
                 {ngo.description || 'Registered organisation dedicated to food security, surplus redistribution, and community relief on FoodBridge.'}
               </p>
 
-              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-500 dark:text-slate-400 mt-4">
-                <span className="flex items-center"><MapPin className="w-3.5 h-3.5 mr-1 text-emerald-600" /> {ngo.address || `${ngo.area}, ${ngo.city}`}</span>
-                {ngo.phone && <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-1 text-emerald-600" /> {ngo.phone}</span>}
-                {ngo.email && <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-1 text-emerald-600" /> {ngo.email}</span>}
+              <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-[#60708B] dark:text-slate-300 mt-4">
+                <span className="flex items-center"><MapPin className="w-3.5 h-3.5 mr-1 text-[#18315E]" /> {ngo.address || `${ngo.area}, ${ngo.city}`}</span>
+                {ngo.phone && <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-1 text-[#18315E]" /> {ngo.phone}</span>}
+                {ngo.email && <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-1 text-[#18315E]" /> {ngo.email}</span>}
               </div>
             </div>
           </div>
@@ -107,7 +107,7 @@ const NGOProfilePage = ({ user }) => {
           {!isOrg ? (
             <button
               onClick={() => navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } })}
-              className="w-full md:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/30 transition-all text-sm text-center shrink-0 cursor-pointer"
+              className="w-full md:w-auto px-6 py-3.5 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white font-extrabold rounded-2xl shadow-lg shadow-[#173B78]/30 transition-all text-sm text-center shrink-0 cursor-pointer"
             >
               <T text="DONATE TO THIS NGO" />
             </button>
@@ -115,14 +115,14 @@ const NGOProfilePage = ({ user }) => {
             <div className="flex flex-col sm:flex-row gap-2.5 shrink-0 w-full md:w-auto">
               <button
                 onClick={() => setRedirectNgo(ngo)}
-                className="px-5 py-3.5 bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-2xl shadow-lg shadow-violet-600/30 transition-all text-sm text-center flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="px-5 py-3.5 bg-[#E5B85C] hover:bg-[#173B78] text-white font-bold rounded-2xl shadow-lg shadow-[#173B78]/30 transition-all text-sm text-center flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 <ArrowRight className="w-4 h-4" />
                 <span><T text="Redirect Surplus Here" /></span>
               </button>
               <button
                 onClick={() => setContactNgo(ngo)}
-                className="px-5 py-3.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 font-bold rounded-2xl border border-teal-200 dark:border-teal-800 transition-all text-sm text-center flex items-center justify-center space-x-1.5 cursor-pointer"
+                className="px-5 py-3.5 bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33]/40 text-[#18315E] dark:text-[#D9B65D] font-bold rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] transition-all text-sm text-center flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 <Phone className="w-4 h-4" />
                 <span><T text="Contact NGO" /></span>
@@ -132,21 +132,21 @@ const NGOProfilePage = ({ user }) => {
         </div>
 
         {/* Live Active Needs */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 dark:border-slate-700 space-y-6">
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center">
-            <Clock className="w-5 h-5 mr-2 text-emerald-600" />
+        <div className="bg-white dark:bg-[#0F1A33] rounded-3xl p-6 sm:p-8 shadow-sm border border-[#E5E1D8] dark:border-[#1E2D52] space-y-6">
+          <h2 className="text-xl font-extrabold text-[#18315E] dark:text-white flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-[#18315E]" />
             <T text="Live Active Needs" /> ({ngo.activeNeedsCount || 0})
           </h2>
 
           {ngo.activeNeeds && ngo.activeNeeds.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {ngo.activeNeeds.map((need, idx) => (
-                <div key={idx} className="p-5 bg-slate-50 dark:bg-slate-700/40 rounded-2xl border border-slate-200/80 dark:border-slate-600 flex justify-between items-center gap-4">
+                <div key={idx} className="p-5 bg-[#F3F0EA] dark:bg-[#0F1A33]/40 rounded-2xl border border-[#E5E1D8]/80 dark:border-[#1E2D52] flex justify-between items-center gap-4">
                   <div>
-                    <span className="font-extrabold text-slate-900 dark:text-white text-base block">
+                    <span className="font-extrabold text-[#18315E] dark:text-white text-base block">
                       {need.title}
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 block">
+                    <span className="text-xs text-[#60708B] dark:text-slate-300 mt-0.5 block">
                       Quantity: <strong>{need.quantity} {need.unit}</strong> • Urgency: <strong>{need.urgency}</strong>
                     </span>
                   </div>
@@ -154,7 +154,7 @@ const NGOProfilePage = ({ user }) => {
                   {!isOrg && (
                     <button
                       onClick={() => navigate('/donate', { state: { prefill: { targetNgoName: ngo.name, needTitle: need.title, needId: need._id } } })}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer"
+                      className="px-4 py-2 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer"
                     >
                       <T text="FULFIL NEED" />
                     </button>
@@ -163,7 +163,7 @@ const NGOProfilePage = ({ user }) => {
               ))}
             </div>
           ) : (
-            <div className="p-6 text-center text-slate-400 text-xs italic bg-slate-50 dark:bg-slate-700/20 rounded-2xl">
+            <div className="p-6 text-center text-[#60708B] text-xs italic bg-[#F3F0EA] dark:bg-[#0F1A33]/20 rounded-2xl">
               No active shortages or food deficit needs posted by this organisation right now.
             </div>
           )}
@@ -179,3 +179,11 @@ const NGOProfilePage = ({ user }) => {
 };
 
 export default NGOProfilePage;
+
+
+
+
+
+
+
+

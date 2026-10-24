@@ -2,29 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   Bell,
-  X,
   Check,
   XCircle,
   MapPin,
   Sparkles,
-  Building2,
-  Utensils,
   CheckCircle2,
   Trash2,
   Clock,
   ChevronRight,
-  ShieldCheck,
-  Send,
   Truck,
   CheckCheck,
   AlertTriangle,
   Award
 } from 'lucide-react';
-import { T, useTranslatedString } from '../context/LanguageContext';
+import { T } from '../context/LanguageContext';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
-import Modal from './ui/Modal';
+
 import RejectDonationModal from './RejectDonationModal';
 import DonationCertificateModal from './DonationCertificateModal';
 import { formatPickupTime } from '../utils/formatters';
@@ -34,31 +29,31 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const getStageBadgeColor = (stage, type) => {
   if (!stage) {
-    if (type === 'CLAIM_REQUEST') return 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800';
-    if (type === 'CLAIM_ACCEPTED') return 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800';
-    if (type === 'CLAIM_DECLINED') return 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800';
-    if (type === 'NGO_CONFIRMED') return 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800';
-    if (type === 'PICKUP_CONFIRMED') return 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800';
-    return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    if (type === 'CLAIM_REQUEST') return 'bg-amber-100 dark:bg-[#E0A84A]/14 text-amber-800 dark:text-[#E0A84A] border-amber-300 dark:border-[#E0A84A]/40';
+    if (type === 'CLAIM_ACCEPTED') return 'bg-blue-100 dark:bg-[#3156B5]/14 text-blue-800 dark:text-[#3156B5] border-blue-300 dark:border-[#3156B5]/40';
+    if (type === 'CLAIM_DECLINED') return 'bg-red-100 dark:bg-[#E5707A]/14 text-red-800 dark:text-[#E5707A] border-red-300 dark:border-[#E5707A]/40';
+    if (type === 'NGO_CONFIRMED') return 'bg-indigo-100 dark:bg-[#3156B5]/14 text-indigo-800 dark:text-[#3156B5] border-indigo-300 dark:border-[#3156B5]/40';
+    if (type === 'PICKUP_CONFIRMED') return 'bg-emerald-100 dark:bg-[#5BB487]/14 text-emerald-800 dark:text-[#5BB487] border-emerald-300 dark:border-[#5BB487]/40';
+    return 'bg-slate-100 dark:bg-[#0F1A33] text-slate-700 dark:text-[#9AA3B8] border-slate-200 dark:border-[#1E2D52]';
   }
 
   const s = stage.toLowerCase();
   if (s.includes('delivered') || s.includes('completed') || s.includes('✓')) {
-    return 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800';
+    return 'bg-emerald-100 dark:bg-[#5BB487]/14 text-emerald-800 dark:text-[#5BB487] border-emerald-300 dark:border-[#5BB487]/40';
   }
   if (s.includes('declined') || s.includes('rejected')) {
-    return 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300 border-red-300 dark:border-red-800';
+    return 'bg-red-100 dark:bg-[#E5707A]/14 text-red-800 dark:text-[#E5707A] border-red-300 dark:border-[#E5707A]/40';
   }
   if (s.includes('confirmed') || s.includes('arranging') || s.includes('volunteer')) {
-    return 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800';
+    return 'bg-indigo-100 dark:bg-[#3156B5]/14 text-indigo-800 dark:text-[#3156B5] border-indigo-300 dark:border-[#3156B5]/40';
   }
   if (s.includes('accepted')) {
-    return 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800';
+    return 'bg-blue-100 dark:bg-[#3156B5]/14 text-blue-800 dark:text-[#3156B5] border-blue-300 dark:border-[#3156B5]/40';
   }
   if (s.includes('awaiting') || s.includes('pending') || s.includes('decision')) {
-    return 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800';
+    return 'bg-amber-100 dark:bg-[#E0A84A]/14 text-amber-800 dark:text-[#E0A84A] border-amber-300 dark:border-[#E0A84A]/40';
   }
-  return 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+  return 'bg-slate-100 dark:bg-[#0F1A33] text-slate-700 dark:text-[#9AA3B8] border-slate-200 dark:border-[#1E2D52]';
 };
 
 const formatTimeAgo = (dateString) => {
@@ -83,9 +78,9 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
   const [loading, setLoading] = useState(true);
 
   const [selectedClaim, setSelectedClaim] = useState(null);
-  const [loadingClaim, setLoadingClaim] = useState(false);
-  const [declineReason, setDeclineReason] = useState('');
-  const [showDeclineInput, setShowDeclineInput] = useState(false);
+  const [,setLoadingClaim] = useState(false);
+  const [,setDeclineReason] = useState('');
+  const [,setShowDeclineInput] = useState(false);
 
   // Inline action state tracking
   const [actionInProgress, setActionInProgress] = useState({}); // notifId -> boolean
@@ -200,7 +195,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchNotifications();
-    } catch (e) {}
+    } catch  {}
   };
 
   const handleNotificationClick = async (notif) => {
@@ -460,15 +455,15 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 
       {/* Quick Action Bar (Mark all read & Clear all) */}
       {filteredNotifications.length > 0 && !selectedClaim && (
-        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700/60 flex justify-between items-center bg-slate-50/70 dark:bg-slate-900/40 text-[11px]">
-          <span className="text-slate-500 dark:text-slate-400 font-medium">
+        <div className="px-4 py-2 border-b border-slate-100 dark:border-[#1E2D52]/60 flex justify-between items-center bg-slate-50/70 dark:bg-[#070E1E]/40 text-[11px]">
+          <span className="text-slate-500 dark:text-slate-300 font-medium">
             {highUnreadList.length > 0 ? <><span className="text-rose-600 font-bold">{highUnreadList.length} urgent</span> • </> : null}{unreadList.length} <T text="unread" /> • {filteredNotifications.length} <T text="total" />
           </span>
           <div className="flex gap-2">
             {unreadList.length > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                className="text-emerald-600 dark:text-[#ECE9E1] hover:underline font-bold flex items-center gap-1 cursor-pointer"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
                 <span><T text="Mark all read" /></span>
@@ -476,7 +471,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             )}
             <button
               onClick={handleClearAll}
-              className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors font-semibold cursor-pointer"
+              className="text-slate-400 hover:text-red-500 dark:hover:text-[#E5707A] transition-colors font-semibold cursor-pointer"
             >
               <T text="Clear all" />
             </button>
@@ -495,10 +490,10 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       <div className="flex-1 space-y-3 relative">
         {selectedClaim ? (
           /* Expanded Claim Details View */
-          <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 animate-in slide-in-from-right-4 space-y-4">
+          <div className="bg-slate-50 dark:bg-[#070E1E]/50 p-4 rounded-2xl border border-slate-200 dark:border-[#1E2D52] animate-in slide-in-from-right-4 space-y-4">
             <button
               onClick={() => setSelectedClaim(null)}
-              className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center hover:underline cursor-pointer"
+              className="text-xs font-bold text-emerald-600 dark:text-[#ECE9E1] flex items-center hover:underline cursor-pointer"
             >
               &larr; Back to notifications
             </button>
@@ -513,33 +508,33 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             </div>
 
             {selectedClaim.isError && (
-              <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg border border-red-200 dark:border-red-800 text-xs font-semibold">
+              <div className="bg-red-50 dark:bg-[#E5707A]/14 text-red-600 dark:text-[#E5707A] p-3 rounded-lg border border-red-200 dark:border-[#E5707A]/40 text-xs font-semibold">
                 {selectedClaim.errorMsg}
               </div>
             )}
 
             {/* NGO Information Box */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
-              <span className="font-bold text-[10px] uppercase text-emerald-600 dark:text-emerald-400 tracking-wider block">
+            <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-2 text-xs">
+              <span className="font-bold text-[10px] uppercase text-emerald-600 dark:text-[#ECE9E1] tracking-wider block">
                 NGO Information
               </span>
               <p className="font-bold text-slate-900 dark:text-white text-sm">
                 {selectedClaim.ngoId?.orgName || selectedClaim.ngoId?.fullName || 'Verified NGO'}
               </p>
               {selectedClaim.ngoId?.address && (
-                <div className="text-slate-600 dark:text-slate-300 flex items-center">
+                <div className="text-slate-600 dark:text-[#9AA3B8] flex items-center">
                   <MapPin className="w-3.5 h-3.5 mr-1.5 text-slate-400 shrink-0" />
                   <span>{[selectedClaim.ngoId.address, selectedClaim.ngoId.city].filter(Boolean).join(', ')}</span>
                 </div>
               )}
               {selectedClaim.ngoId?.phone && (
-                <div className="text-slate-600 dark:text-slate-300 flex items-center">
+                <div className="text-slate-600 dark:text-[#9AA3B8] flex items-center">
                   <span className="font-semibold text-slate-500 mr-1.5">Phone:</span>
                   <span>{selectedClaim.ngoId.phone}</span>
                 </div>
               )}
               {selectedClaim.ngoId?.email && (
-                <div className="text-slate-600 dark:text-slate-300 flex items-center">
+                <div className="text-slate-600 dark:text-[#9AA3B8] flex items-center">
                   <span className="font-semibold text-slate-500 mr-1.5">Email:</span>
                   <span>{selectedClaim.ngoId.email}</span>
                 </div>
@@ -547,11 +542,11 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             </div>
 
             {/* Request Description / Message Box */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1 text-xs">
+            <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-1 text-xs">
               <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">
                 Request Message / Intent
               </span>
-              <p className="italic text-slate-700 dark:text-slate-200">
+              <p className="italic text-slate-700 dark:text-[#9AA3B8]">
                 {(() => {
                   const msg = selectedClaim.message;
                   if (!msg || !msg.trim()) return 'No message provided';
@@ -566,23 +561,23 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             </div>
 
             {/* Food Listing Details & Separate Requested Pickup Box */}
-            <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+            <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-2 text-xs">
               <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider block">
                 Listing Details
               </span>
               <p className="font-bold text-slate-800 dark:text-white text-sm">
                 {selectedClaim.foodId?.title || 'Surplus Food'}
               </p>
-              <p className="text-slate-600 dark:text-slate-300">
+              <p className="text-slate-600 dark:text-[#9AA3B8]">
                 {selectedClaim.foodId?.quantity || 0} Servings
               </p>
-              <p className="text-slate-500 dark:text-slate-400 text-[10px]">
+              <p className="text-slate-500 dark:text-slate-300 text-[10px]">
                 {selectedClaim.foodId?.foodType || 'Category not specified'}
               </p>
 
               {/* Separate small box for Requested Pickup */}
               {selectedClaim.requestedPickupTime && (
-                <div className="mt-2 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-100 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 font-semibold flex items-center">
+                <div className="mt-2 p-2.5 bg-emerald-50 dark:bg-[#5BB487]/14 rounded-xl border border-emerald-100 dark:border-[#5BB487]/40 text-emerald-800 dark:text-[#5BB487] font-semibold flex items-center">
                   <Sparkles className="w-3.5 h-3.5 mr-1.5 text-emerald-500 shrink-0" />
                   <span>
                     Requested Pickup: <strong>{formatPickupTime(selectedClaim.requestedPickupTime)}</strong>
@@ -590,7 +585,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                 </div>
               )}
 
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 flex items-center">
+              <div className="pt-2 border-t border-slate-100 dark:border-[#1E2D52] text-slate-500 dark:text-slate-300 flex items-center">
                 <Clock className="w-3.5 h-3.5 mr-1.5 shrink-0" />
                 <span>
                   Requested on {new Date(selectedClaim.createdAt || Date.now()).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
@@ -600,7 +595,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             
             {/* Volunteer Assignment Section for ACCEPTED claims */}
             {selectedClaim.status === 'ACCEPTED' && (
-              <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+              <div className="bg-white dark:bg-[#0F1A33] p-4 rounded-xl border border-slate-200 dark:border-[#1E2D52] space-y-3 text-xs">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-[10px] uppercase text-slate-400 tracking-wider">
                     Pickup Assignment
@@ -613,7 +608,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                       setVolModalInitialVolunteers(vols);
                       setVolModalOpen(true);
                     }}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                    className="px-3 py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
                   >
                     {selectedClaim.foodId?.volunteerAssignments?.length || selectedClaim.foodId?.volunteerAssignment?.name ? 'Edit Volunteers' : 'Arrange Pickup'}
                   </button>
@@ -621,7 +616,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                 {selectedClaim.foodId?.volunteerAssignments && selectedClaim.foodId.volunteerAssignments.length > 0 ? (
                   <div className="space-y-2">
                     {selectedClaim.foodId.volunteerAssignments.map((v, idx) => (
-                      <div key={idx} className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                      <div key={idx} className="bg-slate-50 dark:bg-[#070E1E]/50 p-2.5 rounded-lg border border-slate-100 dark:border-[#1E2D52] text-slate-700 dark:text-[#9AA3B8]">
                         <p><strong className="text-slate-900 dark:text-white">Volunteer #{idx + 1}:</strong> {v.name}</p>
                         <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {v.phone}</p>
                         {v.vehicleNumber && <p><strong className="text-slate-900 dark:text-white">Vehicle:</strong> {v.vehicleNumber}</p>}
@@ -629,22 +624,22 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     ))}
                   </div>
                 ) : selectedClaim.foodId?.volunteerAssignment?.name ? (
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+                  <div className="bg-slate-50 dark:bg-[#070E1E]/50 p-2.5 rounded-lg border border-slate-100 dark:border-[#1E2D52] text-slate-700 dark:text-[#9AA3B8]">
                     <p><strong className="text-slate-900 dark:text-white">Volunteer:</strong> {selectedClaim.foodId.volunteerAssignment.name}</p>
                     <p><strong className="text-slate-900 dark:text-white">Phone:</strong> {selectedClaim.foodId.volunteerAssignment.phone}</p>
                     {selectedClaim.foodId.volunteerAssignment.arrivalTime && <p><strong className="text-slate-900 dark:text-white">Vehicle:</strong> {selectedClaim.foodId.volunteerAssignment.arrivalTime}</p>}
                   </div>
                 ) : (
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 text-slate-500 italic text-center">
+                  <div className="bg-slate-50 dark:bg-[#070E1E]/50 p-2.5 rounded-lg border border-slate-100 dark:border-[#1E2D52] text-slate-500 italic text-center">
                     Volunteer not yet assigned
                   </div>
                 )}
 
                 {/* Volunteer Status Indicator / Decline Alert */}
                 {selectedClaim.foodId?.volunteerStatus === 'declined' ? (
-                  <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 rounded-xl border border-rose-200 dark:border-rose-800 space-y-1.5">
+                  <div className="p-2.5 bg-rose-50 dark:bg-[#E5707A]/14 rounded-xl border border-rose-200 dark:border-[#E5707A]/40 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-rose-700 dark:text-[#E5707A] flex items-center gap-1.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
                         Volunteer Declined Task
                       </span>
@@ -663,18 +658,18 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                       </button>
                     </div>
                     {selectedClaim.foodId?.volunteerDeclineReason && (
-                      <p className="text-[11px] text-rose-600 dark:text-rose-300 italic">
+                      <p className="text-[11px] text-rose-600 dark:text-[#E5707A] italic">
                         Reason: "{selectedClaim.foodId.volunteerDeclineReason}"
                       </p>
                     )}
                   </div>
                 ) : selectedClaim.foodId?.volunteerStatus === 'accepted' ? (
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-[#ECE9E1] bg-emerald-50 dark:bg-[#5BB487]/14 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-[#5BB487]/40">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Volunteer Accepted & En Route</span>
                   </div>
                 ) : selectedClaim.foodId?.volunteerStatus === 'pending' && (selectedClaim.foodId?.volunteerAssignments?.length > 0 || selectedClaim.foodId?.volunteerAssignment?.name) ? (
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 dark:text-[#E0A84A] bg-amber-50 dark:bg-[#E0A84A]/14 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-[#E0A84A]/40">
                     <Clock className="w-3.5 h-3.5 text-amber-600" />
                     <span>Awaiting Volunteer Response</span>
                   </div>
@@ -686,7 +681,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
             {selectedClaim.status === 'PENDING' && user?.accountType === 'DONOR' ? (
               <div className="flex flex-col gap-2 pt-2">
                 {claimError && (
-                  <div className="text-red-500 text-xs p-2 bg-red-50 dark:bg-red-900/30 rounded-lg font-medium text-center">
+                  <div className="text-red-500 text-xs p-2 bg-red-50 dark:bg-[#E5707A]/14 rounded-lg font-medium text-center">
                     {claimError}
                   </div>
                 )}
@@ -713,7 +708,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
               </div>
             ) : (
               <div className="space-y-2">
-                <div className="text-center p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-xs border border-emerald-200 dark:border-emerald-800">
+                <div className="text-center p-2.5 rounded-xl bg-emerald-50 dark:bg-[#5BB487]/14 text-emerald-700 dark:text-[#5BB487] font-bold uppercase text-xs border border-emerald-200 dark:border-[#5BB487]/40">
                   Claim {selectedClaim.status} ✓
                 </div>
                 {(selectedClaim.status === 'COMPLETED' || selectedClaim.foodId?.volunteerStatus === 'delivered') && (
@@ -726,10 +721,10 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                         setCertModalOpen(true);
                       }
                     }}
-                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer transition-colors"
+                    className="w-full py-2 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer transition-colors"
                   >
                     <Award className="w-4 h-4" />
-                    <span>View Donation Certificate 📜</span>
+                    <span>View Donation Certificate {'📜'}</span>
                   </button>
                 )}
               </div>
@@ -757,7 +752,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
           <div className="space-y-3">
             {/* Group header for HIGH priority if there are any HIGH items */}
             {filteredNotifications.some(n => getPriority(n) === 'HIGH') && filteredNotifications.some(n => getPriority(n) === 'LOW') && (
-              <p className="text-[10px] font-extrabold uppercase tracking-widest text-rose-500 dark:text-rose-400 px-1 mt-1">⚡ Needs Action</p>
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-rose-500 dark:text-[#E5707A] px-1 mt-1">⚡ Needs Action</p>
             )}
             {filteredNotifications.map((note, noteIdx) => {
               // Insert LOW group header before first LOW item
@@ -782,14 +777,14 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
               return (
                 <React.Fragment key={note._id}>
                 {showLowHeader && (
-                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-1 mt-2">Updates</p>
+                  <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 dark:text-slate-300 px-1 mt-2">Updates</p>
                 )}
                 <div
                   onClick={() => handleNotificationClick(note)}
                   className={`p-3.5 rounded-2xl border transition-all space-y-2.5 relative group cursor-pointer ${
                     note.read
-                      ? 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600'
-                      : 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/60 shadow-xs hover:border-emerald-400 dark:hover:border-emerald-500'
+                      ? 'bg-white dark:bg-[#0F1A33]/80 border-slate-200 dark:border-[#1E2D52]/80 hover:border-slate-300 dark:hover:border-[#2A426B]'
+                      : 'bg-emerald-50/70 dark:bg-[#5BB487]/14 border-emerald-200 dark:border-[#5BB487]/40 shadow-xs hover:border-emerald-400 dark:hover:border-emerald-500'
                   }`}
                 >
                   {/* Top Bar: Title, Stage Badge, Dismiss/Delete Button */}
@@ -797,7 +792,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     <div className="flex-1 min-w-0 pr-2">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         {note.title && (
-                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 truncate block">
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-[#ECE9E1] truncate block">
                             {note.title}
                           </span>
                         )}
@@ -816,7 +811,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     {/* Delete / Dismiss Button */}
                     <button
                       onClick={(e) => handleDeleteNotification(note, e)}
-                      className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors shrink-0 cursor-pointer"
+                      className="text-slate-400 hover:text-red-500 dark:hover:text-[#E5707A] p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-[#E5707A]/14 transition-colors shrink-0 cursor-pointer"
                       title="Delete notification"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -827,7 +822,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 
                   {/* INLINE ACTION FOR NGO: Confirm Collection after being accepted */}
                   {isAcceptedNgoNotification && (
-                    <div className="pt-1 border-t border-blue-100 dark:border-blue-900/40" onClick={e => e.stopPropagation()}>
+                    <div className="pt-1 border-t border-blue-100 dark:border-[#3156B5]/40" onClick={e => e.stopPropagation()}>
                       <button
                         disabled={isActing}
                         onClick={(e) => handleNgoConfirm(note, e)}
@@ -841,7 +836,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 
                   {/* Delivery Certificate Button for Donor / Recipient */}
                   {(note.type === 'PICKUP_CONFIRMED' || (note.title && note.title.toLowerCase().includes('delivered')) || (note.stage && note.stage.toLowerCase().includes('delivered'))) && (
-                    <div className="pt-1 border-t border-emerald-100 dark:border-emerald-900/40" onClick={e => e.stopPropagation()}>
+                    <div className="pt-1 border-t border-emerald-100 dark:border-[#5BB487]/40" onClick={e => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => {
@@ -851,10 +846,10 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                             setCertModalOpen(true);
                           }
                         }}
-                        className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer text-xs transition-colors"
+                        className="w-full py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-xl font-bold flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer text-xs transition-colors"
                       >
                         <Award className="w-3.5 h-3.5" />
-                        <span>View Donation Certificate 📜</span>
+                        <span>View Donation Certificate {'📜'}</span>
                       </button>
                     </div>
                   )}
@@ -867,7 +862,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                     </span>
 
                     {note.relatedClaimId && (
-                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center group-hover:underline">
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-[#ECE9E1] flex items-center group-hover:underline">
                         Details <ChevronRight className="w-3 h-3 ml-0.5" />
                       </span>
                     )}
@@ -891,3 +886,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 };
 
 export default NotificationsDrawer;
+
+
+
+

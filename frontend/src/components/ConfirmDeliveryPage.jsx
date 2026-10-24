@@ -8,8 +8,7 @@ import {
   UserCheck, 
   Building2, 
   HeartHandshake,
-  ShieldCheck,
-  MapPin
+  ShieldCheck
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -83,18 +82,18 @@ export default function ConfirmDeliveryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
+      <div className="min-h-screen bg-[#173B78] flex flex-col items-center justify-center p-4 text-white">
         <div className="w-12 h-12 border-4 border-sky-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-slate-400 text-sm font-medium">Verifying delivery security link...</p>
+        <p className="text-[#60708B] text-sm font-medium">Verifying delivery security link...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="min-h-screen bg-[#173B78] text-[#18315E] flex flex-col items-center justify-center p-4 sm:p-6 font-sans">
+      <div className="w-full max-w-md bg-[#173B78] border border-[#1E293B] rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-sky-600/30 via-slate-900 to-slate-900 p-6 border-b border-slate-800">
+        <div className="bg-gradient-to-r from-sky-600/30 via-[#0F172A] to-[#F97316] p-6 border-b border-[#1E293B]">
           <div className="flex items-center gap-2.5 mb-2">
             <span className="p-2 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
               <ShieldCheck className="w-5 h-5" />
@@ -104,7 +103,7 @@ export default function ConfirmDeliveryPage() {
               <h1 className="text-xl font-bold text-white tracking-tight">Confirm Food Received</h1>
             </div>
           </div>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-[#60708B] leading-relaxed">
             Please confirm only after the volunteer has safely handed over the food parcel at your NGO location.
           </p>
         </div>
@@ -112,15 +111,15 @@ export default function ConfirmDeliveryPage() {
         {/* Content */}
         <div className="p-6 space-y-5">
           {error ? (
-            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 space-y-3">
+            <div className="p-4 rounded-xl bg-[#173B78]/10 border border-[#E5E1D8]/30 text-[#E5B85C] space-y-3">
               <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <AlertCircle className="w-5 h-5 text-[#E5B85C] shrink-0 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-bold text-rose-200">Link Invalid or Already Used</h3>
-                  <p className="text-xs text-rose-300/80 mt-1 leading-relaxed">{error}</p>
+                  <h3 className="text-sm font-bold text-[#18315E]">Link Invalid or Already Used</h3>
+                  <p className="text-xs text-[#E5B85C]/80 mt-1 leading-relaxed">{error}</p>
                 </div>
               </div>
-              <p className="text-[11px] text-rose-400/80 pt-2 border-t border-rose-500/20">
+              <p className="text-[11px] text-[#E5B85C]/80 pt-2 border-t border-[#E5E1D8]/20">
                 If the delivery was already confirmed, the record is safely archived in your NGO history.
               </p>
             </div>
@@ -131,69 +130,69 @@ export default function ConfirmDeliveryPage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white">Delivery Confirmed!</h3>
-                <p className="text-xs text-slate-300 mt-1">
+                <p className="text-xs text-[#60708B] mt-1">
                   Food receipt has been successfully verified and marked as <strong>Delivered / Completed</strong>. The donor and volunteer have been notified.
                 </p>
               </div>
-              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-left text-xs space-y-1.5 text-slate-300">
+              <div className="p-3 bg-[#173B78]/60 rounded-xl border border-[#1E293B] text-left text-xs space-y-1.5 text-[#60708B]">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Item:</span>
+                  <span className="text-[#60708B]">Item:</span>
                   <span className="font-semibold text-white">{taskData?.itemTitle || taskData?.title}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Quantity:</span>
+                  <span className="text-[#60708B]">Quantity:</span>
                   <span className="font-semibold text-white">{taskData?.quantity}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Delivered by:</span>
+                  <span className="text-[#60708B]">Delivered by:</span>
                   <span className="font-semibold text-sky-300">{taskData?.volunteer?.name || 'Assigned Volunteer'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Original Donor:</span>
-                  <span className="font-semibold text-slate-200">{taskData?.donor?.name || 'Donor'}</span>
+                  <span className="text-[#60708B]">Original Donor:</span>
+                  <span className="font-semibold text-[#18315E]">{taskData?.donor?.name || 'Donor'}</span>
                 </div>
               </div>
             </div>
           ) : (
             <>
               {/* Task Details Card */}
-              <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-4 space-y-3.5">
+              <div className="bg-[#173B78]/70 border border-[#1E293B]/80 rounded-xl p-4 space-y-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#E5B85C]/10 border border-[#E5E1D8]/20 flex items-center justify-center text-[#E5B85C] shrink-0">
                     <Package className="w-5 h-5" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="text-sm font-bold text-white truncate">
                       {taskData?.itemTitle || taskData?.title || 'Food Donation'}
                     </h2>
-                    <p className="text-xs text-slate-400">
-                      Quantity: <span className="text-amber-300 font-medium">{taskData?.quantity || 'As specified'}</span>
+                    <p className="text-xs text-[#60708B]">
+                      Quantity: <span className="text-[#E5B85C] font-medium">{taskData?.quantity || 'As specified'}</span>
                     </p>
                   </div>
                 </div>
 
-                <div className="h-px bg-slate-800" />
+                <div className="h-px bg-[#173B78]" />
 
                 {/* Delivering Volunteer */}
-                <div className="flex items-center gap-3 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                <div className="flex items-center gap-3 bg-[#173B78]/90 p-3 rounded-lg border border-[#1E293B]">
                   <div className="w-9 h-9 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
                     <UserCheck className="w-5 h-5" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Delivering Volunteer</span>
+                    <span className="text-[10px] uppercase font-semibold text-[#60708B] tracking-wider">Delivering Volunteer</span>
                     <p className="text-sm font-bold text-sky-300">
                       {taskData?.volunteer?.name || 'Assigned Volunteer'}
                     </p>
                     {taskData?.volunteer?.phone && (
-                      <p className="text-xs text-slate-400">{taskData.volunteer.phone}</p>
+                      <p className="text-xs text-[#60708B]">{taskData.volunteer.phone}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Donor Organization / Individual */}
                 {taskData?.donor?.name && (
-                  <div className="flex items-center gap-3 text-xs text-slate-400 px-1">
-                    <Building2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="flex items-center gap-3 text-xs text-[#60708B] px-1">
+                    <Building2 className="w-4 h-4 text-[#E5B85C] shrink-0" />
                     <span>Donated by: <strong className="text-white">{taskData.donor.name}</strong></span>
                   </div>
                 )}
@@ -219,7 +218,7 @@ export default function ConfirmDeliveryPage() {
                 )}
               </button>
 
-              <p className="text-[11px] text-center text-slate-400 leading-tight">
+              <p className="text-[11px] text-center text-[#60708B] leading-tight">
                 This signed link verifies genuine physical food delivery. Once confirmed, the donation will be marked completed.
               </p>
             </>
@@ -229,3 +228,12 @@ export default function ConfirmDeliveryPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

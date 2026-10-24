@@ -13,18 +13,18 @@ const Button = ({
   icon: Icon,
   ...props
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-[10px] transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseStyles = 'inline-flex items-center justify-center font-bold rounded-full transition-all shadow-xs disabled:opacity-50 disabled:cursor-not-allowed';
   
   const sizeStyles = {
-    sm: 'py-1.5 px-3 text-xs gap-1.5',
-    md: 'py-2.5 px-4 text-sm gap-2',
-    lg: 'py-3.5 px-6 text-base gap-2',
+    sm: 'py-1.5 px-3 text-xs gap-1.5 uppercase tracking-wider',
+    md: 'py-2.5 px-4 text-sm gap-2 uppercase tracking-wider',
+    lg: 'py-3.5 px-6 text-base gap-2 uppercase tracking-wider',
   };
 
   const variantStyles = {
-    primary: 'bg-[var(--accent-primary)] hover:bg-[var(--accent-hover)] text-white',
-    secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700',
-    danger: 'bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-400',
+    primary: 'bg-[#173B78] hover:bg-[#15336B] dark:bg-[#3F66CC] dark:hover:bg-[#3F66CC] text-white shadow-[0_4px_14px_rgba(23,59,120,0.16)] dark:shadow-[0_0_20px_rgba(76,130,232,0.30)]',
+    secondary: 'bg-[#F3F0EA] hover:bg-[#E5E1D8] dark:bg-[#15223F] dark:hover:bg-[#1A2A4D] text-[#18315E] dark:text-white border border-[#E5E1D8] dark:border-[#1E2D52]',
+    danger: 'bg-[#F3F0EA] hover:bg-[#E5E1D8] dark:bg-[#15223F] dark:hover:bg-[#1A2A4D] text-[#C2410C] dark:text-[#D9B65D] border border-[#E5E1D8] dark:border-[#1E2D52]',
   };
 
   return (

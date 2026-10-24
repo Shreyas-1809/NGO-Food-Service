@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Crosshair } from 'lucide-react';
+import { Search, Crosshair } from 'lucide-react';
 import { loadGoogleMaps, getCurrentUserLocation } from '../services/mapsService';
 
 const LocationSearch = ({ onSelectLocation, onUseCurrentLocation }) => {
@@ -55,12 +55,12 @@ const LocationSearch = ({ onSelectLocation, onUseCurrentLocation }) => {
   return (
     <div className="w-full space-y-2">
       <div className="relative flex items-center">
-        <Search className="w-5 h-5 text-slate-400 absolute left-3.5 pointer-events-none" />
+        <Search className="w-5 h-5 text-[#60708B] absolute left-3.5 pointer-events-none" />
         <input
           ref={inputRef}
           type="text"
           placeholder="Search for pickup location or NGO area (e.g. Kothrud, Pune)..."
-          className="w-full pl-11 pr-32 py-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-2xl border border-slate-300 dark:border-slate-700 shadow-sm focus:ring-2 focus:ring-emerald-500 outline-none text-xs sm:text-sm font-medium"
+          className="w-full pl-11 pr-32 py-3 bg-white dark:bg-[#0F1A33] text-[#18315E] dark:text-white rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] shadow-sm focus:ring-2 focus:ring-[#E5E1D8] outline-none text-xs sm:text-sm font-medium"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -68,9 +68,9 @@ const LocationSearch = ({ onSelectLocation, onUseCurrentLocation }) => {
           type="button"
           onClick={handleUseMyLocation}
           disabled={loadingLoc}
-          className="absolute right-2.5 px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold transition-colors flex items-center space-x-1"
+          className="absolute right-2.5 px-3 py-1.5 bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33]/80 dark:hover:bg-[#15223F] text-[#18315E] dark:text-[#D9B65D] rounded-xl text-xs font-bold transition-colors flex items-center space-x-1"
         >
-          <Crosshair className="w-3.5 h-3.5 text-emerald-600" />
+          <Crosshair className="w-3.5 h-3.5 text-[#18315E]" />
           <span>{loadingLoc ? 'Locating...' : '📍 USE MY LOCATION'}</span>
         </button>
       </div>
@@ -79,3 +79,12 @@ const LocationSearch = ({ onSelectLocation, onUseCurrentLocation }) => {
 };
 
 export default LocationSearch;
+
+
+
+
+
+
+
+
+

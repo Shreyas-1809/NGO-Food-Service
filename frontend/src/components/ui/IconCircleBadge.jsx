@@ -13,32 +13,32 @@ import React from 'react';
  */
 const COLOR_MAP = {
   orange: {
-    soft: 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-400',
-    solid: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+    soft: 'bg-[#F3F0EA] text-[#E5B85C]',
+    solid: 'bg-[#173B78] text-white shadow-md'
   },
   green: {
-    soft: 'bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/25 dark:text-emerald-400',
-    solid: 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+    soft: 'bg-[#F3F0EA] text-[#18315E]',
+    solid: 'bg-[#173B78] text-white shadow-md'
   },
   amber: {
-    soft: 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
-    solid: 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+    soft: 'bg-[#F3F0EA] text-[#E5B85C]',
+    solid: 'bg-[#E5B85C] text-white shadow-md'
   },
   blue: {
-    soft: 'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
-    solid: 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+    soft: 'bg-[#F3F0EA] text-[#18315E]',
+    solid: 'bg-[#173B78] text-white shadow-md'
   },
   purple: {
-    soft: 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
-    solid: 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+    soft: 'bg-[#F3F0EA] text-[#18315E]',
+    solid: 'bg-[#173B78] text-white shadow-md'
   },
   rose: {
-    soft: 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300',
-    solid: 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+    soft: 'bg-[#F3F0EA] text-[#18315E]',
+    solid: 'bg-[#173B78] text-white shadow-md'
   },
   stone: {
-    soft: 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300',
-    solid: 'bg-stone-700 text-white'
+    soft: 'bg-[#F3F0EA] text-[#60708B]',
+    solid: 'bg-[#173B78] text-white'
   }
 };
 
@@ -83,3 +83,5 @@ const IconCircleBadge = ({
 };
 
 export default IconCircleBadge;
+
+

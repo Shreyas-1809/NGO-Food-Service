@@ -20,7 +20,7 @@ import ActivityHistory from './components/ActivityHistory';
 import FindNGOsPage from './components/FindNGOsPage';
 import MapPage from './components/MapPage';
 import NGOProfilePage from './components/NGOProfilePage';
-import DonationTrackingPage from './components/DonationTrackingPage';
+
 import NGORequirementsPage from './components/NGORequirementsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import VolunteerTaskPage from './components/VolunteerTaskPage';
@@ -133,9 +133,9 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center text-[#60708B] dark:text-slate-300 bg-[#F3F0EA] dark:bg-[#0F1A33]">
         <div className="flex flex-col items-center space-y-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1E293B]"></div>
           <span className="text-sm font-medium">Loading session...</span>
         </div>
       </div>
@@ -146,7 +146,7 @@ function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <Router>
-          <div className="min-h-screen w-full flex flex-col font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
+          <div className="min-h-screen w-full flex flex-col font-sans text-[#18315E] dark:text-white transition-colors duration-300">
             {/* Navbar is intentionally omitted here for !user because AuthPage has its own floating navbar */}
 
             <Routes>
@@ -204,3 +204,10 @@ function App() {
 }
 
 export default App;
+
+
+
+
+
+
+

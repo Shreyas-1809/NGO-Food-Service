@@ -1,14 +1,14 @@
 import React from 'react';
 
 const COLORS = [
-  'bg-emerald-500',
-  'bg-violet-500',
-  'bg-amber-500',
-  'bg-blue-500',
-  'bg-rose-500',
-  'bg-indigo-500',
-  'bg-teal-500',
-  'bg-purple-500'
+  'bg-gradient-to-tr from-emerald-500 to-teal-400',
+  'bg-gradient-to-tr from-indigo-500 to-purple-500',
+  'bg-gradient-to-tr from-rose-500 to-pink-400',
+  'bg-gradient-to-tr from-amber-500 to-orange-400',
+  'bg-gradient-to-tr from-sky-500 to-cyan-400',
+  'bg-gradient-to-tr from-violet-500 to-fuchsia-400',
+  'bg-gradient-to-tr from-lime-500 to-green-400',
+  'bg-gradient-to-tr from-blue-500 to-indigo-400'
 ];
 
 const Avatar = ({ name, src, className = 'w-12 h-12 rounded-xl text-sm' }) => {
@@ -17,7 +17,7 @@ const Avatar = ({ name, src, className = 'w-12 h-12 rounded-xl text-sm' }) => {
       <img
         src={src}
         alt={name}
-        className={`object-cover border border-slate-100 dark:border-slate-700 shrink-0 ${className}`}
+        className={`object-cover border border-[#E5E1D8] shrink-0 ${className}`}
       />
     );
   }
@@ -47,3 +47,5 @@ const Avatar = ({ name, src, className = 'w-12 h-12 rounded-xl text-sm' }) => {
 };
 
 export default Avatar;
+
+

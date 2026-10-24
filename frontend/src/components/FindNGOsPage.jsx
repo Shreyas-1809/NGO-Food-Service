@@ -8,10 +8,9 @@ import {
 } from '../services/ngoDirectoryService';
 import { calculateDistanceKm } from '../services/mapsService';
 import {
-  Search, MapPin, ExternalLink, Building2, ChevronDown,
-  ArrowRight, Globe, Info, X, Phone, Mail, MessageCircle,
+  Search, MapPin, ExternalLink, Building2, ArrowRight, Globe, Info, X, Phone, Mail, MessageCircle,
   ShieldCheck, AlertTriangle, RefreshCw, Share2, HeartHandshake,
-  Layers, CheckCircle, Clock, Sparkles
+  CheckCircle, Clock, Sparkles
 } from 'lucide-react';
 import RedirectSurplusModal from './RedirectSurplusModal';
 import ContactNgoModal from './ContactNgoModal';
@@ -22,9 +21,9 @@ import Avatar from './ui/Avatar';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import EmptyState from './ui/EmptyState';
-import IconCircleBadge from './ui/IconCircleBadge';
+
 import EmptyStateNoResults from './illustrations/EmptyStateNoResults';
-import { T, useTranslatedString } from '../context/LanguageContext';
+import { T } from '../context/LanguageContext';
 
 const FindNGOsPage = ({ user }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -274,11 +273,11 @@ const FindNGOsPage = ({ user }) => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <Building2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#18315E] dark:text-white tracking-tight flex items-center gap-2.5">
+            <Building2 className="w-7 h-7 text-[#18315E] dark:text-[#D9B65D]" />
             <T text="Find Organisations" />
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl">
+          <p className="text-xs sm:text-sm text-[#60708B] dark:text-slate-300 mt-1 max-w-2xl">
             <T text="Connect with registered partners fulfilling live needs, or discover local charities, food banks, and shelters nearby." />
           </p>
         </div>
@@ -287,7 +286,7 @@ const FindNGOsPage = ({ user }) => {
           {/* Admin Claims Review Button */}
           <button
             onClick={() => setShowAdminClaims(true)}
-            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50 transition-all cursor-pointer shadow-2xs"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33]/40 dark:hover:bg-[#15223F]/50 text-[#18315E] dark:text-[#D9B65D] border border-[#E5E1D8]/60 dark:border-[#1E2D52]/50 transition-all cursor-pointer shadow-2xs"
             title="Review claims from unverified organisations"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -295,21 +294,21 @@ const FindNGOsPage = ({ user }) => {
           </button>
 
           {/* Tab Switcher */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex items-center bg-[#F3F0EA] dark:bg-[#0F1A33] p-1.5 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] shadow-xs">
             <button
               onClick={() => updateUrlParam('tab', 'registered')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 currentTab === 'registered'
-                  ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-white dark:bg-[#0F1A33] text-[#18315E] dark:text-[#D9B65D] shadow-sm'
+                  : 'text-[#60708B] dark:text-slate-300 hover:text-[#18315E] dark:hover:text-white'
               }`}
             >
               <ShieldCheck className="w-4 h-4" />
               <span>On FoodBridge</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                 currentTab === 'registered'
-                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                  ? 'bg-[#F3F0EA] dark:bg-[#0F1A33]/50 text-[#18315E] dark:text-[#D9B65D]'
+                  : 'bg-[#F3F0EA] dark:bg-[#0F1A33] text-[#60708B] dark:text-slate-300'
               }`}>
                 {registeredNgos.length}
               </span>
@@ -319,16 +318,16 @@ const FindNGOsPage = ({ user }) => {
               onClick={() => updateUrlParam('tab', 'discover')}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 currentTab === 'discover'
-                  ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-white dark:bg-[#0F1A33] text-[#18315E] dark:text-[#D9B65D] shadow-sm'
+                  : 'text-[#60708B] dark:text-slate-300 hover:text-[#18315E] dark:hover:text-white'
               }`}
             >
               <Sparkles className="w-4 h-4" />
               <span>Discover NGOs nearby</span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${
                 currentTab === 'discover'
-                  ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
-                  : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                  ? 'bg-[#F3F0EA] dark:bg-[#0F1A33]/50 text-[#18315E] dark:text-[#D9B65D]'
+                  : 'bg-[#F3F0EA] dark:bg-[#0F1A33] text-[#60708B] dark:text-slate-300'
               }`}>
                 {discoverNgos.length}
               </span>
@@ -339,13 +338,13 @@ const FindNGOsPage = ({ user }) => {
 
       {/* Tier 2 Disclaimer Banner */}
       {currentTab === 'discover' && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/30 dark:border-amber-500/20 rounded-2xl flex items-start space-x-3 text-amber-800 dark:text-amber-300 text-xs animate-in slide-in-from-top-2 duration-200">
-          <Info className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+        <div className="p-4 bg-[#E5B85C]/10 border border-[#E5E1D8]/30 dark:border-[#1E2D52]/20 rounded-2xl flex items-start space-x-3 text-[#18315E] dark:text-[#D9B65D] text-xs animate-in slide-in-from-top-2 duration-200">
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#E5B85C] dark:text-[#D9B65D]" />
           <div className="space-y-0.5">
             <p className="font-semibold">
               <T text="These organisations are listed from public sources and are not verified or affiliated with FoodBridge." />
             </p>
-            <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80">
+            <p className="text-[11px] text-[#18315E]/80 dark:text-[#D9B65D]/80">
               Information shown is retrieved live from OpenStreetMap. You can invite them to join FoodBridge or claim an unverified profile if you represent them.
             </p>
           </div>
@@ -353,12 +352,12 @@ const FindNGOsPage = ({ user }) => {
       )}
 
       {/* Filter & Search Bar */}
-      <div className="bg-white dark:bg-slate-800/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200/80 dark:border-slate-700 space-y-3">
+      <div className="bg-white dark:bg-[#0F1A33]/90 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-sm border border-[#E5E1D8]/80 dark:border-[#1E2D52] space-y-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           
           {/* Keyword Search */}
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400 pointer-events-none" />
+            <Search className="w-4 h-4 absolute left-3 top-3 text-[#60708B] pointer-events-none" />
             <input
               ref={searchInputRef}
               type="text"
@@ -368,13 +367,13 @@ const FindNGOsPage = ({ user }) => {
                 isTypingRef.current = true;
                 setInputValue(e.target.value);
               }}
-              className="w-full pl-9 pr-9 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              className="w-full pl-9 pr-9 py-2.5 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-xs text-[#18315E] dark:text-white placeholder:text-[#60708B] focus:outline-none focus:ring-2 focus:ring-[#E5E1D8] transition-all"
             />
             {inputValue && (
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-600/60 transition-colors cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#60708B] hover:text-[#60708B] dark:hover:text-[#ECE9E1] hover:bg-[#F3F0EA]/60 dark:hover:bg-[#15223F]/60 transition-colors cursor-pointer"
                 title="Clear search"
                 aria-label="Clear search"
               >
@@ -385,14 +384,14 @@ const FindNGOsPage = ({ user }) => {
 
           {/* City / Location Filter */}
           <div className="relative">
-            <MapPin className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+            <MapPin className="w-4 h-4 absolute left-3 top-3 text-[#60708B]" />
             <select
               value={selectedCity}
               onChange={e => updateUrlParam('city', e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all"
+              className="w-full pl-9 pr-4 py-2.5 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-xs text-[#18315E] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E5E1D8] cursor-pointer transition-all"
             >
               {AVAILABLE_CITIES.map(c => (
-                <option key={c} value={c} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                <option key={c} value={c} className="bg-white dark:bg-[#0F1A33] text-[#18315E] dark:text-white">
                   {c}
                 </option>
               ))}
@@ -403,10 +402,10 @@ const FindNGOsPage = ({ user }) => {
           <select
             value={selectedCategory}
             onChange={e => updateUrlParam('category', e.target.value)}
-            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all"
+            className="w-full px-3 py-2.5 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-xs text-[#18315E] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E5E1D8] cursor-pointer transition-all"
           >
             {AVAILABLE_CAUSES.map(cat => (
-              <option key={cat} value={cat} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+              <option key={cat} value={cat} className="bg-white dark:bg-[#0F1A33] text-[#18315E] dark:text-white">
                 {cat}
               </option>
             ))}
@@ -416,20 +415,20 @@ const FindNGOsPage = ({ user }) => {
           <select
             value={sortBy}
             onChange={e => updateUrlParam('sort', e.target.value)}
-            className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all"
+            className="w-full px-3 py-2.5 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 border border-[#E5E1D8] dark:border-[#1E2D52] rounded-xl text-xs text-[#18315E] dark:text-white focus:outline-none focus:ring-2 focus:ring-[#E5E1D8] cursor-pointer transition-all"
           >
-            <option value="Nearest" className="bg-white dark:bg-slate-800">Nearest First</option>
-            <option value="A-Z" className="bg-white dark:bg-slate-800">Name (A–Z)</option>
+            <option value="Nearest" className="bg-white dark:bg-[#0F1A33]">Nearest First</option>
+            <option value="A-Z" className="bg-white dark:bg-[#0F1A33]">Name (A–Z)</option>
           </select>
         </div>
 
         {/* Results Count & Attributions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-700/60 gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-[#60708B] dark:text-slate-300 pt-2 border-t border-[#E5E1D8] dark:border-[#1E2D52]/60 gap-2">
           <span>
-            Showing <strong className="text-slate-900 dark:text-white font-bold">{activeList.length}</strong> organisations {selectedCity !== 'All Cities' ? `in ${selectedCity}` : ''}
+            Showing <strong className="text-[#18315E] dark:text-white font-bold">{activeList.length}</strong> organisations {selectedCity !== 'All Cities' ? `in ${selectedCity}` : ''}
           </span>
           {currentTab === 'discover' && (
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+            <span className="text-[11px] text-[#60708B] dark:text-slate-300">
               Data source: {import.meta.env.VITE_PLACES_API_KEY ? 'Google Places API' : 'OpenStreetMap (© OpenStreetMap contributors)'}
             </span>
           )}
@@ -441,39 +440,39 @@ const FindNGOsPage = ({ user }) => {
         /* Skeleton Loading Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <div key={i} className="bg-white dark:bg-slate-800/80 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/80 space-y-4 animate-pulse">
+            <div key={i} className="bg-white dark:bg-[#0F1A33]/80 rounded-2xl p-5 border border-[#E5E1D8] dark:border-[#1E2D52]/80 space-y-4 animate-pulse">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-slate-700"></div>
+                <div className="w-12 h-12 rounded-2xl bg-[#F3F0EA] dark:bg-[#0F1A33]"></div>
                 <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded-md w-3/4"></div>
-                  <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded-md w-1/2"></div>
+                  <div className="h-4 bg-[#F3F0EA] dark:bg-[#0F1A33] rounded-md w-3/4"></div>
+                  <div className="h-3 bg-[#F3F0EA] dark:bg-[#0F1A33] rounded-md w-1/2"></div>
                 </div>
               </div>
-              <div className="h-10 bg-slate-100 dark:bg-slate-700/50 rounded-xl"></div>
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-700 flex justify-between">
-                <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
-                <div className="h-7 bg-slate-200 dark:bg-slate-700 rounded-lg w-20"></div>
+              <div className="h-10 bg-[#F3F0EA] dark:bg-[#0F1A33]/50 rounded-xl"></div>
+              <div className="pt-3 border-t border-[#E5E1D8] dark:border-[#1E2D52] flex justify-between">
+                <div className="h-4 bg-[#F3F0EA] dark:bg-[#0F1A33] rounded w-1/4"></div>
+                <div className="h-7 bg-[#F3F0EA] dark:bg-[#0F1A33] rounded-lg w-20"></div>
               </div>
             </div>
           ))}
         </div>
       ) : currentError ? (
         /* Error State with Retry Button */
-        <div className="p-8 text-center bg-white dark:bg-slate-800 rounded-2xl border border-red-200 dark:border-red-900/50 space-y-4">
-          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto">
+        <div className="p-8 text-center bg-white dark:bg-[#0F1A33] rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52]/50 space-y-4">
+          <div className="w-12 h-12 bg-[#F3F0EA] dark:bg-[#0F1A33]/30 text-[#18315E] dark:text-[#D9B65D] rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">
+            <h3 className="font-bold text-[#18315E] dark:text-white text-base">
               Failed to load directory data
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+            <p className="text-xs text-[#60708B] dark:text-slate-300 max-w-md mx-auto">
               {currentError}
             </p>
           </div>
           <button
             onClick={retryAction}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Retry Connection</span>
@@ -510,7 +509,7 @@ const FindNGOsPage = ({ user }) => {
               <div
                 key={ngo.id}
                 onClick={() => setSelectedNgo(ngo)}
-                className="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/90 dark:border-slate-700/80 hover:border-emerald-500/60 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+                className="bg-white dark:bg-[#0F1A33] rounded-2xl p-5 border border-[#E5E1D8]/90 dark:border-[#1E2D52]/80 hover:border-[#173B78]/60 dark:hover:border-[#173B78]/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
               >
                 <div className="space-y-3.5">
                   {/* Card Header */}
@@ -519,22 +518,22 @@ const FindNGOsPage = ({ user }) => {
                       <div className="relative shrink-0">
                         <Avatar name={ngo.name} className="w-12 h-12 rounded-2xl text-sm font-bold shadow-xs" />
                         {isRegisteredTier && ngo.verified && (
-                          <span className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-0.5 rounded-full ring-2 ring-white dark:ring-slate-800" title="Verified FoodBridge Partner">
+                          <span className="absolute -bottom-1 -right-1 bg-[#173B78] text-white p-0.5 rounded-full ring-2 ring-white dark:ring-[#173B78]" title="Verified FoodBridge Partner">
                             <ShieldCheck className="w-3.5 h-3.5" />
                           </span>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                          <h3 className="font-bold text-sm text-[#18315E] dark:text-white truncate group-hover:text-[#18315E] dark:group-hover:text-[#D9B65D] transition-colors">
                             {ngo.name}
                           </h3>
                         </div>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center mt-0.5 truncate">
-                          <MapPin className="w-3 h-3 mr-1 text-slate-400 shrink-0" />
+                        <span className="text-[11px] text-[#60708B] dark:text-slate-300 flex items-center mt-0.5 truncate">
+                          <MapPin className="w-3 h-3 mr-1 text-[#60708B] shrink-0" />
                           <span className="truncate">{ngo.area || ngo.city}</span>
                           {ngo.distanceKm !== null && ngo.distanceKm !== undefined && (
-                            <span className="ml-1 text-emerald-600 dark:text-emerald-400 font-semibold shrink-0">
+                            <span className="ml-1 text-[#18315E] dark:text-[#D9B65D] font-semibold shrink-0">
                               • ~{ngo.distanceKm.toFixed(1)} km away
                             </span>
                           )}
@@ -545,17 +544,17 @@ const FindNGOsPage = ({ user }) => {
                     {/* Status Badge */}
                     {isRegisteredTier ? (
                       ngo.verified ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/60 dark:bg-[#5BB487]/14 dark:text-[#5BB487] dark:border dark:border-[#5BB487]/40 shrink-0">
                           <CheckCircle className="w-3 h-3" />
                           Verified
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 shrink-0">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#F3F0EA] text-[#60708B] dark:bg-[#0F1A33] dark:text-slate-300 shrink-0">
                           Registered
                         </span>
                       )
                     ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-500/20 shrink-0">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E5B85C]/10 text-[#18315E] dark:bg-[#D9B65D]/20 dark:text-[#D9B65D] border border-[#E5E1D8]/20 shrink-0">
                         Not on FoodBridge yet
                       </span>
                     )}
@@ -564,11 +563,11 @@ const FindNGOsPage = ({ user }) => {
                   {/* Description or Category */}
                   <div className="space-y-1.5">
                     {ngo.category && (
-                      <span className="inline-block bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
+                      <span className="inline-block bg-[#F3F0EA] dark:bg-[#0F1A33]/60 text-[#18315E] dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-md">
                         {ngo.category}
                       </span>
                     )}
-                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-[#60708B] dark:text-slate-300 line-clamp-2 leading-relaxed">
                       {ngo.description || (
                         isRegisteredTier 
                           ? 'Registered partner organization dedicated to community food assistance and zero hunger.'
@@ -579,14 +578,14 @@ const FindNGOsPage = ({ user }) => {
 
                   {/* Tier 1 Feature: Live Active Needs Feed on Card */}
                   {isRegisteredTier && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-2">
+                    <div className="pt-2 border-t border-[#E5E1D8] dark:border-[#1E2D52]/60 space-y-2">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                          <Clock className="w-3 h-3 text-emerald-500" />
+                        <span className="font-bold text-[#18315E] dark:text-slate-300 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#18315E]" />
                           Live Needs ({ngo.activeNeedsCount || 0})
                         </span>
                         {ngo.activeNeedsCount > 0 && (
-                          <span className="text-[10px] font-extrabold text-red-500 uppercase">
+                          <span className="text-[10px] font-extrabold text-[#18315E] uppercase">
                             Urgent
                           </span>
                         )}
@@ -595,12 +594,12 @@ const FindNGOsPage = ({ user }) => {
                       {ngo.activeNeeds && ngo.activeNeeds.length > 0 ? (
                         <div className="space-y-1.5">
                           {ngo.activeNeeds.slice(0, 2).map((need, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-200/60 dark:border-slate-600/60 text-xs">
+                            <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-[#F3F0EA] dark:bg-[#0F1A33]/40 border border-[#E5E1D8]/60 dark:border-[#1E2D52]/60 text-xs">
                               <div className="truncate mr-2">
-                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                                <span className="font-semibold text-[#18315E] dark:text-white truncate block">
                                   {need.title}
                                 </span>
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                                <span className="text-[10px] text-[#60708B] dark:text-slate-300">
                                   Needed: {need.quantity} {need.unit}
                                 </span>
                               </div>
@@ -610,7 +609,7 @@ const FindNGOsPage = ({ user }) => {
                                     e.stopPropagation();
                                     navigate('/donate', { state: { prefill: { targetNgoName: ngo.name, needTitle: need.title, needId: need._id } } });
                                   }}
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg shrink-0 transition-all cursor-pointer"
+                                  className="px-2.5 py-1 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white text-[10px] font-bold rounded-lg shrink-0 transition-all cursor-pointer"
                                 >
                                   Fulfil
                                 </button>
@@ -619,7 +618,7 @@ const FindNGOsPage = ({ user }) => {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                        <p className="text-[11px] text-[#60708B] dark:text-slate-300 italic">
                           No active shortages posted at this moment.
                         </p>
                       )}
@@ -628,22 +627,22 @@ const FindNGOsPage = ({ user }) => {
 
                   {/* Tier 2: Public Contact & Source Details */}
                   {!isRegisteredTier && (
-                    <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="pt-2 border-t border-[#E5E1D8] dark:border-[#1E2D52]/60 space-y-1.5 text-[11px] text-[#60708B] dark:text-slate-300">
                       {ngo.phone && (
                         <div className="flex items-center gap-1.5">
-                          <Phone className="w-3 h-3 text-slate-400" />
+                          <Phone className="w-3 h-3 text-[#60708B]" />
                           <span>{ngo.phone}</span>
                         </div>
                       )}
                       {ngo.website && (
                         <div className="flex items-center gap-1.5 truncate">
-                          <Globe className="w-3 h-3 text-slate-400 shrink-0" />
+                          <Globe className="w-3 h-3 text-[#60708B] shrink-0" />
                           <a 
                             href={ngo.website.startsWith('http') ? ngo.website : `https://${ngo.website}`} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
-                            className="text-emerald-600 dark:text-emerald-400 hover:underline truncate"
+                            className="text-[#18315E] dark:text-[#D9B65D] hover:underline truncate"
                           >
                             {ngo.website.replace(/^https?:\/\//, '')}
                           </a>
@@ -654,7 +653,7 @@ const FindNGOsPage = ({ user }) => {
                 </div>
 
                   {/* Card Actions Footer */}
-                  <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/80">
+                  <div className="pt-4 mt-4 border-t border-[#E5E1D8] dark:border-[#1E2D52]/80">
                     {isRegisteredTier ? (
                       /* Tier 1 Actions */
                       <div className="flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
@@ -663,7 +662,7 @@ const FindNGOsPage = ({ user }) => {
                             e.stopPropagation();
                             navigate(`/ngo/${ngo.id}`);
                           }}
-                          className="text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center cursor-pointer"
+                          className="text-xs font-bold text-[#60708B] dark:text-slate-300 hover:text-[#18315E] dark:hover:text-[#D9B65D] transition-colors flex items-center cursor-pointer"
                         >
                           View Profile <ArrowRight className="w-3 h-3 ml-1" />
                         </button>
@@ -671,7 +670,7 @@ const FindNGOsPage = ({ user }) => {
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setContactNgo(ngo)}
-                            className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                            className="px-3 py-1.5 border border-[#E5E1D8] dark:border-[#1E2D52] hover:bg-[#F3F0EA] dark:hover:bg-[#15223F] text-[#18315E] dark:text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                             title="Message this organisation"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
@@ -681,7 +680,7 @@ const FindNGOsPage = ({ user }) => {
                           {!isOrg ? (
                             <button
                               onClick={() => navigate('/donate', { state: { prefill: { targetNgoName: ngo.name } } })}
-                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-1"
+                              className="px-3.5 py-1.5 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-1"
                             >
                               <HeartHandshake className="w-3.5 h-3.5" />
                               <span>Donate</span>
@@ -689,7 +688,7 @@ const FindNGOsPage = ({ user }) => {
                           ) : (
                             <button
                               onClick={() => setRedirectNgo(ngo)}
-                              className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                              className="px-3.5 py-1.5 bg-[#E5B85C] hover:bg-[#173B78] text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
                             >
                               Redirect
                             </button>
@@ -705,7 +704,7 @@ const FindNGOsPage = ({ user }) => {
                               href={ngo.website.startsWith('http') ? ngo.website : `https://${ngo.website}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex-1 text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
+                              className="flex-1 text-center py-1.5 px-2 bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33] dark:hover:bg-[#15223F] text-[#18315E] dark:text-white rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
                             >
                               <ExternalLink className="w-3 h-3" />
                               <span>Visit website</span>
@@ -715,7 +714,7 @@ const FindNGOsPage = ({ user }) => {
                           {ngo.phone ? (
                             <a
                               href={`tel:${ngo.phone}`}
-                              className="flex-1 text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
+                              className="flex-1 text-center py-1.5 px-2 bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33] dark:hover:bg-[#15223F] text-[#18315E] dark:text-white rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
                             >
                               <Phone className="w-3 h-3" />
                               <span>Call</span>
@@ -723,7 +722,7 @@ const FindNGOsPage = ({ user }) => {
                           ) : ngo.email ? (
                             <a
                               href={`mailto:${ngo.email}`}
-                              className="flex-1 text-center py-1.5 px-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
+                              className="flex-1 text-center py-1.5 px-2 bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33] dark:hover:bg-[#15223F] text-[#18315E] dark:text-white rounded-xl text-xs font-semibold transition-all inline-flex items-center justify-center gap-1"
                             >
                               <Mail className="w-3 h-3" />
                               <span>Email</span>
@@ -732,7 +731,7 @@ const FindNGOsPage = ({ user }) => {
 
                           <button
                             onClick={() => setInviteNgo(ngo)}
-                            className="flex-1 py-1.5 px-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded-xl text-xs font-bold transition-all inline-flex items-center justify-center gap-1 cursor-pointer"
+                            className="flex-1 py-1.5 px-2 bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33]/30 dark:hover:bg-[#15223F]/50 text-[#18315E] dark:text-[#D9B65D] rounded-xl text-xs font-bold transition-all inline-flex items-center justify-center gap-1 cursor-pointer"
                           >
                             <Share2 className="w-3 h-3" />
                             <span>Invite to join</span>
@@ -742,7 +741,7 @@ const FindNGOsPage = ({ user }) => {
                         {/* Claim this profile button */}
                         <button
                           onClick={() => setClaimNgo(ngo)}
-                          className="w-full py-2 px-3 text-center text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          className="w-full py-2 px-3 text-center text-xs font-bold text-[#18315E] dark:text-[#D9B65D] bg-[#F3F0EA] hover:bg-[#F3F0EA] dark:bg-[#0F1A33]/40 dark:hover:bg-[#15223F]/50 rounded-xl border border-[#E5E1D8]/60 dark:border-[#1E2D52]/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                         >
                           <ShieldCheck className="w-3.5 h-3.5" />
                           <span>Claim this profile</span>
@@ -769,22 +768,22 @@ const FindNGOsPage = ({ user }) => {
                 <Avatar name={selectedNgo.name} className="w-16 h-16 rounded-2xl text-xl font-bold" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h4 className="font-extrabold text-base text-slate-900 dark:text-white truncate">
+                    <h4 className="font-extrabold text-base text-[#18315E] dark:text-white truncate">
                       {selectedNgo.name}
                     </h4>
                   </div>
                   {selectedNgo.isRegistered ? (
-                    <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 mt-1 text-[11px] font-bold text-[#18315E] dark:text-[#D9B65D]">
                       {selectedNgo.verified ? <ShieldCheck className="w-3.5 h-3.5" /> : null}
                       {selectedNgo.verified ? 'Verified FoodBridge Partner' : 'Registered Organisation'}
                     </span>
                   ) : (
-                    <span className="inline-block mt-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                    <span className="inline-block mt-1 text-[11px] font-semibold text-[#E5B85C] dark:text-[#D9B65D]">
                       Not on FoodBridge yet
                     </span>
                   )}
-                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center mt-1">
-                    <MapPin className="w-3.5 h-3.5 mr-1 text-slate-400 shrink-0" />
+                  <p className="text-xs text-[#60708B] dark:text-slate-300 flex items-center mt-1">
+                    <MapPin className="w-3.5 h-3.5 mr-1 text-[#60708B] shrink-0" />
                     {selectedNgo.address || `${selectedNgo.area}, ${selectedNgo.city}`}
                   </p>
                 </div>
@@ -792,8 +791,8 @@ const FindNGOsPage = ({ user }) => {
 
               {/* Description */}
               <div className="space-y-1.5">
-                <h5 className="font-bold text-xs uppercase tracking-wider text-slate-400">About</h5>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <h5 className="font-bold text-xs uppercase tracking-wider text-[#60708B]">About</h5>
+                <p className="text-xs text-[#60708B] dark:text-slate-300 leading-relaxed">
                   {selectedNgo.description || (
                     selectedNgo.isRegistered 
                       ? 'Registered partner organisation actively working on food surplus redistribution and community support.'
@@ -805,16 +804,16 @@ const FindNGOsPage = ({ user }) => {
               {/* Active Needs (Tier 1 Only) */}
               {selectedNgo.isRegistered && (
                 <div className="space-y-2">
-                  <h5 className="font-bold text-xs uppercase tracking-wider text-slate-400">
+                  <h5 className="font-bold text-xs uppercase tracking-wider text-[#60708B]">
                     Live Needs ({selectedNgo.activeNeedsCount || 0})
                   </h5>
                   {selectedNgo.activeNeeds && selectedNgo.activeNeeds.length > 0 ? (
                     <div className="space-y-2">
                       {selectedNgo.activeNeeds.map((need, idx) => (
-                        <div key={idx} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div key={idx} className="p-3 bg-[#F3F0EA] dark:bg-[#0F1A33] rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] flex items-center justify-between">
                           <div>
-                            <p className="font-bold text-xs text-slate-900 dark:text-white">{need.title}</p>
-                            <p className="text-[11px] text-slate-500">{need.quantity} {need.unit} • Urgency: {need.urgency}</p>
+                            <p className="font-bold text-xs text-[#18315E] dark:text-white">{need.title}</p>
+                            <p className="text-[11px] text-[#60708B]">{need.quantity} {need.unit} • Urgency: {need.urgency}</p>
                           </div>
                           {!isOrg && (
                             <button
@@ -822,7 +821,7 @@ const FindNGOsPage = ({ user }) => {
                                 setSelectedNgo(null);
                                 navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name, needTitle: need.title, needId: need._id } } });
                               }}
-                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                              className="px-3 py-1 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white text-xs font-bold rounded-lg cursor-pointer"
                             >
                               Fulfil Need
                             </button>
@@ -831,38 +830,38 @@ const FindNGOsPage = ({ user }) => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500 italic">No active shortages currently posted.</p>
+                    <p className="text-xs text-[#60708B] italic">No active shortages currently posted.</p>
                   )}
                 </div>
               )}
 
               {/* Public Contact Channels */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2.5 text-xs">
-                <h5 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider">
+              <div className="p-4 bg-[#F3F0EA] dark:bg-[#0F1A33]/60 rounded-2xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2.5 text-xs">
+                <h5 className="font-bold text-[#18315E] dark:text-white text-xs uppercase tracking-wider">
                   Contact Information
                 </h5>
                 {selectedNgo.phone && (
-                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 text-emerald-500" /> Phone</span>
+                  <div className="flex items-center justify-between text-[#60708B] dark:text-slate-300">
+                    <span className="flex items-center"><Phone className="w-3.5 h-3.5 mr-2 text-[#18315E]" /> Phone</span>
                     <a href={`tel:${selectedNgo.phone}`} className="font-bold hover:underline">{selectedNgo.phone}</a>
                   </div>
                 )}
                 {selectedNgo.email && (
-                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 text-blue-500" /> Email</span>
+                  <div className="flex items-center justify-between text-[#60708B] dark:text-slate-300">
+                    <span className="flex items-center"><Mail className="w-3.5 h-3.5 mr-2 text-[#18315E]" /> Email</span>
                     <a href={`mailto:${selectedNgo.email}`} className="font-bold hover:underline">{selectedNgo.email}</a>
                   </div>
                 )}
                 {selectedNgo.website && (
-                  <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                    <span className="flex items-center"><Globe className="w-3.5 h-3.5 mr-2 text-purple-500" /> Website</span>
+                  <div className="flex items-center justify-between text-[#60708B] dark:text-slate-300">
+                    <span className="flex items-center"><Globe className="w-3.5 h-3.5 mr-2 text-[#E5B85C]" /> Website</span>
                     <a 
                       href={selectedNgo.website.startsWith('http') ? selectedNgo.website : `https://${selectedNgo.website}`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline truncate max-w-[180px]"
+                      className="font-bold text-[#18315E] dark:text-[#D9B65D] hover:underline truncate max-w-[180px]"
                     >
-                      Visit Website ↗
+                      Visit Website {'\u2197'}
                     </a>
                   </div>
                 )}
@@ -870,12 +869,12 @@ const FindNGOsPage = ({ user }) => {
             </div>
 
             {/* Bottom Actions */}
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
+            <div className="pt-4 border-t border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
               {selectedNgo.isRegistered ? (
                 !isOrg ? (
                   <Button
                     variant="primary"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="w-full bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white"
                     onClick={() => {
                       setSelectedNgo(null);
                       navigate('/donate', { state: { prefill: { targetNgoName: selectedNgo.name } } });
@@ -887,7 +886,7 @@ const FindNGOsPage = ({ user }) => {
                 ) : (
                   <Button
                     variant="primary"
-                    className="w-full bg-violet-600 hover:bg-violet-700 text-white"
+                    className="w-full bg-[#E5B85C] hover:bg-[#173B78] text-white"
                     onClick={() => {
                       const ngo = selectedNgo;
                       setSelectedNgo(null);
@@ -914,7 +913,7 @@ const FindNGOsPage = ({ user }) => {
                   </Button>
                   <Button
                     variant="primary"
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    className="w-full bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white"
                     onClick={() => {
                       const ngo = selectedNgo;
                       setSelectedNgo(null);
@@ -968,3 +967,13 @@ const FindNGOsPage = ({ user }) => {
 };
 
 export default FindNGOsPage;
+
+
+
+
+
+
+
+
+
+

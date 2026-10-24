@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Award, Download, Printer, Share2, X, CheckCircle2, ShieldCheck, HeartHandshake, Calendar, Package, Building2, User } from 'lucide-react';
-import { T } from '../context/LanguageContext';
+import { Award, Printer, Share2, X, ShieldCheck, HeartHandshake, Calendar, Package, Building2 } from 'lucide-react';
+
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -46,18 +46,18 @@ const DonationCertificateModal = ({ isOpen, onClose, foodId, initialData }) => {
     : 'FoodBridge Donation Certificate';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#173B78]/70 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#0F1A33] rounded-3xl shadow-2xl max-w-2xl w-full border border-[#E5E1D8] dark:border-[#1E2D52] overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Action Bar (Hidden during print) */}
-        <div className="print:hidden p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+        <div className="print:hidden p-4 border-b border-[#E5E1D8] dark:border-[#1E2D52] flex justify-between items-center bg-[#F3F0EA] dark:bg-[#0F1A33]/50">
           <div className="flex items-center gap-2">
-            <Award className="w-5 h-5 text-amber-500" />
-            <span className="font-bold text-slate-800 dark:text-white text-sm">Donation Certificate</span>
+            <Award className="w-5 h-5 text-[#E5B85C]" />
+            <span className="font-bold text-[#18315E] dark:text-white text-sm">Donation Certificate</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              className="px-3 py-1.5 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print / Save PDF</span>
@@ -74,7 +74,7 @@ const DonationCertificateModal = ({ isOpen, onClose, foodId, initialData }) => {
             </a>
             <button
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+              className="p-1.5 text-[#60708B] hover:text-[#18315E] dark:hover:text-white rounded-lg transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -82,97 +82,97 @@ const DonationCertificateModal = ({ isOpen, onClose, foodId, initialData }) => {
         </div>
 
         {/* Certificate Printable Body */}
-        <div className="p-6 md:p-10 overflow-y-auto flex-1 flex justify-center bg-slate-100 dark:bg-slate-950">
+        <div className="p-6 md:p-10 overflow-y-auto flex-1 flex justify-center bg-[#F3F0EA] dark:bg-[#0F1A33]">
           {loading ? (
-            <div className="text-center py-20 text-slate-400 text-sm flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="text-center py-20 text-[#60708B] text-sm flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-3 border-[#1E293B] border-t-transparent rounded-full animate-spin"></div>
               <span>Generating your official certificate...</span>
             </div>
           ) : error ? (
-            <div className="text-center py-16 text-rose-500 text-sm">{error}</div>
+            <div className="text-center py-16 text-[#E5B85C] text-sm">{error}</div>
           ) : certData ? (
-            <div className="w-full max-w-xl bg-white dark:bg-slate-900 border-8 border-double border-amber-600/40 dark:border-amber-500/30 rounded-2xl p-6 md:p-8 shadow-xl relative text-center space-y-5 print:shadow-none print:border-black print:m-0">
+            <div className="w-full max-w-xl bg-white dark:bg-[#0F1A33] border-8 border-double border-[#1E293B]/40 dark:border-[#1E2D52]/30 rounded-2xl p-6 md:p-8 shadow-xl relative text-center space-y-5 print:shadow-none print:border-black print:m-0">
               {/* Corner Accents */}
-              <div className="absolute top-2 left-2 text-amber-500 text-xs font-serif opacity-70">❖</div>
-              <div className="absolute top-2 right-2 text-amber-500 text-xs font-serif opacity-70">❖</div>
-              <div className="absolute bottom-2 left-2 text-amber-500 text-xs font-serif opacity-70">❖</div>
-              <div className="absolute bottom-2 right-2 text-amber-500 text-xs font-serif opacity-70">❖</div>
+              <div className="absolute top-2 left-2 text-[#E5B85C] text-xs font-serif opacity-70">❖</div>
+              <div className="absolute top-2 right-2 text-[#E5B85C] text-xs font-serif opacity-70">❖</div>
+              <div className="absolute bottom-2 left-2 text-[#E5B85C] text-xs font-serif opacity-70">❖</div>
+              <div className="absolute bottom-2 right-2 text-[#E5B85C] text-xs font-serif opacity-70">❖</div>
 
               {/* Organization Header */}
               <div className="space-y-1">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 mb-1">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#F3F0EA] dark:bg-[#0F1A33] text-[#18315E] mb-1">
                   <HeartHandshake className="w-6 h-6" />
                 </div>
-                <h4 className="text-xs uppercase font-extrabold tracking-[0.25em] text-emerald-700 dark:text-emerald-400">
+                <h4 className="text-xs uppercase font-extrabold tracking-[0.25em] text-[#18315E] dark:text-[#D9B65D]">
                   FoodBridge Impact Network
                 </h4>
-                <h1 className="text-xl md:text-2xl font-serif font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                <h1 className="text-xl md:text-2xl font-serif font-black text-[#18315E] dark:text-white uppercase tracking-wider">
                   Certificate of Appreciation
                 </h1>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                <p className="text-[11px] text-[#60708B] dark:text-slate-300 italic">
                   Presented in honor of verified surplus food donation
                 </p>
               </div>
 
-              <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent mx-auto"></div>
+              <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-[#F3F0EA] to-transparent mx-auto"></div>
 
               {/* Recipient Donor Name */}
               <div className="space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Proudly Awarded To</span>
-                <h2 className="text-2xl font-bold font-serif text-slate-900 dark:text-white underline decoration-amber-500/60 decoration-2 underline-offset-4">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#60708B]">Proudly Awarded To</span>
+                <h2 className="text-2xl font-bold font-serif text-[#18315E] dark:text-white underline decoration-[#E5E1D8]/60 decoration-2 underline-offset-4">
                   {certData.donorName}
                 </h2>
               </div>
 
               {/* Donation Details */}
-              <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-left">
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
-                    <Package className="w-3.5 h-3.5 text-emerald-600" />
+              <div className="bg-[#F3F0EA] dark:bg-[#0F1A33]/60 p-4 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2 text-left">
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-[#E5E1D8] dark:border-[#1E2D52]">
+                  <span className="text-[#60708B] dark:text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Package className="w-3.5 h-3.5 text-[#18315E]" />
                     <span>Donated Item</span>
                   </span>
-                  <span className="font-bold text-slate-800 dark:text-white">{certData.itemTitle} ({certData.quantity})</span>
+                  <span className="font-bold text-[#18315E] dark:text-white">{certData.itemTitle} ({certData.quantity})</span>
                 </div>
 
-                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                <div className="flex justify-between items-center text-xs pb-1.5 border-b border-[#E5E1D8] dark:border-[#1E2D52]">
+                  <span className="text-[#60708B] dark:text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#18315E]" />
                     <span>Beneficiary Organization</span>
                   </span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400">{certData.ngoName}</span>
+                  <span className="font-bold text-[#18315E] dark:text-[#D9B65D]">{certData.ngoName}</span>
                 </div>
 
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-[#60708B] dark:text-slate-300 font-semibold flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-[#18315E]" />
                     <span>Delivered On</span>
                   </span>
-                  <span className="font-bold text-slate-800 dark:text-white">{certData.deliveredDate}</span>
+                  <span className="font-bold text-[#18315E] dark:text-white">{certData.deliveredDate}</span>
                 </div>
               </div>
 
               {/* Thank You Note */}
-              <p className="text-xs text-slate-600 dark:text-slate-300 italic px-4 leading-relaxed">
+              <p className="text-xs text-[#60708B] dark:text-slate-300 italic px-4 leading-relaxed">
                 "{certData.thankYouMessage}"
               </p>
 
               {/* Bottom Official Signoff & Seal */}
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex justify-between items-end text-left">
+              <div className="pt-4 border-t border-[#E5E1D8] dark:border-[#1E2D52] flex justify-between items-end text-left">
                 <div>
-                  <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                  <div className="flex items-center gap-1 text-[#18315E] dark:text-[#D9B65D] font-bold text-[11px]">
                     <ShieldCheck className="w-4 h-4" />
                     <span>Verified Delivery</span>
                   </div>
-                  <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                  <span className="text-[10px] text-[#60708B] font-mono block mt-0.5">
                     Ref: {certData.certificateNumber}
                   </span>
                 </div>
 
                 <div className="text-center">
-                  <div className="w-10 h-10 rounded-full border-2 border-dashed border-amber-500/80 flex items-center justify-center text-amber-500 mx-auto">
+                  <div className="w-10 h-10 rounded-full border-2 border-dashed border-[#E5E1D8]/80 flex items-center justify-center text-[#E5B85C] mx-auto">
                     <Award className="w-5 h-5" />
                   </div>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mt-1">Official Seal</span>
+                  <span className="text-[9px] font-bold text-[#60708B] uppercase tracking-widest block mt-1">Official Seal</span>
                 </div>
               </div>
             </div>
@@ -184,3 +184,14 @@ const DonationCertificateModal = ({ isOpen, onClose, foodId, initialData }) => {
 };
 
 export default DonationCertificateModal;
+
+
+
+
+
+
+
+
+
+
+

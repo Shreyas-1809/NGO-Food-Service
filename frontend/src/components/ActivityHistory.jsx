@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { Loader2, Search, Filter, Package, Activity, Calendar, AlertCircle, RefreshCw, Award } from 'lucide-react';
+import { Loader2, Search, Package, Activity, Calendar, AlertCircle, RefreshCw, Award } from 'lucide-react';
 import StatusBadge from './ui/StatusBadge';
 import HistoryDetailDrawer from './HistoryDetailDrawer';
 import DonationCertificateModal from './DonationCertificateModal';
@@ -8,7 +8,7 @@ import { T, useTranslatedString } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const ActivityHistory = ({ token, user }) => {
+const ActivityHistory = ({ token, _user }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,7 +34,7 @@ const ActivityHistory = ({ token, user }) => {
   const minQtyPlaceholder = useTranslatedString('Min Qty');
   const maxQtyPlaceholder = useTranslatedString('Max Qty');
 
-  const fetchHistory = async () => {
+const fetchHistory = useCallback(async () => {
     setLoading(true);
     setError('');
     setErrorDetails('');
@@ -72,11 +72,11 @@ const ActivityHistory = ({ token, user }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchHistory();
-  }, [token]);
+  }, [token, fetchHistory]);
 
   const filteredHistory = useMemo(() => {
     return history.filter(item => {
@@ -129,21 +129,21 @@ const ActivityHistory = ({ token, user }) => {
     <div className="w-full max-w-[1400px] mx-auto p-4 sm:p-8 space-y-6 sm:space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between">
         <div className="flex items-center space-x-3 mb-4 md:mb-0">
-          <Activity className="h-8 w-8 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <Activity className="h-8 w-8 text-emerald-600 dark:text-[#ECE9E1] shrink-0" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white"><T text="Donation & Fulfilment History" /></h1>
         </div>
       </div>
 
       {error ? (
-        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-2xl p-6 mb-6 text-center space-y-3">
-          <div className="w-12 h-12 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto">
+        <div className="bg-red-50 dark:bg-[#E5707A]/14 border border-red-200 dark:border-[#E5707A]/40 rounded-2xl p-6 mb-6 text-center space-y-3">
+          <div className="w-12 h-12 bg-red-100 dark:bg-[#E5707A]/14 text-red-600 dark:text-[#E5707A] rounded-full flex items-center justify-center mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-bold text-red-800 dark:text-red-300">
+          <h3 className="text-base font-bold text-red-800 dark:text-[#E5707A]">
             {error}
           </h3>
           {errorDetails && (
-            <p className="text-xs font-mono text-red-600/80 dark:text-red-400/80 max-w-xl mx-auto bg-red-100/50 dark:bg-red-900/30 p-2.5 rounded-lg break-words">
+            <p className="text-xs font-mono text-red-600/80 dark:text-[#E5707A]/80 max-w-xl mx-auto bg-red-100/50 dark:bg-[#E5707A]/14 p-2.5 rounded-lg break-words">
               {errorDetails}
             </p>
           )}
@@ -160,7 +160,7 @@ const ActivityHistory = ({ token, user }) => {
       ) : (
         <>
           {/* Filter / Sort Bar */}
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6 space-y-4">
+          <div className="bg-white dark:bg-[#0F1A33] rounded-xl shadow-sm border border-slate-200 dark:border-[#1E2D52] p-4 mb-6 space-y-4">
             
             {/* Status Tabs */}
             <div className="flex flex-wrap gap-2">
@@ -178,7 +178,7 @@ const ActivityHistory = ({ token, user }) => {
                   className={`px-4 py-2 text-sm font-bold rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
                     statusTab === tab.key
                       ? 'bg-amber-500 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-[#0F1A33] dark:text-[#9AA3B8] dark:hover:bg-[#15223F]'
                   }`}
                 >
                   <T text={tab.label} />
@@ -195,7 +195,7 @@ const ActivityHistory = ({ token, user }) => {
                   placeholder={searchPlaceholder}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-[#070E1E]/50 border border-slate-200 dark:border-[#1E2D52] rounded-lg text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
               <div className="flex items-center space-x-2">
@@ -204,7 +204,7 @@ const ActivityHistory = ({ token, user }) => {
                   placeholder={minQtyPlaceholder}
                   value={minQty}
                   onChange={(e) => setMinQty(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#070E1E]/50 border border-slate-200 dark:border-[#1E2D52] rounded-lg text-sm text-slate-900 dark:text-white outline-none"
                 />
                 <span className="text-slate-400">-</span>
                 <input 
@@ -212,7 +212,7 @@ const ActivityHistory = ({ token, user }) => {
                   placeholder={maxQtyPlaceholder}
                   value={maxQty}
                   onChange={(e) => setMaxQty(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#070E1E]/50 border border-slate-200 dark:border-[#1E2D52] rounded-lg text-sm text-slate-900 dark:text-white outline-none"
                 />
               </div>
               <div className="flex items-center space-x-2 md:col-span-2">
@@ -221,14 +221,14 @@ const ActivityHistory = ({ token, user }) => {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#070E1E]/50 border border-slate-200 dark:border-[#1E2D52] rounded-lg text-sm text-slate-900 dark:text-white outline-none"
                 />
                 <span className="text-slate-400 text-xs font-semibold"><T text="to" /></span>
                 <input 
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-white outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-[#070E1E]/50 border border-slate-200 dark:border-[#1E2D52] rounded-lg text-sm text-slate-900 dark:text-white outline-none"
                 />
               </div>
             </div>
@@ -237,9 +237,9 @@ const ActivityHistory = ({ token, user }) => {
           {/* List */}
           <div className="space-y-4">
             {filteredHistory.length === 0 ? (
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-12 text-center border border-slate-200 dark:border-slate-700">
-                <Package className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-500 dark:text-slate-400 font-medium">
+              <div className="bg-white dark:bg-[#0F1A33] rounded-xl shadow-sm p-12 text-center border border-slate-200 dark:border-[#1E2D52]">
+                <Package className="h-12 w-12 text-slate-300 dark:text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500 dark:text-slate-300 font-medium">
                   {history.length === 0 ? <T text="No donation or fulfilment activity recorded yet." /> : <T text="No records match your filters." />}
                 </p>
               </div>
@@ -248,7 +248,7 @@ const ActivityHistory = ({ token, user }) => {
                 <div 
                   key={item._id} 
                   onClick={() => setSelectedRecord(item)}
-                  className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 md:p-5 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="bg-white dark:bg-[#0F1A33] rounded-xl shadow-sm border border-slate-200 dark:border-[#1E2D52] p-4 md:p-5 hover:border-emerald-500 hover:shadow-md transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
@@ -257,7 +257,7 @@ const ActivityHistory = ({ token, user }) => {
                       </span>
                     </div>
                     <h3 className="font-bold text-slate-900 dark:text-white text-lg">{item.itemTitle}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+                    <p className="text-sm text-slate-600 dark:text-[#9AA3B8] mt-1">
                       <span className="font-medium">{item.quantity} {item.unit}</span> • {item.otherPartyName}
                     </p>
                   </div>
@@ -271,10 +271,10 @@ const ActivityHistory = ({ token, user }) => {
                           setCertFoodId(item.foodId || item.rawFood?._id);
                           setCertModalOpen(true);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-xl text-xs font-bold transition-colors shadow-xs cursor-pointer"
                       >
                         <Award className="w-3.5 h-3.5" />
-                        Certificate 📜
+                        Certificate {'📜'}
                       </button>
                     )}
                   </div>
@@ -300,3 +300,7 @@ const ActivityHistory = ({ token, user }) => {
 };
 
 export default ActivityHistory;
+
+
+
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { loadGoogleMaps, calculateRouteInfo } from '../services/mapsService';
 import { MapPin, Navigation, Building2, Truck, AlertCircle, Radio } from 'lucide-react';
 
@@ -19,10 +19,12 @@ const TrackingMapView = ({ donation }) => {
   const donorCoords = hasRealCoords(donation?.pickupCoords) ? donation.pickupCoords : null;
   const ngoCoords = hasRealCoords(donation?.ngoCoords) ? donation.ngoCoords : null;
 
-  const rawVolLoc = donation?.volunteerLiveLocation;
-  const volunteerCoords = hasRealCoords(rawVolLoc)
-    ? { lat: Number(rawVolLoc.lat), lng: Number(rawVolLoc.lng) }
-    : null;
+const rawVolLoc = donation?.volunteerLiveLocation;
+const volunteerCoords = useMemo(() => (
+    hasRealCoords(rawVolLoc)
+      ? { lat: Number(rawVolLoc.lat), lng: Number(rawVolLoc.lng) }
+      : null
+  ), [rawVolLoc]);
 
   // Real-time ticking clock for "Last updated Xs ago" / "Location paused"
   const [nowTick, setNowTick] = useState(Date.now());
@@ -92,7 +94,7 @@ const TrackingMapView = ({ donation }) => {
           map.fitBounds(bounds, 50);
         }
 
-        // 1. Donor Marker (🟢) — only if real saved coordinates exist
+        // 1. Donor Marker (??) — only if real saved coordinates exist
         if (donorCoords) {
           new maps.Marker({
             position: donorCoords,
@@ -109,7 +111,7 @@ const TrackingMapView = ({ donation }) => {
           });
         }
 
-        // 2. NGO Marker (🏢) — only if real saved coordinates exist
+        // 2. NGO Marker (??) — only if real saved coordinates exist
         if (ngoCoords) {
           new maps.Marker({
             position: ngoCoords,
@@ -126,7 +128,7 @@ const TrackingMapView = ({ donation }) => {
           });
         }
 
-        // 3. Volunteer Marker (🚚) — strictly only if real GPS update has arrived
+        // 3. Volunteer Marker (??) — strictly only if real GPS update has arrived
         if (volunteerCoords) {
           new maps.Marker({
             position: volunteerCoords,
@@ -135,7 +137,7 @@ const TrackingMapView = ({ donation }) => {
             icon: {
               path: maps.SymbolPath.FORWARD_CLOSED_ARROW,
               scale: 6,
-              fillColor: isLocationPaused ? '#64748b' : '#F97316',
+              fillColor: isLocationPaused ? '#60708b' : '#F97316',
               fillOpacity: 1,
               strokeWeight: 2,
               strokeColor: '#FFFFFF'
@@ -147,39 +149,50 @@ const TrackingMapView = ({ donation }) => {
         console.warn('[TrackingMapView] Visual canvas mode active:', err.message);
         setApiAvailable(false);
       });
-  }, [donation?.id, donation?.status, donorCoords, ngoCoords, volunteerCoords, isLocationPaused, secondsSinceUpdate]);
+  }, [
+	donation?.id,
+	donation?.status,
+	donorCoords,
+	ngoCoords,
+	isLocationPaused,
+	secondsSinceUpdate,
+	donation.assignedVolunteer.name,
+	donation.pickupLocation,
+	donation.matchedNgoName,
+	volunteerCoords
+]);
 
   return (
-    <div className="w-full h-full min-h-[420px] relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-900 flex flex-col shadow-sm">
+    <div className="w-full h-full min-h-[420px] relative rounded-3xl overflow-hidden border border-[#E5E1D8] dark:border-[#1E2D52] bg-[#173B78] flex flex-col shadow-sm">
       
       {/* Real-time status / warning overlays */}
       <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none max-w-[calc(100%-1.5rem)]">
         {!donorCoords && (
-          <div className="pointer-events-auto bg-amber-950/90 border border-amber-600/80 text-amber-200 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <div className="pointer-events-auto bg-[#173B78]/90 border border-[#1E293B]/80 text-[#18315E] px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-[#E5B85C] shrink-0" />
             <span>Donor pickup coordinates not saved.</span>
           </div>
         )}
         {!ngoCoords && (
-          <div className="pointer-events-auto bg-amber-950/90 border border-amber-600/80 text-amber-200 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <div className="pointer-events-auto bg-[#173B78]/90 border border-[#1E293B]/80 text-[#18315E] px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 text-[#E5B85C] shrink-0" />
             <span>NGO coordinates not saved.</span>
           </div>
         )}
         {hasVolunteerAssignment && !volunteerCoords && (
-          <div className="pointer-events-auto bg-slate-900/95 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-slate-400 animate-pulse shrink-0"></span>
+          <div className="pointer-events-auto bg-[#173B78]/95 border border-[#1E293B] text-[#60708B] px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#173B78] animate-pulse shrink-0"></span>
             <span>Waiting for volunteer location...</span>
           </div>
         )}
         {volunteerCoords && (
-          <div className="pointer-events-auto bg-slate-900/95 border border-slate-700 px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-2 text-white">
-            <Radio className={`w-3.5 h-3.5 ${isLocationPaused ? 'text-red-400' : 'text-emerald-400 animate-pulse'}`} />
+          <div className="pointer-events-auto bg-[#173B78]/95 border border-[#1E293B] px-3 py-1.5 rounded-xl text-[11px] font-bold shadow-lg flex items-center gap-2 text-white">
+            <Radio className={`w-3.5 h-3.5 ${isLocationPaused ? 'text-[#E5B85C]' : 'text-[#E5B85C] animate-pulse'}`} />
             <span>
               Volunteer: {isLocationPaused ? (
-                <span className="text-red-400 font-extrabold">Location paused</span>
+                <span className="text-[#E5B85C] font-extrabold">Location paused</span>
               ) : (
-                <span className="text-emerald-400 font-extrabold">Last updated {secondsSinceUpdate ?? 0}s ago</span>
+                <span className="text-[#E5B85C] font-extrabold">Last updated {secondsSinceUpdate ?? 0}s ago</span>
               )}
             </span>
           </div>
@@ -191,23 +204,23 @@ const TrackingMapView = ({ donation }) => {
         <div ref={mapRef} className="w-full h-full min-h-[420px]" />
       ) : (
         /* FUNCTIONAL LOGISTICS CANVAS */
-        <div className="w-full h-full min-h-[420px] bg-slate-950 text-slate-100 relative p-5 flex flex-col justify-between overflow-hidden">
+        <div className="w-full h-full min-h-[420px] bg-[#173B78] text-[#18315E] relative p-5 flex flex-col justify-between overflow-hidden">
           
           {/* Top Status Bar */}
-          <div className="bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs z-10 backdrop-blur-xs">
+          <div className="bg-[#173B78]/90 border border-[#1E293B] px-4 py-2.5 rounded-2xl flex items-center justify-between text-xs z-10 backdrop-blur-xs">
             <div className="flex items-center space-x-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="font-bold text-slate-200">
-                Logistics Route: <span className="text-emerald-400">🟢 Donor Pickup</span> ➔ <span className="text-purple-400">🏢 Receiver NGO Hub</span>
+              <span className="w-2 h-2 rounded-full bg-[#173B78] animate-pulse"></span>
+              <span className="font-bold text-[#18315E]">
+                Logistics Route: <span className="text-[#E5B85C]">Donor Pickup</span> → <span className="text-[#E5B85C]">Receiver NGO Hub</span>
               </span>
             </div>
-            <span className="text-[11px] bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg font-mono font-bold">
+            <span className="text-[11px] bg-[#173B78] text-[#60708B] px-2.5 py-1 rounded-lg font-mono font-bold">
               {routeStats ? routeStats.durationText : (donorCoords && ngoCoords ? 'Direct Route' : 'Coordinates Pending')}
             </span>
           </div>
 
           {/* Logistics Routing Area */}
-          <div className="relative flex-1 my-4 bg-slate-900/50 rounded-2xl border border-slate-800/80 p-4 flex items-center justify-center">
+          <div className="relative flex-1 my-4 bg-[#173B78]/50 rounded-2xl border border-[#1E293B]/80 p-4 flex items-center justify-center">
             
             {/* SVG Connecting Paths */}
             {donorCoords && ngoCoords && (
@@ -222,43 +235,43 @@ const TrackingMapView = ({ donation }) => {
               </svg>
             )}
 
-            {/* NODE 1: 🟢 DONOR PICKUP */}
+            {/* NODE 1: ?? DONOR PICKUP */}
             <div className="absolute top-1/2 left-[30%] transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
-              <div className={`w-11 h-11 rounded-2xl ${donorCoords ? 'bg-emerald-600' : 'bg-slate-700'} text-white flex items-center justify-center shadow-lg border-2 border-white`}>
+              <div className={`w-11 h-11 rounded-2xl ${donorCoords ? 'bg-[#173B78]' : 'bg-[#173B78]'} text-white flex items-center justify-center shadow-lg border-2 border-white`}>
                 <MapPin className="w-5 h-5" />
               </div>
-              <div className="mt-2 text-center bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-xl text-[11px] shadow-sm">
-                <span className="text-emerald-400 font-extrabold block">🟢 Donor Pickup</span>
-                <span className="text-slate-300 text-[10px] max-w-[140px] truncate block">
+              <div className="mt-2 text-center bg-[#173B78]/90 border border-[#1E293B] px-3 py-1 rounded-xl text-[11px] shadow-sm">
+                <span className="text-[#E5B85C] font-extrabold block">Donor Pickup</span>
+                <span className="text-[#60708B] text-[10px] max-w-[140px] truncate block">
                   {donorCoords ? (donation?.pickupLocation || 'Donor Address') : 'Coordinates Missing'}
                 </span>
               </div>
             </div>
 
-            {/* NODE 2: 🏢 RECEIVER NGO */}
+            {/* NODE 2: ?? RECEIVER NGO */}
             <div className="absolute top-1/2 left-[70%] transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-20">
-              <div className={`w-11 h-11 rounded-2xl ${ngoCoords ? 'bg-purple-600' : 'bg-slate-700'} text-white flex items-center justify-center shadow-lg border-2 border-white`}>
+              <div className={`w-11 h-11 rounded-2xl ${ngoCoords ? 'bg-[#E5B85C]' : 'bg-[#173B78]'} text-white flex items-center justify-center shadow-lg border-2 border-white`}>
                 <Building2 className="w-5 h-5" />
               </div>
-              <div className="mt-2 text-center bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-xl text-[11px] shadow-sm">
-                <span className="text-purple-400 font-extrabold block">🏢 Receiver NGO</span>
-                <span className="text-slate-300 text-[10px] max-w-[140px] truncate block">
+              <div className="mt-2 text-center bg-[#173B78]/90 border border-[#1E293B] px-3 py-1 rounded-xl text-[11px] shadow-sm">
+                <span className="text-[#E5B85C] font-extrabold block">Receiver NGO</span>
+                <span className="text-[#60708B] text-[10px] max-w-[140px] truncate block">
                   {ngoCoords ? (donation?.matchedNgoName || 'Helping Hands') : 'Coordinates Missing'}
                 </span>
               </div>
             </div>
 
-            {/* NODE 3: 🚚 VOLUNTEER (if real GPS exists) */}
+            {/* NODE 3: ?? VOLUNTEER (if real GPS exists) */}
             {volunteerCoords && (
               <div className="absolute top-1/2 left-[50%] transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-30">
-                <div className={`w-11 h-11 rounded-2xl ${isLocationPaused ? 'bg-slate-600' : 'bg-orange-500'} text-white flex items-center justify-center shadow-lg border-2 border-white`}>
+                <div className={`w-11 h-11 rounded-2xl ${isLocationPaused ? 'bg-[#173B78]' : 'bg-[#E5B85C]'} text-white flex items-center justify-center shadow-lg border-2 border-white`}>
                   <Truck className="w-5 h-5" />
                 </div>
-                <div className="mt-2 text-center bg-slate-900/95 border border-slate-700 px-3 py-1 rounded-xl text-[11px] shadow-sm">
-                  <span className={`${isLocationPaused ? 'text-red-400' : 'text-orange-400'} font-extrabold block`}>
-                    🚚 {isLocationPaused ? 'Location Paused' : `Updated ${secondsSinceUpdate ?? 0}s ago`}
+                <div className="mt-2 text-center bg-[#173B78]/95 border border-[#1E293B] px-3 py-1 rounded-xl text-[11px] shadow-sm">
+                  <span className={`${isLocationPaused ? 'text-[#E5B85C]' : 'text-[#E5B85C]'} font-extrabold block`}>
+                    {isLocationPaused ? 'Location Paused' : `Updated ${secondsSinceUpdate ?? 0}s ago`}
                   </span>
-                  <span className="text-slate-300 text-[10px] max-w-[140px] truncate block">
+                  <span className="text-[#60708B] text-[10px] max-w-[140px] truncate block">
                     {donation?.assignedVolunteer?.name || 'Volunteer Rider'}
                   </span>
                 </div>
@@ -269,13 +282,13 @@ const TrackingMapView = ({ donation }) => {
 
           {/* Bottom Route Strip */}
           {routeStats && (
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs z-10 text-slate-300">
+            <div className="bg-[#173B78]/90 border border-[#1E293B] rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs z-10 text-[#60708B]">
               <div className="flex items-center space-x-2">
-                <Navigation className="w-4 h-4 text-emerald-400" />
+                <Navigation className="w-4 h-4 text-[#E5B85C]" />
                 <span>Direct Distance: <strong className="text-white">{routeStats.totalKm || routeStats.distanceText} km</strong></span>
               </div>
               <div className="flex items-center space-x-3">
-                <span>Estimated Travel: <strong className="text-emerald-300">{routeStats.durationText}</strong></span>
+                <span>Estimated Travel: <strong className="text-[#E5B85C]">{routeStats.durationText}</strong></span>
               </div>
             </div>
           )}
@@ -288,3 +301,12 @@ const TrackingMapView = ({ donation }) => {
 };
 
 export default TrackingMapView;
+
+
+
+
+
+
+
+
+

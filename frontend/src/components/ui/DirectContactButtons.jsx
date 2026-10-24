@@ -28,7 +28,7 @@ const DirectContactButtons = ({
 
   if (!telUrl && !waUrl && !mailtoUrl) {
     return (
-      <span className="text-[11px] text-slate-400 italic">
+      <span className="text-[11px] text-[#60708B] italic">
         No contact details available
       </span>
     );
@@ -47,7 +47,7 @@ const DirectContactButtons = ({
         {telUrl && (
           <a
             href={telUrl}
-            className="w-10 h-10 rounded-full bg-[#eff6ff] hover:bg-[#dbeafe] dark:bg-slate-800 dark:hover:bg-slate-700 text-[#2563eb] dark:text-blue-400 flex items-center justify-center transition-all shadow-2xs hover:scale-105"
+            className="w-10 h-10 rounded-full bg-[#F3F0EA] hover:bg-[#E5E1D8] text-[#18315E] flex items-center justify-center transition-all shadow-sm hover:scale-105"
             title={`Call ${name}: ${phone}`}
           >
             <Phone className="w-4 h-4" />
@@ -60,7 +60,7 @@ const DirectContactButtons = ({
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-10 h-10 rounded-full bg-[#dcfce7] hover:bg-[#bbf7d0] dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-[#166534] dark:text-emerald-400 flex items-center justify-center transition-all shadow-2xs hover:scale-105"
+            className="w-10 h-10 rounded-full bg-[#F3F0EA] hover:bg-[#E5E1D8] text-[#E5B85C] flex items-center justify-center transition-all shadow-sm hover:scale-105"
             title={`WhatsApp ${name}: ${phone}`}
           >
             <MessageCircle className="w-4 h-4" />
@@ -71,7 +71,7 @@ const DirectContactButtons = ({
         {mailtoUrl && (
           <a
             href={mailtoUrl}
-            className="w-10 h-10 rounded-full bg-[#eff6ff] hover:bg-[#dbeafe] dark:bg-slate-800 dark:hover:bg-slate-700 text-[#2563eb] dark:text-blue-400 flex items-center justify-center transition-all shadow-2xs hover:scale-105"
+            className="w-10 h-10 rounded-full bg-[#F3F0EA] hover:bg-[#E5E1D8] text-[#18315E] flex items-center justify-center transition-all shadow-sm hover:scale-105"
             title={`Email ${name}: ${email}`}
           >
             <Mail className="w-4 h-4" />
@@ -90,7 +90,7 @@ const DirectContactButtons = ({
       {telUrl && (
         <a
           href={telUrl}
-          className={`inline-flex items-center gap-1 font-bold rounded-lg bg-[#2563eb] hover:bg-[#1d4ed8] text-white transition-all shadow-2xs hover:shadow-xs active:scale-95 ${btnPadding}`}
+          className={`inline-flex items-center gap-1 font-bold rounded-full bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white transition-all shadow-sm active:scale-95 ${btnPadding}`}
           title={`Call ${name}: ${phone}`}
         >
           <Phone className={iconSize} />
@@ -104,7 +104,7 @@ const DirectContactButtons = ({
           href={waUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`inline-flex items-center gap-1 font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all shadow-2xs hover:shadow-xs active:scale-95 ${btnPadding}`}
+          className={`inline-flex items-center gap-1 font-bold rounded-full bg-[#E5B85C] hover:bg-[#F97316] text-white transition-all shadow-sm active:scale-95 ${btnPadding}`}
           title={`WhatsApp ${name}: ${phone}`}
         >
           <MessageCircle className={iconSize} />
@@ -116,7 +116,7 @@ const DirectContactButtons = ({
       {mailtoUrl && (
         <a
           href={mailtoUrl}
-          className={`inline-flex items-center gap-1 font-bold rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-600 transition-all shadow-2xs active:scale-95 ${btnPadding}`}
+          className={`inline-flex items-center gap-1 font-bold rounded-full bg-[#F3F0EA] hover:bg-[#E5E1D8] text-[#18315E] border border-[#E5E1D8] transition-all shadow-sm active:scale-95 ${btnPadding}`}
           title={`Email ${name}: ${email}`}
         >
           <Mail className={iconSize} />
@@ -129,10 +129,10 @@ const DirectContactButtons = ({
         <button
           type="button"
           onClick={() => handleCopy(phone)}
-          className={`inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors cursor-pointer ${btnPadding}`}
+          className={`inline-flex items-center gap-1 text-[#60708B] hover:text-[#18315E] bg-white border border-[#E5E1D8] rounded-lg transition-colors cursor-pointer ${btnPadding}`}
           title="Copy Phone Number"
         >
-          {copied ? <Check className={`${iconSize} text-emerald-600`} /> : <Copy className={iconSize} />}
+          {copied ? <Check className={`${iconSize} text-[#E5B85C]`} /> : <Copy className={iconSize} />}
           <span>{copied ? 'Copied' : 'Copy'}</span>
         </button>
       )}
@@ -141,4 +141,6 @@ const DirectContactButtons = ({
 };
 
 export default DirectContactButtons;
+
+
 

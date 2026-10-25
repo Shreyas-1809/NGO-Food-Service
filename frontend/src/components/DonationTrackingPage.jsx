@@ -594,9 +594,10 @@ const DonationTrackingPage = () => {
       </div>
 
       {/* Certificate Modal */}
-      {showCertificate && (
+      {showCertificate && donation && (
         <DonationCertificateModal
-          donation={donation}
+          isOpen={showCertificate}
+          foodId={donation.id}
           onClose={() => setShowCertificate(false)}
         />
       )}

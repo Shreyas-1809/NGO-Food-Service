@@ -137,7 +137,7 @@ const DeliverySuccessIllustration = ({ className = 'w-full h-auto max-w-[240px]'
             letterSpacing="0.3"
             fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
           >
-            DELIVERED & VERIFIED \u2713
+            DELIVERED & VERIFIED ✓
           </text>
         </g>
       </svg>

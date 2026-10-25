@@ -179,7 +179,7 @@ const RedirectSurplusModal = ({ ngo, user, userLocation, onClose }) => {
 
     // Record notification
     addNotification({
-      title: 'Surplus Redirected ðŸš€',
+      title: 'Surplus Redirected 🚀',
       message: `Allocated "${selectedBatch?.title || 'Surplus Batch'}" directly to ${targetNgoName}${distanceKm ? ` (~${distanceKm} km away)` : ''}.`,
       type: 'SUCCESS'
     });

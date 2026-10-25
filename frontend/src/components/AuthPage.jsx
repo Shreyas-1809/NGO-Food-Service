@@ -561,7 +561,7 @@ const AuthPage = ({ setToken, setUser, isDarkMode, toggleTheme }) => {
 
       {/* Footer */}
       <footer className="w-full py-8 text-center text-sm font-semibold text-[#60708B] dark:text-slate-300 mt-20 border-t border-[#E5E1D8]/60 dark:border-[#1E2D52]/40">
-        <T text="FoodBridge \u00A9 2026 \u00B7 Surplus Food Rescue Network" />
+        <T text="FoodBridge © 2026 · Surplus Food Rescue Network" />
       </footer>
 
       {/* AUTH MODAL */}
@@ -787,7 +787,7 @@ const AuthPage = ({ setToken, setUser, isDarkMode, toggleTheme }) => {
 
             <div className="pt-6 text-center space-y-3">
               <div className="text-[12px] font-extrabold text-[#18315E] dark:text-[#D9B65D] italic flex items-center justify-center space-x-1" style={{ fontFamily: 'Lora, serif' }}>
-                <span><T text="Together we feed hope \u2665" /></span>
+                <span><T text="Together we feed hope ♥" /></span>
               </div>
             </div>
 

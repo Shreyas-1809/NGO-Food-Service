@@ -195,6 +195,9 @@ const fetchTask = useCallback(async () => {
     if (actionDone === 'accepted' && !data?.task?.deliveryConfirmed && data?.task?.status !== 'COMPLETED') {
       startLocationSharing();
     }
+    return () => {
+      stopLocationSharing();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionDone, data?.task?.status, data?.task?.deliveryConfirmed]);
 
@@ -277,14 +280,26 @@ const fetchTask = useCallback(async () => {
   const isDelivered = task.status === 'COMPLETED' || task.deliveryConfirmed;
   const volunteerStatus = task.volunteerStatus || 'pending';
 
-  const donorCoords = (donor?.location?.lat && donor?.location?.lng) ? donor.location : null;
-  const ngoCoords = (ngo?.location?.lat && ngo?.location?.lng) ? ngo.location : null;
+  const donorCoords = (donor?.location?.lat && donor?.location?.lng && Number.isFinite(Number(donor.location.lat)))
+    ? { lat: Number(donor.location.lat), lng: Number(donor.location.lng) }
+    : null;
+  const ngoCoords = (ngo?.location?.lat && ngo?.location?.lng && Number.isFinite(Number(ngo.location.lat)))
+    ? { lat: Number(ngo.location.lat), lng: Number(ngo.location.lng) }
+    : null;
 
-  const donorNavUrl = donor?.navUrl || (donorCoords ? `https://www.google.com/maps/dir/?api=1&destination=${donorCoords.lat},${donorCoords.lng}&travelmode=driving` : '');
-  const donorPinUrl = donorCoords ? `https://www.google.com/maps/search/?api=1&query=${donorCoords.lat},${donorCoords.lng}` : (donor?.mapsUrl || '');
+  const donorNavUrl = donorCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${donorCoords.lat.toFixed(6)},${donorCoords.lng.toFixed(6)}&travelmode=driving&dir_action=navigate`
+    : '';
+  const donorPinUrl = donorCoords
+    ? `https://www.google.com/maps/search/?api=1&query=${donorCoords.lat.toFixed(6)},${donorCoords.lng.toFixed(6)}`
+    : '';
 
-  const ngoNavUrl = ngo?.navUrl || (ngoCoords ? `https://www.google.com/maps/dir/?api=1&destination=${ngoCoords.lat},${ngoCoords.lng}&travelmode=driving` : '');
-  const ngoPinUrl = ngoCoords ? `https://www.google.com/maps/search/?api=1&query=${ngoCoords.lat},${ngoCoords.lng}` : (ngo?.mapsUrl || '');
+  const ngoNavUrl = ngoCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${ngoCoords.lat.toFixed(6)},${ngoCoords.lng.toFixed(6)}&travelmode=driving&dir_action=navigate`
+    : '';
+  const ngoPinUrl = ngoCoords
+    ? `https://www.google.com/maps/search/?api=1&query=${ngoCoords.lat.toFixed(6)},${ngoCoords.lng.toFixed(6)}`
+    : '';
 
   return (
     <div className="min-h-screen w-full bg-[#F3F0EA] dark:bg-[#0F1A33] py-6 px-4 sm:px-6 flex flex-col items-center">
@@ -533,7 +548,7 @@ const fetchTask = useCallback(async () => {
                 className="w-full py-3.5 px-4 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
               >
                 <Navigation className="w-4 h-4" />
-                <span>Navigate to Donor (Google Maps)</span>
+                <span>Start navigation to donor</span>
                 <ExternalLink className="w-3.5 h-3.5 opacity-80" />
               </a>
             ) : isPickedUp && ngoNavUrl ? (
@@ -544,7 +559,7 @@ const fetchTask = useCallback(async () => {
                 className="w-full py-3.5 px-4 bg-[#E5B85C] hover:bg-[#173B78] text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
               >
                 <Navigation className="w-4 h-4" />
-                <span>Navigate to NGO (Google Maps)</span>
+                <span>Start navigation to NGO</span>
                 <ExternalLink className="w-3.5 h-3.5 opacity-80" />
               </a>
             ) : null}
@@ -586,7 +601,7 @@ const fetchTask = useCallback(async () => {
                 className="flex-1 min-w-[140px] py-2.5 px-3 bg-[#173B78] hover:bg-[#0F172A] dark:bg-[#3156B5] dark:hover:bg-[#3F66CC] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
               >
                 <Navigation className="w-3.5 h-3.5" />
-                <span>Navigate to donor</span>
+                <span>Start navigation to donor</span>
                 <ExternalLink className="w-3 h-3 opacity-70" />
               </a>
             ) : null}
@@ -676,7 +691,7 @@ const fetchTask = useCallback(async () => {
                 className="flex-1 min-w-[140px] py-2.5 px-3 bg-[#E5B85C] hover:bg-[#173B78] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs transition-colors"
               >
                 <Navigation className="w-3.5 h-3.5" />
-                <span>Navigate to NGO</span>
+                <span>Start navigation to NGO</span>
                 <ExternalLink className="w-3 h-3 opacity-70" />
               </a>
             ) : null}

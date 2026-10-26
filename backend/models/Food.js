@@ -84,7 +84,9 @@ const FoodSchema = new mongoose.Schema({
   location: {
     type: { type: String, default: 'Point' },
     coordinates: [Number] // [longitude, latitude]
-  }
+  },
+  deletedByOwner: { type: Boolean, default: false },
+  deletedAt: { type: Date }
 }, { timestamps: true });
 
 FoodSchema.index({ location: '2dsphere' });

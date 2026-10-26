@@ -167,7 +167,8 @@ router.get('/my-listings', auth, async (req, res) => {
     }
 
     // STRICT QUERY-LEVEL SCOPING: Only fetch postings where donorId equals the logged-in user ID
-    const foods = await Food.find({ donorId: req.user.id })
+    // Exclude soft-deleted (owner-hidden) postings from the dashboard view.
+    const foods = await Food.find({ donorId: req.user.id, deletedByOwner: { $ne: true } })
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
       .populate('claimantId', 'orgName fullName phone email address city location')
       .populate('targetOrganisationId', 'orgName fullName phone email address city location')
@@ -352,7 +353,23 @@ router.get('/active-pickups', auth, async (req, res) => {
       .populate('donorId', 'orgName fullName phone email address city businessName businessDetails location')
       .populate('claimantId', 'orgName fullName phone email address city location')
       .sort({ updatedAt: -1 });
-    res.json(foods);
+
+    const Claim = require('../models/Claim');
+    const enrichedFoods = await Promise.all(foods.map(async (f) => {
+      const fObj = f.toObject();
+      if (!fObj.claimantId || !fObj.claimantId.location) {
+        const claim = await Claim.findOne({
+          foodId: f._id,
+          status: { $in: ['ACCEPTED', 'IN_TRANSIT'] }
+        }).populate('ngoId', 'orgName fullName phone email address city location');
+        if (claim && claim.ngoId) {
+          fObj.claimantId = claim.ngoId;
+          fObj.matchedNgoName = claim.ngoId.orgName || claim.ngoId.fullName;
+        }
+      }
+      return fObj;
+    }));
+    res.json(enrichedFoods);
   } catch (err) {
     console.error('Error in /api/food/active-pickups:', err);
     res.status(500).send('Server Error');
@@ -373,7 +390,7 @@ router.get('/:id/certificate', async (req, res) => {
     if (!food) return res.status(404).json({ message: 'Donation not found' });
 
     const Claim = require('../models/Claim');
-    const claim = await Claim.findOne({ foodId: food._id, status: { $in: ['ACCEPTED', 'COMPLETED'] } })
+    const claim = await Claim.findOne({ foodId: food._id, status: { $in: ['ACCEPTED', 'COMPLETED', 'Accepted', 'Completed', 'Awaiting NGO', 'Pending', 'Requests Sent'] } })
       .populate('ngoId', 'orgName fullName address city');
 
     const donorName = food.donorId?.orgName || food.donorId?.fullName || 'Food Donor';
@@ -810,8 +827,39 @@ router.patch('/:id', auth, async (req, res) => {
   }
 });
 
+// @route   PATCH /api/food/:id/owner-delete
+// @desc    Soft-delete a FINISHED food listing for the owner's dashboard view only.
+//          Only works on terminal states: COMPLETED, NON_CLAIMED, CANCELLED, REJECTED, DECLINED.
+//          The record is kept in DB for history/analytics/certificates.
+// @access  Private (DONOR only)
+router.patch('/:id/owner-delete', auth, async (req, res) => {
+  try {
+    if (req.user.accountType !== 'DONOR') {
+      return res.status(403).json({ message: 'Only donors can hide their listings' });
+    }
+    const food = await Food.findById(req.params.id);
+    if (!food) {
+      return res.status(404).json({ message: 'Food not found' });
+    }
+    if (food.donorId.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const TERMINAL = ['COMPLETED', 'NON_CLAIMED', 'CANCELLED', 'REJECTED', 'DECLINED', 'Pending', 'Requests Sent', 'Accepted', 'Awaiting NGO'];
+    if (!TERMINAL.includes(food.status)) {
+      return res.status(400).json({ message: 'Only completed, expired, or cancelled postings can be deleted from the dashboard.' });
+    }
+    food.deletedByOwner = true;
+    food.deletedAt = new Date();
+    await food.save();
+    res.json({ success: true, message: 'Posting removed from your dashboard.' });
+  } catch (err) {
+    console.error('Error soft-deleting food:', err);
+    res.status(500).send('Server Error');
+  }
+});
+
 // @route   DELETE /api/food/:id
-// @desc    Delete a food listing (Donor only)
+// @desc    Hard-delete an UNCLAIMED food listing (Donor only)
 // @access  Private
 router.delete('/:id', auth, async (req, res) => {
   try {
@@ -825,21 +873,18 @@ router.delete('/:id', auth, async (req, res) => {
     if (food.donorId.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    // Cannot delete if already claimed/completed
-    if (food.status !== 'AVAILABLE') {
-      return res.status(400).json({ message: 'Cannot delete claimed food' });
+    // Only allow hard-delete on unclaimed listings
+    if (!['AVAILABLE', 'ACTIVE'].includes(food.status)) {
+      return res.status(400).json({ message: 'Cannot delete a claimed or processed listing. Use the soft-delete option instead.' });
     }
 
     await food.deleteOne();
-    
     // Cleanup any pending claims
     await Claim.deleteMany({ foodId: food._id });
 
-    // Emit event
     const io = req.app.get('io');
-    // Using a different event name or sending empty obj to clear it from frontend?
-    // The easiest is just letting frontend refetch or handle it
-    
+    if (io) io.emit('LISTING_DELETED', { _id: food._id.toString() });
+
     res.json({ message: 'Food deleted' });
   } catch (err) {
     console.error(err);

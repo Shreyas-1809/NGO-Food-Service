@@ -709,7 +709,7 @@ const fetchMyNeeds = useCallback(async () => {
               />
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-[#0F1A33] peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:after:border-[#2A426B] peer-checked:bg-emerald-500 dark:peer-checked:bg-sky-400"></div>
             </label>
-            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-emerald-600 text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
+            <span className={`text-xs font-bold px-4 py-1.5 rounded-lg transition-colors ${showMyShortages ? 'bg-[#0F2557] text-white shadow-sm dark:bg-[#3156B5] dark:text-white dark:font-bold' : 'text-[#5B6477] dark:text-slate-300'}`}>
               <T text="Show My Shortages" />
             </span>
           </div>

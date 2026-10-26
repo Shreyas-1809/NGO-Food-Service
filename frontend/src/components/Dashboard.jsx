@@ -138,21 +138,21 @@ const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
 
         {/* TOP GREETING BANNER */}
         {isOrg ? (
-          <div className="relative overflow-hidden bg-[#173B78] rounded-3xl p-6 sm:p-8 mb-4 border border-[#1E293B] shadow-lg">
+          <div className="relative overflow-hidden bg-[#0F2557] rounded-3xl p-6 sm:p-8 mb-4 border border-[#E6DFD3] shadow-lg">
             {/* Soft decorative glow behind the block */}
             <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-[#173B78]/20 blur-3xl rounded-full mix-blend-screen pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-48 h-48 bg-[#E5B85C]/20 blur-3xl rounded-full mix-blend-screen pointer-events-none"></div>
             
             <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#173B78] to-[#F3F0EA] shadow-[0_0_20px_rgba(16,185,129,0.4)] shrink-0">
+              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#0F2557] to-[#F3F0EA] shadow-[0_0_20px_rgba(15,37,87,0.4)] shrink-0">
                 <GreetingIcon className="w-7 h-7 text-white" strokeWidth={2.5} />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight break-words">
-                  <T text={greeting} />,<br className="sm:hidden" /> <span className="bg-gradient-to-r from-[#18315E] to-[#3769B5] dark:from-[#ECE9E1] dark:to-[#3F66CC] bg-clip-text text-transparent">{userName}</span>
+                <h1 className="text-2xl sm:text-3xl font-black text-[#ECE9E1] tracking-tight break-words">
+                  <T text={greeting} />,<br className="sm:hidden" /> <span className="text-[#E3C16F] font-bold">{userName}</span>
                 </h1>
-                <p className="text-sm font-medium text-[#60708B] mt-2 break-words">
-                  <span className="text-[#E5B85C] font-semibold">{formattedDate}</span> <span className="mx-1.5 opacity-50">•</span> <T text="greetingSubtitle" fallback="Here is what is available for your organisation today." />
+                <p className="text-sm font-medium text-opacity-75 text-[#9AA3B8] mt-2 break-words">
+                  <span className="text-[#E3C16F] font-semibold">{formattedDate}</span> <span className="mx-1.5 opacity-50">•</span> <T text="greetingSubtitle" fallback="Here is what is available for your organisation today." />
                 </p>
               </div>
             </div>

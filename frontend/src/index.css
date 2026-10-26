@@ -6,50 +6,51 @@
 /* LIGHT MODE DESIGN TOKEN SET (Derived directly from Light Reference Image) */
 :root {
   /* Canvas & Backgrounds */
-  --bg-app: #FAF7F2;               /* Warm cream canvas background */
-  --bg-sidebar: #FFFFFF;           /* Clean solid white sidebar */
-  --bg-header: #FFFFFF;            /* Header & container top fill */
+  --bg-app: #0F2557;               /* Navy canvas background */
+  --bg-sidebar: #0F1A33;           /* Dark navy sidebar */
+  --bg-header: #0F1A33;            /* Header & container dark panel fill */
   --bg-surface: #FFFFFF;           /* Card surface background */
-  --bg-surface-hover: #F3F0EA;     /* Interactive card hover fill */
+  --bg-surface-hover: #E6DFD3;     /* Interactive card hover fill */
   --bg-input: #FFFFFF;             /* Input box background */
-  --bg-pill: #F3F0EA;              /* Soft warm status & badge pill background */
+  --bg-pill: #E6DFD3;              /* Soft navy status & badge pill background */
   
   /* Text Hierarchy */
-  --text-main: #172746;            /* Deep navy main text */
-  --text-sub: #60708B;             /* Slate secondary body text */
-  --text-muted: #60708B;           /* Muted caption text */
-  --text-heading: #18315E;         /* Heading navy */
-  --text-gold: #E5B85C;            /* Warm gold accent text */
+  --text-main: #0F2557;            /* Deep navy main text */
+  --text-sub: #5B6477;             /* Slate secondary body text */
+  --text-muted: #5B6477;           /* Muted caption text */
+  --text-heading: #0F2557;         /* Heading navy */
+  --text-gold: #E3C16F;            /* Gold accent text */
+  --text-deep-gold: #A8812A;       /* Deep gold for text/links */
 
   /* Primary & Brand Accents */
-  --accent-primary: #173B78;       /* Primary navy - primary action buttons */
-  --accent-primary-hover: #15336B; /* Primary navy hover state */
-  --accent-secondary: #3769B5;     /* Secondary blue */
-  --accent-gold: #E5B85C;          /* Warm gold accent */
-  --accent-gold-hover: #D9A344;    /* Gold hover state */
+  --accent-primary: #0F2557;       /* Primary navy - primary action buttons */
+  --accent-primary-hover: #18315E; /* Primary navy hover state */
+  --accent-secondary: #3156B5;     /* Secondary royal blue */
+  --accent-gold: #C9A24B;          /* Warm gold accent */
+  --accent-gold-hover: #A8812A;    /* Gold hover state */
   
   /* Soft accents */
-  --soft-blue: #EAF0FF;            /* Soft blue fill */
-  --pale-lavender: #EDEBFF;        /* Pale lavender fill */
-  --warm-cream: #FFF7E8;           /* Warm cream fill */
+  --soft-blue: #E6DFD3;            /* Soft fill */
+  --pale-lavender: #FFFFFF;        /* White fill */
+  --warm-cream: #FAF7F2;           /* Warm cream fill */
 
   /* Borders */
-  --border: #E5E1D8;               /* Main border colour */
-  --border-subtle: #E5E1D8;        /* Subtle border colour */
-  --border-card: #E5E1D8;          /* Card border colour */
+  --border: #E6DFD3;               /* Main border colour */
+  --border-subtle: #E6DFD3;        /* Subtle border colour */
+  --border-card: #E6DFD3;          /* Card border colour */
 
   /* Status Colors */
-  --status-success-bg: #F3F0EA;
-  --status-success-text: #173B78;
-  --status-pending-bg: #F3F0EA;
-  --status-pending-text: #E5B85C;
-  --status-error-bg: #F3F0EA;
-  --status-error-text: #C2410C;
+  --status-success-bg: #E6DFD3;
+  --status-success-text: #0F2557;
+  --status-pending-bg: #E6DFD3;
+  --status-pending-text: #5B6477;
+  --status-error-bg: #E6DFD3;
+  --status-error-text: #5B6477;
 
   /* Visual Treatment: Soft shadows for light mode */
-  --shadow-card: 0 4px 12px -2px rgba(23, 59, 120, 0.06), 0 2px 4px -1px rgba(23, 59, 120, 0.04);
-  --shadow-card-hover: 0 8px 24px -4px rgba(23, 59, 120, 0.08);
-  --shadow-button: 0 4px 14px rgba(23, 59, 120, 0.16);
+  --shadow-card: 0 4px 12px -2px rgba(15,37,87,0.06), 0 2px 4px -1px rgba(15,37,87,0.04);
+  --shadow-card-hover: 0 8px 24px -4px rgba(15,37,87,0.08);
+  --shadow-button: 0 4px 14px rgba(15,37,87,0.16);
   --glow-accent: none;
   color-scheme: light;
 }
@@ -91,9 +92,9 @@ html.dark {
 
   /* Status Colors */
   --status-success-bg: #0F1A33;
-  --status-success-text: #5BB487;
+  --status-success-text: #5BA4A4;
   --status-pending-bg: #0F1A33;
-  --status-pending-text: #E0A84A;
+  --status-pending-text: #9AA3B8;
   --status-error-bg: #0F1A33;
   --status-error-text: #E5707A;
 
@@ -304,6 +305,7 @@ html.dark {
   padding: 1.5px;
   pointer-events: none;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   animation: border-run 6s linear infinite;
@@ -563,6 +565,16 @@ html.dark .hero-dark-bg {
 
 /* Dust */
 .hero-dust {
+
+/* Remove blue outline on mouse click, keep gold outline for keyboard focus */
+*:focus-visible:not(.hero-focused) {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+
+*:focus {
+  outline: none;
+}
   position: absolute;
   inset: 0;
   pointer-events: none;

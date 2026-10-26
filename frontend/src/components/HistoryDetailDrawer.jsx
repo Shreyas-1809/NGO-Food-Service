@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
-import { Download, Building2, MapPin, FileText, Award } from 'lucide-react';
+import { Download, Building2, MapPin, FileText, Award, Package } from 'lucide-react';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
 import DirectContactButtons from './ui/DirectContactButtons';
 import DonationCertificateModal from './DonationCertificateModal';
 
-const HistoryDetailDrawer = ({ isOpen, onClose, record, _userRole }) => {
+const HistoryDetailDrawer = ({ isOpen, onClose, record, userRole }) => {
   const [certModalOpen, setCertModalOpen] = useState(false);
   if (!record) return null;
 
@@ -44,7 +44,11 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, _userRole }) => {
     doc.setFontSize(14);
     doc.text('Party Involved', 14, 125);
     doc.setFontSize(12);
-    doc.text(`Name: ${record.otherPartyName}`, 14, 133);
+    {['Pending', 'Requests Sent', 'Accepted', 'Completed', 'Declined', 'Awaiting NGO'].includes(record.overallStatus) ? (
+      doc.text(`Name: N/A (Open Request)`, 14, 133)
+    ) : (
+      doc.text(`Name: ${record.otherPartyName}`, 14, 133)
+    )};
 
     if (record.pickupDetails) {
       doc.setFontSize(14);
@@ -125,29 +129,26 @@ const HistoryDetailDrawer = ({ isOpen, onClose, record, _userRole }) => {
 
         {/* Other Party */}
         <div className="space-y-3">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-[#60708B] dark:text-slate-300">
-            Other Party Involved
-          </h4>
-          <div className="bg-[#F3F0EA] dark:bg-[#0F1A33] p-3.5 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-2">
+{['Pending', 'Requests Sent', 'Accepted', 'Completed', 'Declined', 'Awaiting NGO'].includes(record.overallStatus) ? (
+          <div className="text-sm text-[#60708B] dark:text-slate-300">
+            <span>N/A (Open Request)</span>
+          </div>
+        ) : (
+          <div className="space-y-3">
             <div className="flex items-center">
               <Building2 className="w-4 h-4 text-[#60708B] mr-2 shrink-0" />
-              <span className="font-semibold text-[#18315E] dark:text-white">{record.otherPartyName}</span>
+              <span className="font-semibold text-[#18315E] dark:text-white">
+                {record.otherPartyName}
+              </span>
             </div>
-            {(record.otherPartyPhone || record.otherPartyEmail) && (
-              <div className="pt-2 border-t border-[#E5E1D8]/60 dark:border-[#1E2D52]/60 flex flex-wrap items-center justify-between gap-1.5">
-                <span className="text-[10px] font-bold text-[#60708B] uppercase">Direct Contact</span>
-                <DirectContactButtons
-                  phone={record.otherPartyPhone}
-                  email={record.otherPartyEmail}
-                  name={record.otherPartyName}
-                  waMessage={`Hello ${record.otherPartyName}, contacting you regarding the FoodBridge donation "${record.itemTitle}".`}
-                  emailSubject={`FoodBridge Record: ${record.itemTitle}`}
-                  size="xs"
-                />
+            {record.otherPartyCity && (
+              <div className="text-xs text-[#60708B] dark:text-slate-300">
+                {record.otherPartyCity}
               </div>
             )}
           </div>
-        </div>
+        )}
+</div>
 
         {/* Location Details */}
         {record.pickupDetails && (

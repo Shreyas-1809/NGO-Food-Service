@@ -56,10 +56,15 @@ const getStageBadgeColor = (stage, type) => {
   return 'bg-slate-100 dark:bg-[#0F1A33] text-slate-700 dark:text-[#9AA3B8] border-slate-200 dark:border-[#1E2D52]';
 };
 
-const formatTimeAgo = (dateString) => {
-  if (!dateString) return 'Just now';
+const formatTimeAgo = (notif) => {
+  // For in-place updated notifications, show the updatedAt time
+  const dateString = notif?.updatedAt || notif?.createdAt || notif;
+  if (!dateString || typeof dateString === 'object' && !notif?.createdAt) return 'Just now';
+  const ds = typeof dateString === 'string' || dateString instanceof Date ? dateString : notif;
+  if (!ds || typeof ds !== 'string' && !(ds instanceof Date)) return 'Just now';
   const now = new Date();
-  const date = new Date(dateString);
+  const date = new Date(ds);
+  if (isNaN(date.getTime())) return 'Just now';
   const diffMs = now - date;
   const diffSecs = Math.floor(diffMs / 1000);
   const diffMins = Math.floor(diffSecs / 60);
@@ -123,8 +128,20 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       const handleLiveNotification = () => {
         fetchNotifications();
       };
+      const handleCleared = ({ foodId }) => {
+        if (foodId) {
+          setNotifications(prev => prev.filter(n => {
+            const fid = n.relatedFoodId?._id || n.relatedFoodId;
+            return fid?.toString() !== foodId.toString();
+          }));
+        } else {
+          fetchNotifications();
+        }
+      };
 
       socket.on('NEW_NOTIFICATION', handleLiveNotification);
+      socket.on('NOTIFICATION_UPDATED', handleLiveNotification);
+      socket.on('NOTIFICATION_CLEARED', handleCleared);
       socket.on('CLAIM_REQUEST_RECEIVED', handleLiveNotification);
       socket.on('CLAIM_ACCEPTED', handleLiveNotification);
       socket.on('CLAIM_DECLINED', handleLiveNotification);
@@ -133,6 +150,8 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
 
       return () => {
         socket.off('NEW_NOTIFICATION', handleLiveNotification);
+        socket.off('NOTIFICATION_UPDATED', handleLiveNotification);
+        socket.off('NOTIFICATION_CLEARED', handleCleared);
         socket.off('CLAIM_REQUEST_RECEIVED', handleLiveNotification);
         socket.off('CLAIM_ACCEPTED', handleLiveNotification);
         socket.off('CLAIM_DECLINED', handleLiveNotification);
@@ -447,7 +466,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
       isOpen={isOpen}
       onClose={onClose}
       title={<T text="Notifications" />}
-      subtitle={isOrg ? <T text="Donor acceptances, updates & tracking" /> : <T text="Incoming organisation claims & shortage alerts" />}
+      subtitle={isOrg ? <T text="Incoming claim requests & shortage alerts" /> : <T text="Donor acceptances, updates & tracking" />}
       icon={Bell}
       width="w-full max-w-md"
     >
@@ -602,15 +621,15 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                   </span>
                   <button
                     onClick={() => {
-                      const fId = selectedClaim.foodId?._id || selectedClaim.foodId;
-                      setVolModalFoodId(fId);
-                      const vols = selectedClaim.foodId?.volunteerAssignments || (selectedClaim.foodId?.volunteerAssignment?.name ? [selectedClaim.foodId.volunteerAssignment] : []);
-                      setVolModalInitialVolunteers(vols);
-                      setVolModalOpen(true);
+                      // Volunteer assignment is managed in Active Pickups drawer
+                      onClose();
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('OPEN_DRAWER', { detail: 'PICKUPS' }));
+                      }, 150);
                     }}
                     className="px-3 py-1.5 bg-emerald-600 dark:bg-[#3156B5] dark:text-white dark:font-semibold dark:shadow-md dark:shadow-sky-500/10 hover:bg-emerald-700 dark:hover:bg-[#3F66CC] text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
                   >
-                    {selectedClaim.foodId?.volunteerAssignments?.length || selectedClaim.foodId?.volunteerAssignment?.name ? 'Edit Volunteers' : 'Arrange Pickup'}
+                    {selectedClaim.foodId?.volunteerAssignments?.length || selectedClaim.foodId?.volunteerAssignment?.name ? 'View Pickup Details' : 'Arrange Pickup'}
                   </button>
                 </div>
                 {selectedClaim.foodId?.volunteerAssignments && selectedClaim.foodId.volunteerAssignments.length > 0 ? (
@@ -646,11 +665,10 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                       <button
                         type="button"
                         onClick={() => {
-                          const fId = selectedClaim.foodId?._id || selectedClaim.foodId;
-                          setVolModalFoodId(fId);
-                          const vols = selectedClaim.foodId?.volunteerAssignments || (selectedClaim.foodId?.volunteerAssignment?.name ? [selectedClaim.foodId.volunteerAssignment] : []);
-                          setVolModalInitialVolunteers(vols);
-                          setVolModalOpen(true);
+                          onClose();
+                          setTimeout(() => {
+                            window.dispatchEvent(new CustomEvent('OPEN_DRAWER', { detail: 'PICKUPS' }));
+                          }, 150);
                         }}
                         className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11px] font-bold transition-colors shadow-xs cursor-pointer"
                       >
@@ -858,7 +876,7 @@ const NotificationsDrawer = ({ isOpen, user, token, socket, onClose, onNotificat
                   <div className="flex justify-between items-center text-[10px] text-slate-400 pt-0.5">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3 text-slate-400" />
-                      {formatTimeAgo(note.createdAt)}
+                      {formatTimeAgo(note)}
                     </span>
 
                     {note.relatedClaimId && (

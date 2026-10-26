@@ -354,16 +354,16 @@ const fetchPickups = useCallback(async (silent = false) => {
                   {/* Task Stepper Visual Bar */}
                   <div className="px-4 py-2 bg-slate-50 dark:bg-[#070E1E]/40 border-t border-b border-slate-100 dark:border-[#1E2D52]/60">
                     <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-bold">
-                      <div className={`py-1 rounded-lg ${isAccepted ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
+                      <div className={`py-1 rounded-lg ${isAccepted ? 'bg-[#F3F0EA] text-[#0F2557]' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
                         1. Accepted {'✓'}
                       </div>
-                      <div className={`py-1 rounded-lg ${isVolAssigned ? 'bg-emerald-500 text-white' : pickup.volunteerStatus === 'declined' ? 'bg-rose-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
+                      <div className={`py-1 rounded-lg ${isVolAssigned ? 'bg-[#C9A24B] text-white' : pickup.volunteerStatus === 'declined' ? 'bg-[#C8454B] text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
                         2. Vol Assigned
                       </div>
-                      <div className={`py-1 rounded-lg ${isInTransit ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
+                      <div className={`py-1 rounded-lg ${isInTransit ? 'bg-[#C9A24B] text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
                         3. In Transit 🚚
                       </div>
-                      <div className={`py-1 rounded-lg ${isCompleted ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
+                      <div className={`py-1 rounded-lg ${isCompleted ? 'bg-[#C9A24B] text-white' : 'bg-slate-200 dark:bg-[#0F1A33] text-slate-500'}`}>
                         4. Delivered {'✓'}
                       </div>
                     </div>

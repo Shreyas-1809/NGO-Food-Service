@@ -258,7 +258,11 @@ const fetchHistory = useCallback(async () => {
                     </div>
                     <h3 className="font-bold text-slate-900 dark:text-white text-lg">{item.itemTitle}</h3>
                     <p className="text-sm text-slate-600 dark:text-[#9AA3B8] mt-1">
-                      <span className="font-medium">{item.quantity} {item.unit}</span> • {item.otherPartyName}
+                      <span className="font-medium">{item.quantity} {item.unit}</span> {['Pending', 'Requests Sent', 'Accepted', 'Completed', 'Declined', 'Awaiting NGO'].includes(item.overallStatus) ? (
+                        <span className="font-medium">{item.otherPartyName === 'N/A (Open Request)' || item.otherPartyName === 'No Donor Assigned' ? 'No donor yet' : item.otherPartyName}</span>
+                      ) : (
+                        <span className="font-medium">{item.otherPartyName}</span>
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">

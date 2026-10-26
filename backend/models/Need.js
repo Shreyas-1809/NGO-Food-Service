@@ -67,7 +67,9 @@ const NeedSchema = new mongoose.Schema({
       type: [Number],
       default: [0, 0]
     }
-  }
+  },
+  deletedByOwner: { type: Boolean, default: false },
+  deletedAt: { type: Date }
 }, { timestamps: true });
 
 NeedSchema.index({ location: '2dsphere' }, { sparse: true });

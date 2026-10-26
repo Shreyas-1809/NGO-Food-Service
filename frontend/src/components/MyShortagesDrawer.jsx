@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { Package, Trash2, Clock } from 'lucide-react';
+import { Package, Trash2, Clock, Sparkles } from 'lucide-react';
 import Drawer from './ui/Drawer';
 import Button from './ui/Button';
 import StatusBadge from './ui/StatusBadge';
@@ -9,14 +9,18 @@ import { T } from '../context/LanguageContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// Terminal need statuses — soft-delete allowed
+const TERMINAL_NEED_STATUSES = new Set(['FULFILLED', 'CANCELLED', 'ARCHIVED']);
+
 const MyShortagesDrawer = ({ isOpen, token, onClose, onNeedUpdated }) => {
   const [needs, setNeeds] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState('ALL'); // ALL, ACTIVE, FULFILLED, CANCELLED
   const [viewTab, setViewTab] = useState('NEEDS'); // NEEDS, TEMPLATES
+  const [deletingId, setDeletingId] = useState(null);
 
-const fetchMyNeeds = useCallback(async () => {
+  const fetchMyNeeds = useCallback(async () => {
     try {
       setLoading(true);
       const resNeeds = await axios.get(`${API_URL}/api/needs/my-needs`, {
@@ -36,11 +40,7 @@ const fetchMyNeeds = useCallback(async () => {
 
   useEffect(() => {
     if (token && isOpen) fetchMyNeeds();
-  }, [
-	token,
-	isOpen,
-	fetchMyNeeds
-]);
+  }, [token, isOpen, fetchMyNeeds]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
@@ -55,8 +55,10 @@ const fetchMyNeeds = useCallback(async () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  // Hard delete: only for ACTIVE needs (original behavior, unclaimed)
+  const handleHardDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this shortage request?')) return;
+    setDeletingId(id);
     try {
       await axios.delete(`${API_URL}/api/needs/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -65,7 +67,51 @@ const fetchMyNeeds = useCallback(async () => {
       if (onNeedUpdated) onNeedUpdated();
     } catch (err) {
       console.error('Failed to delete shortage request:', err);
-      alert('Failed to delete shortage request');
+      alert(err.response?.data?.message || 'Failed to delete shortage request');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Soft delete: for terminal-state needs — hides from dashboard, keeps in history
+  const handleSoftDelete = async (id) => {
+    if (!window.confirm(
+      'Delete this posting?\nIt will stay in your history and certificates.'
+    )) return;
+    setDeletingId(id);
+    try {
+      await axios.patch(`${API_URL}/api/needs/${id}/owner-delete`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNeeds(prev => prev.filter(n => n._id !== id));
+      if (onNeedUpdated) onNeedUpdated();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to remove from dashboard');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // Clear all finished needs at once
+  const handleClearAllFinished = async () => {
+    const finished = needs.filter(n => TERMINAL_NEED_STATUSES.has(n.status));
+    if (finished.length === 0) return;
+    if (!window.confirm(
+      `Remove all ${finished.length} finished need(s) from your dashboard?\nThey will stay in your history.`
+    )) return;
+    try {
+      await Promise.all(
+        finished.map(n =>
+          axios.patch(`${API_URL}/api/needs/${n._id}/owner-delete`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).catch(() => {})
+        )
+      );
+      setNeeds(prev => prev.filter(n => !TERMINAL_NEED_STATUSES.has(n.status)));
+      if (onNeedUpdated) onNeedUpdated();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -98,6 +144,8 @@ const fetchMyNeeds = useCallback(async () => {
     if (filterTab === 'ALL') return true;
     return need.status === filterTab;
   });
+
+  const finishedNeeds = needs.filter(n => TERMINAL_NEED_STATUSES.has(n.status));
 
   return (
     <Drawer
@@ -156,6 +204,19 @@ const fetchMyNeeds = useCallback(async () => {
               ))}
             </div>
 
+            {/* "Clear all finished" action — only visible when filtered to ALL or a terminal tab */}
+            {finishedNeeds.length > 0 && (filterTab === 'ALL' || TERMINAL_NEED_STATUSES.has(filterTab)) && (
+              <div className="flex justify-end -mt-1">
+                <button
+                  onClick={handleClearAllFinished}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 hover:text-red-500 dark:hover:text-[#E5707A] transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Clear all finished
+                </button>
+              </div>
+            )}
+
             {/* Needs List */}
             <div className="flex-1 space-y-4 overflow-y-auto pr-1">
               {loading ? (
@@ -167,70 +228,88 @@ const fetchMyNeeds = useCallback(async () => {
                   className="py-10"
                 />
               ) : (
-              filteredNeeds.map(need => (
-            <div key={need._id} className="bg-[#F3F0EA] dark:bg-[#0F1A33]/50 p-4 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] font-extrabold uppercase text-[#E5B85C] dark:text-[#D9B65D] tracking-wider block">
-                    {need.category || 'Food'} Deficit
-                  </span>
-                  <h4 className="font-bold text-[#18315E] dark:text-white text-sm leading-snug">{need.title}</h4>
-                </div>
-                <StatusBadge status={need.status} />
-              </div>
+              filteredNeeds.map(need => {
+                const isTerminal = TERMINAL_NEED_STATUSES.has(need.status);
+                const isDeleting = deletingId === need._id;
+                return (
+                <div key={need._id} className="bg-[#F3F0EA] dark:bg-[#0F1A33]/50 p-4 rounded-xl border border-[#E5E1D8] dark:border-[#1E2D52] space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-extrabold uppercase text-[#E5B85C] dark:text-[#D9B65D] tracking-wider block">
+                        {need.category || 'Food'} Deficit
+                      </span>
+                      <h4 className="font-bold text-[#18315E] dark:text-white text-sm leading-snug">{need.title}</h4>
+                    </div>
+                    <StatusBadge status={need.status} />
+                  </div>
 
-              <div className="text-xs text-[#60708B] dark:text-slate-300 space-y-1">
-                <p><strong>Quantity Needed:</strong> {need.quantity} {need.unit || 'servings'}</p>
-                {need.description && <p className="italic text-[11px] text-[#60708B] dark:text-slate-300">"{need.description}"</p>}
-                <div className="flex items-center text-[10px] text-[#60708B] pt-1">
-                  <Clock className="w-3 h-3 mr-1" />
-                  <span>Posted {new Date(need.createdAt).toLocaleDateString([], { dateStyle: 'short' })}</span>
-                </div>
-              </div>
+                  <div className="text-xs text-[#60708B] dark:text-slate-300 space-y-1">
+                    <p><strong>Quantity Needed:</strong> {need.quantity} {need.unit || 'servings'}</p>
+                    {need.description && <p className="italic text-[11px] text-[#60708B] dark:text-slate-300">"{need.description}"</p>}
+                    <div className="flex items-center text-[10px] text-[#60708B] pt-1">
+                      <Clock className="w-3 h-3 mr-1" />
+                      <span>Posted {new Date(need.createdAt).toLocaleDateString([], { dateStyle: 'short' })}</span>
+                    </div>
+                  </div>
 
-              {/* Status Action Buttons */}
-              <div className="pt-3 border-t border-[#E5E1D8] dark:border-[#1E2D52] flex gap-2">
-                {need.status === 'ACTIVE' && (
-                  <>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleUpdateStatus(need._id, 'FULFILLED')}
-                    >
-                      Mark Fulfilled
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleUpdateStatus(need._id, 'CANCELLED')}
-                    >
-                      Cancel Need
-                    </Button>
-                  </>
-                )}
-                {need.status !== 'ACTIVE' && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="flex-1 bg-[#E5B85C] hover:bg-[#E5B85C] text-white"
-                    onClick={() => handleUpdateStatus(need._id, 'ACTIVE')}
-                  >
-                    Reopen Need
-                  </Button>
-                )}
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => handleDelete(need._id)}
-                  title="Delete shortage"
-                  icon={Trash2}
-                />
-              </div>
-            </div>
-          ))
-          )}
+                  {/* Status Action Buttons */}
+                  <div className="pt-3 border-t border-[#E5E1D8] dark:border-[#1E2D52] flex gap-2">
+                    {need.status === 'ACTIVE' && (
+                      <>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleUpdateStatus(need._id, 'FULFILLED')}
+                        >
+                          Mark Fulfilled
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleUpdateStatus(need._id, 'CANCELLED')}
+                        >
+                          Cancel Need
+                        </Button>
+                        {/* Hard delete allowed only on active/unclaimed needs */}
+                        <button
+                          onClick={() => handleHardDelete(need._id)}
+                          disabled={isDeleting}
+                          title="Delete this need"
+                          className="flex items-center gap-1 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-[#1E2D52] hover:border-red-300 dark:hover:border-[#E5707A]/50 hover:text-red-500 dark:hover:text-[#E5707A] px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer text-xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    {need.status !== 'ACTIVE' && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        className="flex-1 bg-[#E5B85C] hover:bg-[#E5B85C] text-white"
+                        onClick={() => handleUpdateStatus(need._id, 'ACTIVE')}
+                      >
+                        Reopen Need
+                      </Button>
+                    )}
+                    {/* Soft delete for terminal states */}
+                    {isTerminal && (
+                      <button
+                        onClick={() => handleSoftDelete(need._id)}
+                        disabled={isDeleting}
+                        title="Remove from dashboard (stays in history)"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-[#1E2D52] hover:border-red-300 dark:hover:border-[#E5707A]/50 hover:text-red-500 dark:hover:text-[#E5707A] px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {isDeleting ? 'Removing…' : 'Remove'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                );
+              })
+              )}
             </div>
           </>
         ) : (
@@ -314,11 +393,3 @@ const fetchMyNeeds = useCallback(async () => {
 };
 
 export default MyShortagesDrawer;
-
-
-
-
-
-
-
-

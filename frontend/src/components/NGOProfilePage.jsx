@@ -163,7 +163,7 @@ const NGOProfilePage = ({ user }) => {
               ))}
             </div>
           ) : (
-            <div className="p-6 text-center text-[#60708B] text-xs italic bg-[#F3F0EA] dark:bg-[#0F1A33]/20 rounded-2xl">
+            <div className="p-6 text-center text-[#E3C16F] text-xs italic bg-[#F3F0EA] dark:bg-[#0F1A33]/20 rounded-2xl">
               No active shortages or food deficit needs posted by this organisation right now.
             </div>
           )}

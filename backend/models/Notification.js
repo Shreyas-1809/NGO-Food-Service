@@ -16,6 +16,8 @@ const NotificationSchema = new mongoose.Schema({
       'STATUS_UPDATE',      // Generic lifecycle stage update
       'VOLUNTEER_ASSIGNED', // Volunteer assigned → notify both
       'PICKUP_CONFIRMED',   // Picked up / delivered → notify both
+      'ACTION_REQUIRED',    // Needs action (e.g. volunteer declined)
+      'NEED_ALERT',         // New shortage need alert for donors
       'INFO'                // General informational notice
     ],
     required: true

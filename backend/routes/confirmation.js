@@ -65,20 +65,22 @@ router.get('/task/:taskId', async (req, res) => {
         ? { lat: donorObj.location.coordinates[1], lng: donorObj.location.coordinates[0] }
         : null;
     const donorNavUrl = donorCoord
-      ? `https://www.google.com/maps/dir/?api=1&destination=${donorCoord.lat},${donorCoord.lng}&travelmode=driving`
+      ? `https://www.google.com/maps/dir/?api=1&destination=${Number(donorCoord.lat).toFixed(6)},${Number(donorCoord.lng).toFixed(6)}&travelmode=driving&dir_action=navigate`
       : '';
-    const donorQuery = donorCoord ? `${donorCoord.lat},${donorCoord.lng}` : donorAddress;
-    const donorMapsUrl = donorQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(donorQuery)}` : '';
+    const donorMapsUrl = donorCoord
+      ? `https://www.google.com/maps/search/?api=1&query=${Number(donorCoord.lat).toFixed(6)},${Number(donorCoord.lng).toFixed(6)}`
+      : '';
 
     const hasNgoCoord = ngoObj.location?.coordinates && (ngoObj.location.coordinates[0] !== 0 || ngoObj.location.coordinates[1] !== 0);
     const ngoCoord = hasNgoCoord
       ? { lat: ngoObj.location.coordinates[1], lng: ngoObj.location.coordinates[0] }
       : null;
     const ngoNavUrl = ngoCoord
-      ? `https://www.google.com/maps/dir/?api=1&destination=${ngoCoord.lat},${ngoCoord.lng}&travelmode=driving`
+      ? `https://www.google.com/maps/dir/?api=1&destination=${Number(ngoCoord.lat).toFixed(6)},${Number(ngoCoord.lng).toFixed(6)}&travelmode=driving&dir_action=navigate`
       : '';
-    const ngoQuery = ngoCoord ? `${ngoCoord.lat},${ngoCoord.lng}` : ngoAddress;
-    const ngoMapsUrl = ngoQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ngoQuery)}` : '';
+    const ngoMapsUrl = ngoCoord
+      ? `https://www.google.com/maps/search/?api=1&query=${Number(ngoCoord.lat).toFixed(6)},${Number(ngoCoord.lng).toFixed(6)}`
+      : '';
 
     const links = buildConfirmationUrls(food);
 

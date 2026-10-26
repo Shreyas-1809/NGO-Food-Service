@@ -88,7 +88,7 @@ router.get('/my-needs', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only organisations can fetch their shortage requests' });
     }
 
-    const needs = await Need.find({ ngoId: req.user.id })
+    const needs = await Need.find({ ngoId: req.user.id, deletedByOwner: { $ne: true } })
       .sort({ createdAt: -1 });
 
     res.json(needs);
@@ -201,6 +201,34 @@ router.patch('/:id', auth, async (req, res) => {
     if (err.name === 'ValidationError') {
       return res.status(400).json({ message: err.message });
     }
+    res.status(500).json({ message: 'Server Error' });
+  }
+});
+
+// @route   PATCH /api/needs/:id/owner-delete
+// @desc    Soft-delete a finished need from the organisation's dashboard view only.
+//          Only works on terminal states: FULFILLED, CANCELLED, ARCHIVED.
+//          Kept in DB for history & analytics.
+// @access  Private (ORGANISATION only)
+router.patch('/:id/owner-delete', auth, async (req, res) => {
+  try {
+    const need = await Need.findById(req.params.id);
+    if (!need) {
+      return res.status(404).json({ message: 'Shortage request not found' });
+    }
+    if (need.ngoId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+    const TERMINAL = ['FULFILLED', 'CANCELLED', 'ARCHIVED'];
+    if (!TERMINAL.includes(need.status)) {
+      return res.status(400).json({ message: 'Only fulfilled or cancelled needs can be removed from the dashboard.' });
+    }
+    need.deletedByOwner = true;
+    need.deletedAt = new Date();
+    await need.save();
+    res.json({ success: true, message: 'Need removed from your dashboard.' });
+  } catch (err) {
+    console.error('Error soft-deleting need:', err);
     res.status(500).json({ message: 'Server Error' });
   }
 });

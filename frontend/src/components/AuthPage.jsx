@@ -272,9 +272,7 @@ const AuthPage = ({ setToken, setUser, isDarkMode, toggleTheme }) => {
       } else {
         checkField('orgName', formData.orgName);
         checkField('pincode', formData.pincode);
-        checkField('address', formData.address);
         checkField('email', formData.email);
-        checkField('city', formData.city);
         checkField('phone', formData.phone);
         checkField('password', formData.password);
       }
@@ -328,6 +326,7 @@ const AuthPage = ({ setToken, setUser, isDarkMode, toggleTheme }) => {
       setUser(user);
       setIsAuthModalOpen(false);
     } catch (err) {
+      console.error('Signup error:', err);
       if (err.response) {
         setGlobalError(err.response.data.message || 'Authentication failed');
       } else if (err.request) {
@@ -352,7 +351,7 @@ const AuthPage = ({ setToken, setUser, isDarkMode, toggleTheme }) => {
       }
       return base;
     }
-    return ['orgName', 'pincode', 'address', 'email', 'city', 'phone', 'password'];
+    return ['orgName', 'pincode', 'email', 'phone', 'password'];
   };
 
   const isFormSubmitEnabled = () => {

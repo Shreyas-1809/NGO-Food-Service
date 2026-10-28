@@ -425,8 +425,8 @@ const DonorPostForm = ({ _socket, user, token, prefill = null, onSuccess }) => {
                           value={item.foodType}
                           onChange={e => handleItemChange(index, 'foodType', e.target.value)}
                         >
-                          <option value="veg" className="bg-white dark:bg-[#0F1A33]"><T text="category.veg" /></option>
-                          <option value="non_veg" className="bg-white dark:bg-[#0F1A33]"><T text="category.non_veg" /></option>
+                          <option value="VEG" className="bg-white dark:bg-[#0F1A33]"><T text="category.veg" /></option>
+                          <option value="NON-VEG" className="bg-white dark:bg-[#0F1A33]"><T text="category.non_veg" /></option>
                         </select>
                       </div>
                       <div className="col-span-6 sm:col-span-3">

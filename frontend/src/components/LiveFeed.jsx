@@ -1757,7 +1757,13 @@ const fetchMyNeeds = useCallback(async () => {
                         <span className="w-2.5 h-2.5 rounded-full bg-yellow-500 shrink-0 mt-1" title={tCatBaked || "Baked Goods"}></span>
                       )}
                     </div>
-
+                    {listing.photos && listing.photos.length > 0 && (
+                      <img
+                        src={listing.photos[0]}
+                        alt="Donated food"
+                        className="w-full h-32 object-cover rounded-xl mb-3"
+                      />
+                    )}
                     <div className="space-y-2.5 mb-3 text-xs">
                       <div className="flex items-center text-slate-600 dark:text-[#9AA3B8]">
                         <Utensils className="w-3.5 h-3.5 mr-2 text-emerald-600 shrink-0" />

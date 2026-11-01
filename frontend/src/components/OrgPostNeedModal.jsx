@@ -17,7 +17,7 @@ import Button from './ui/Button';
 import axios from 'axios';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const OrgPostNeedModal = ({ user, token, onClose, onSuccess }) => {
   const navigate = useNavigate();

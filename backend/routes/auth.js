@@ -6,7 +6,10 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const auth = require('../middleware/auth');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required.');
+}
 
 router.post('/register', async (req, res, next) => {
   try {

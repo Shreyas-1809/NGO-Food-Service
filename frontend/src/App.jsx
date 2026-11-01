@@ -31,7 +31,7 @@ import { io } from 'socket.io-client';
 
 import { LanguageProvider } from './context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 const socket = io(API_URL, {
   autoConnect: true,
   transports: ['websocket', 'polling']
@@ -155,6 +155,7 @@ function App() {
               <Route path="/confirm-pickup/:taskId" element={<ConfirmPickupPage />} />
               <Route path="/confirm-delivery/:taskId" element={<ConfirmDeliveryPage />} />
               <Route path="/certificate/:id" element={<DonationCertificatePage />} />
+              <Route path="/map" element={<MapPage user={user} />} />
 
               {/* STRICT AUTH GATING: If not logged in, only AuthPage is displayed */}
               {!user ? (
@@ -175,7 +176,6 @@ function App() {
                   <Route path="/activity" element={<ActivityHistory token={token} user={user} />} />
 
                   {/* Verified NGOs Directory & Map */}
-                  <Route path="/map" element={<MapPage user={user} />} />
                   <Route path="/ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/find-ngos" element={<FindNGOsPage user={user} />} />
                   <Route path="/ngo/:id" element={<NGOProfilePage user={user} />} />

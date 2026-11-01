@@ -38,7 +38,7 @@ import { calculateListingUrgency } from '../utils/urgency';
 import { formatPickupTime } from '../utils/formatters';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const LiveFeed = ({ socket, user, token, onEdit }) => {
   const navigate = useNavigate();

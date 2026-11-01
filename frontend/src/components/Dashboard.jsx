@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { T, useLanguage } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const Dashboard = ({ socket, user, token, autoOpenDonate = false }) => {
   const location = useLocation();

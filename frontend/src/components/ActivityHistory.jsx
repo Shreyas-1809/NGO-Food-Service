@@ -6,7 +6,7 @@ import HistoryDetailDrawer from './HistoryDetailDrawer';
 import DonationCertificateModal from './DonationCertificateModal';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ActivityHistory = ({ token, _user }) => {
   const [history, setHistory] = useState([]);

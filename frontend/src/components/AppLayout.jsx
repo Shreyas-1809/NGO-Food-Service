@@ -16,7 +16,7 @@ import ActivePickupsDrawer from './ActivePickupsDrawer';
 import ProfileEditModal from './ProfileEditModal';
 import Logo from './Logo';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const AppLayout = ({ socket, user, token, onLogout, isDarkMode, toggleTheme }) => {
   const location = useLocation();

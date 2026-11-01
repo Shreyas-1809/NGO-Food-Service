@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Award, Printer, Share2, ArrowLeft, ShieldCheck, HeartHandshake, Package, Building2, Calendar } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const DonationCertificatePage = () => {
   const { id } = useParams();

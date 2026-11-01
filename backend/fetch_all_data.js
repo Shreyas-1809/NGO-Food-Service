@@ -8,7 +8,11 @@ const Listing = require('./models/Listing');
 const Notification = require('./models/Notification');
 const User = require('./models/User');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/food_bridge';
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  throw new Error('MONGO_URI environment variable is required.');
+}
 
 const fetchAllData = async () => {
   try {

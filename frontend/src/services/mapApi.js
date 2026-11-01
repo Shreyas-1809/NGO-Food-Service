@@ -5,7 +5,7 @@
  * All external API keys remain strictly on the backend.
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const authHeaders = () => {
   const token = localStorage.getItem('token');

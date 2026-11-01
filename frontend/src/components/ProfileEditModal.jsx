@@ -5,7 +5,7 @@ import Modal from './ui/Modal';
 import Button from './ui/Button';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ProfileEditModal = ({ user, token, onClose, onUserUpdated }) => {
   const isDonor = user?.accountType === 'DONOR';

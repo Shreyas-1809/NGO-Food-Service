@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Award, Printer, Share2, X, ShieldCheck, HeartHandshake, Calendar, Package, Building2 } from 'lucide-react';
 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const DonationCertificateModal = ({ isOpen, onClose, foodId, initialData }) => {
   const [certData, setCertData] = useState(initialData || null);

@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import { 
   Building2, 
@@ -24,7 +24,7 @@ import { T, useLanguage } from '../context/LanguageContext';
 import Logo from './Logo';
 import LightBackground from './LightBackground';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const InputField = ({ label, type, value, onChange, onBlur, error, required, placeholder, prefix, maxLength, suffix, icon: Icon }) => (
   <div className="mb-4 relative">

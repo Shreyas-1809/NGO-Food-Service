@@ -11,7 +11,7 @@
 import axios from 'axios';
 import { calculateDistanceKm } from './mapsService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // In-memory cache for Tier 2 discover queries to avoid hitting rate limits (TTL: 5 minutes)
 const DISCOVER_CACHE = new Map();

@@ -4,7 +4,7 @@ import Modal from './ui/Modal';
 import Button from './ui/Button';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const REJECTION_REASONS = [
   'Quantity Mismatch',

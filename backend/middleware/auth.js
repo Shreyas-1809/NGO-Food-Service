@@ -5,7 +5,8 @@ module.exports = function(req, res, next) {
   if (!token) return res.status(401).json({ message: 'Auth Error' });
 
   try {
-    const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is required.');
     const decoded = jwt.verify(token.replace('Bearer ', ''), JWT_SECRET);
     req.user = decoded.user;
     next();

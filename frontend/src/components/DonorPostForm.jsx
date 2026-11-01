@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Plus, Trash2, Clock, MapPin, UploadCloud, X, CheckCircle, Building2, CheckCircle2 } from 'lucide-react';
 import { T, useTranslatedString } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const toLocalISOString = (date = new Date()) => {
   const d = new Date(date);

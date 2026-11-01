@@ -29,7 +29,7 @@ import { T } from '../context/LanguageContext';
 import { formatPickupTime } from '../utils/formatters';
 import { markFoodDelivered } from '../services/donationService';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ActivePickupsDrawer = ({ isOpen, user, token, socket, onClose, highlightTaskId }) => {
   const navigate = useNavigate();

@@ -7,7 +7,7 @@ import StatusBadge from './ui/StatusBadge';
 import EmptyState from './ui/EmptyState';
 import { T } from '../context/LanguageContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Terminal need statuses — soft-delete allowed
 const TERMINAL_NEED_STATUSES = new Set(['FULFILLED', 'CANCELLED', 'ARCHIVED']);

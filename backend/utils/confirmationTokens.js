@@ -1,7 +1,14 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'supersecretjwtkey_for_development';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const JWT_SECRET = process.env.JWT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required.');
+}
+if (!FRONTEND_URL) {
+  throw new Error('FRONTEND_URL environment variable is required.');
+}
 
 /**
  * Generate signed, single-use tokens for a task/food listing
